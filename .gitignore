@@ -1,0 +1,69 @@
+# --- Dependências ---
+node_modules/
+
+# --- Build / artefatos gerados ---
+dist/
+dist-ssr/
+*.local
+
+# --- Variáveis de ambiente (manter .env.example versionado) ---
+.env
+.env.*
+!.env.example
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Cache e artefatos de ferramentas ---
+.cache/
+.parcel-cache/
+.vite/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# --- Testes / cobertura ---
+coverage/
+.nyc_output/
+
+# --- Editores e IDEs ---
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# --- Sistema operacional (Windows / macOS / Linux) ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Deploy / hosting (se usar no futuro) ---
+.vercel/
+.netlify/
+
+# --- Quasar CLI (caso migre ou use comandos extras) ---
+.quasar/
+
+# --- Arquivos temporários ---
+*.tmp
+*.temp
+*.bak
