@@ -36,4 +36,10 @@ export const unidadeService = {
   async desativar(id: string): Promise<void> {
     await api.delete(`/api/units/${id}`);
   },
+
+  async reativar(id: string): Promise<Unidade> {
+    const { data } = await api.patch<ApiResponse<Unidade>>(`/api/units/${id}/reactivate`);
+
+    return data.data;
+  },
 };

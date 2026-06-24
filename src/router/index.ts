@@ -9,13 +9,22 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to) => {
+function resolverRotaInicial(
+  authStore: ReturnType<typeof useAuthStore>,
+): { name: 'dashboard' } {
+  return { name: 'dashboard' };
+}
+
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
   const permissao = to.meta.permissao;
 
   if (to.meta.publica) {
-    if (authStore.isAutenticado && (to.name === 'login' || to.name === 'cadastro')) {
-      return { name: 'dashboard' };
+    if (
+      authStore.isAutenticado &&
+      (to.name === 'login' || to.name === 'cadastro' || to.name === 'primeiro-acesso')
+    ) {
+      return resolverRotaInicial(authStore);
     }
 
     return true;
@@ -29,7 +38,13 @@ router.beforeEach((to) => {
   }
 
   if (permissao && !authStore.possuiPermissao(permissao)) {
-    return { name: 'dashboard' };
+    const destino = resolverRotaInicial(authStore);
+
+    if (to.name === destino.name) {
+      return true;
+    }
+
+    return destino;
   }
 
   return true;

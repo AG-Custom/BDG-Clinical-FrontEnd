@@ -47,16 +47,38 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAutenticado: (state) => Boolean(state.token),
+    isAdmin: (state) => state.usuario?.isAdmin ?? false,
     permissoes: (state) => state.usuario?.permissoes ?? [],
     empresaAtual: (state): EmpresaResumo | null => state.usuario?.empresaAtual ?? null,
   },
   actions: {
+    async inicializar(): Promise<void> {
+      if (!this.isAutenticado) {
+        return;
+      }
+
+      try {
+        await this.sincronizarUsuario();
+      } catch {
+        this.logout();
+      }
+    },
+    async sincronizarUsuario(): Promise<void> {
+      if (!this.token) {
+        return;
+      }
+
+      const usuario = await authService.me();
+      this.usuario = usuario;
+      sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuario));
+    },
     async login(payload: LoginRequest): Promise<void> {
       this.carregando = true;
 
       try {
         const response = await authService.login(payload);
         this.persistirSessao(response.token, response.usuario);
+        await this.sincronizarUsuario();
       } finally {
         this.carregando = false;
       }
@@ -67,6 +89,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await authService.registrar(payload);
         this.persistirSessao(response.token, response.usuario);
+        await this.sincronizarUsuario();
       } finally {
         this.carregando = false;
       }

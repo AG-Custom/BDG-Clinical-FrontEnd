@@ -79,6 +79,12 @@ const { usuario, logout } = auth;
           </q-item-section>
           <q-item-section>Unidades</q-item-section>
         </q-item>
+        <q-item clickable v-ripple :to="{ name: 'funcionarios' }">
+          <q-item-section avatar>
+            <q-icon name="groups" />
+          </q-item-section>
+          <q-item-section>Funcionários</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 

@@ -3,6 +3,8 @@ export interface Unidade {
   nome: string;
   endereco: string;
   ativo: boolean;
+  criadoEm?: string;
+  atualizadoEm?: string | null;
 }
 
 export interface CriarUnidadeRequest {

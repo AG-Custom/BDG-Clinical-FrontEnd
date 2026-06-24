@@ -1,0 +1,305 @@
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+import { useAdmin } from '@/composables/useAdmin';
+import { useNotificacao } from '@/composables/useNotificacao';
+import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { funcionarioService } from '@/services/funcionario.service';
+import { unidadeService } from '@/services/unidade.service';
+import { extrairDadosVinculo } from '@/types/entidades/funcionario';
+import type { Unidade } from '@/types/entidades/unidade';
+
+const route = useRoute();
+const router = useRouter();
+const notificacao = useNotificacao();
+const { obterMensagem } = useTratarErroFormulario();
+const { isAdmin } = useAdmin();
+
+const carregando = ref(false);
+const salvando = ref(false);
+const unidadesDisponiveis = ref<Unidade[]>([]);
+
+const isEdicao = computed(() => route.name === 'funcionarios-editar');
+const funcionarioId = computed(() => route.params.id as string | undefined);
+const emailLoginEdicao = ref('');
+
+const form = reactive({
+  nome: '',
+  telefone: '',
+  email: '',
+  emailLogin: '',
+  linkToEmpresa: false,
+  unidadeIds: [] as string[],
+  flagAplicador: false,
+});
+
+const opcoesUnidades = computed(() =>
+  unidadesDisponiveis.value.map((unidade) => ({
+    label: unidade.nome,
+    value: unidade.id,
+  })),
+);
+
+watch(
+  () => form.linkToEmpresa,
+  (vinculoEmpresa) => {
+    if (vinculoEmpresa) {
+      form.unidadeIds = [];
+    }
+  },
+);
+
+function validarEmail(value: string): boolean | string {
+  if (!value) {
+    return 'Informe o e-mail de login';
+  }
+
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  return emailValido || 'Informe um e-mail válido';
+}
+
+function validarUnidades(): boolean | string {
+  if (form.linkToEmpresa) {
+    return true;
+  }
+
+  return form.unidadeIds.length > 0 || 'Selecione ao menos uma unidade';
+}
+
+async function carregarUnidades(): Promise<void> {
+  try {
+    unidadesDisponiveis.value = await unidadeService.listar(false);
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function carregarFuncionario(): Promise<void> {
+  if (!isEdicao.value || !funcionarioId.value) {
+    return;
+  }
+
+  carregando.value = true;
+
+  try {
+    const funcionario = await funcionarioService.obter(funcionarioId.value);
+    const vinculo = extrairDadosVinculo(funcionario);
+
+    form.nome = funcionario.nome;
+    form.telefone = funcionario.telefone ?? '';
+    form.email = funcionario.email ?? '';
+    form.unidadeIds = vinculo.unidadeIds;
+    form.flagAplicador = vinculo.flagAplicador;
+    form.linkToEmpresa = vinculo.linkToEmpresa;
+    emailLoginEdicao.value = funcionario.emailLogin;
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+    await router.push({ name: 'funcionarios' });
+  } finally {
+    carregando.value = false;
+  }
+}
+
+function montarPayloadVinculo() {
+  return {
+    linkToEmpresa: form.linkToEmpresa,
+    unidadeIds: form.linkToEmpresa ? null : form.unidadeIds,
+    cargoId: null,
+    flagAplicador: form.flagAplicador,
+  };
+}
+
+async function salvar(): Promise<void> {
+  salvando.value = true;
+
+  try {
+    const telefone = form.telefone.trim() || null;
+    const email = form.email.trim() || null;
+    const vinculo = montarPayloadVinculo();
+
+    if (isEdicao.value && funcionarioId.value) {
+      await funcionarioService.atualizar(funcionarioId.value, {
+        nome: form.nome,
+        telefone,
+        email,
+        ...vinculo,
+      });
+      notificacao.sucesso('Funcionário atualizado com sucesso.');
+    } else {
+      await funcionarioService.criar({
+        nome: form.nome,
+        telefone,
+        email,
+        emailLogin: form.emailLogin,
+        ...vinculo,
+      });
+      notificacao.sucesso(
+        'Funcionário cadastrado com sucesso. Ele receberá instruções para o primeiro acesso.',
+      );
+    }
+
+    await router.push({ name: 'funcionarios' });
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    salvando.value = false;
+  }
+}
+
+function cancelar(): void {
+  router.push({ name: 'funcionarios' });
+}
+
+onMounted(async () => {
+  await carregarUnidades();
+  await carregarFuncionario();
+});
+</script>
+
+<template>
+  <q-page class="page-content page-content--fluid q-pa-md">
+    <app-page-header
+      :titulo="isEdicao ? 'Editar funcionário' : 'Novo funcionário'"
+      :subtitulo="
+        isEdicao
+          ? 'Atualize os dados e vínculos do colaborador.'
+          : 'Cadastre um colaborador. A senha será definida no primeiro acesso.'
+      "
+    />
+
+    <q-card flat bordered>
+      <q-card-section>
+        <q-inner-loading :showing="carregando" />
+
+        <q-form class="form-stack" @submit.prevent="salvar">
+          <div class="text-subtitle2 text-weight-medium">Dados pessoais</div>
+
+          <q-input
+            v-model="form.nome"
+            label="Nome"
+            outlined
+            :readonly="!isAdmin"
+            :rules="[(value: string) => Boolean(value) || 'Informe o nome']"
+          />
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model="form.telefone"
+                label="Telefone (opcional)"
+                outlined
+                mask="(##) #####-####"
+                unmasked-value
+                fill-mask
+                :readonly="!isAdmin"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model="form.email"
+                label="E-mail de contato (opcional)"
+                type="email"
+                outlined
+                :readonly="!isAdmin"
+              />
+            </div>
+          </div>
+
+          <q-separator class="q-my-sm" />
+
+          <div class="text-subtitle2 text-weight-medium">Acesso à plataforma</div>
+
+          <q-input
+            v-if="!isEdicao"
+            v-model="form.emailLogin"
+            label="E-mail de login"
+            type="email"
+            outlined
+            hint="Será usado para entrar na plataforma. Não pode ser alterado depois."
+            :readonly="!isAdmin"
+            :rules="[validarEmail]"
+          />
+
+          <q-input
+            v-else
+            :model-value="emailLoginEdicao"
+            label="E-mail de login"
+            outlined
+            readonly
+            hint="O e-mail de login não pode ser alterado."
+          />
+
+          <q-banner v-if="!isEdicao" dense rounded class="funcionario-form__info-banner">
+            <template #avatar>
+              <q-icon name="info" color="primary" />
+            </template>
+            Não é necessário definir senha. O colaborador criará a senha no primeiro acesso.
+          </q-banner>
+
+          <q-separator class="q-my-sm" />
+
+          <div class="text-subtitle2 text-weight-medium">Vínculo</div>
+
+          <q-toggle
+            v-model="form.linkToEmpresa"
+            label="Atua em todas as unidades da empresa"
+            color="primary"
+            :disable="!isAdmin"
+          />
+
+          <q-select
+            v-if="!form.linkToEmpresa"
+            v-model="form.unidadeIds"
+            :options="opcoesUnidades"
+            label="Unidades"
+            outlined
+            multiple
+            use-chips
+            emit-value
+            map-options
+            :rules="[validarUnidades]"
+            :disable="!isAdmin || opcoesUnidades.length === 0"
+            :hint="
+              opcoesUnidades.length === 0
+                ? 'Cadastre unidades antes de vincular o funcionário.'
+                : 'Selecione as unidades em que o colaborador atuará.'
+            "
+          />
+
+          <q-separator class="q-my-sm" />
+
+          <div class="text-subtitle2 text-weight-medium">Permissões</div>
+
+          <q-toggle
+            v-model="form.flagAplicador"
+            label="Pode realizar aplicações"
+            color="primary"
+            :disable="!isAdmin"
+          />
+
+          <div class="row q-gutter-sm q-mt-md">
+            <q-btn
+              color="primary"
+              label="Salvar"
+              type="submit"
+              unelevated
+              no-caps
+              :loading="salvando"
+              :disable="!isAdmin || (!form.linkToEmpresa && opcoesUnidades.length === 0)"
+            />
+            <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
+          </div>
+        </q-form>
+      </q-card-section>
+    </q-card>
+  </q-page>
+</template>
+
+<style scoped lang="scss">
+.funcionario-form__info-banner {
+  background: var(--ds-bg-subtle);
+  color: var(--ds-text-primary);
+}
+</style>

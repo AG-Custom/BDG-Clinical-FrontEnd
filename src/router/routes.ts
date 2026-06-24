@@ -26,6 +26,18 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/primeiro-acesso',
+    component: () => import('@/layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'primeiro-acesso',
+        component: () => import('@/pages/auth/PrimeiroAcessoPage.vue'),
+        meta: { publica: true },
+      },
+    ],
+  },
+  {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     children: [
@@ -33,7 +45,6 @@ export const routes: RouteRecordRaw[] = [
         path: '',
         name: 'dashboard',
         component: () => import('@/pages/dashboard/DashboardPage.vue'),
-        meta: { permissao: 'dashboard.visualizar' },
       },
       {
         path: 'unidades',
@@ -49,6 +60,21 @@ export const routes: RouteRecordRaw[] = [
         path: 'unidades/:id/editar',
         name: 'unidades-editar',
         component: () => import('@/pages/unidades/UnidadeFormPage.vue'),
+      },
+      {
+        path: 'funcionarios',
+        name: 'funcionarios',
+        component: () => import('@/pages/funcionarios/FuncionariosListPage.vue'),
+      },
+      {
+        path: 'funcionarios/novo',
+        name: 'funcionarios-novo',
+        component: () => import('@/pages/funcionarios/FuncionarioFormPage.vue'),
+      },
+      {
+        path: 'funcionarios/:id/editar',
+        name: 'funcionarios-editar',
+        component: () => import('@/pages/funcionarios/FuncionarioFormPage.vue'),
       },
     ],
   },

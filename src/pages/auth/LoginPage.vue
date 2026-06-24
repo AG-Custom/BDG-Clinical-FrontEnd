@@ -85,6 +85,10 @@ async function entrar(): Promise<void> {
     </q-form>
 
     <p class="auth-premium__footer-link ds-animate-fade-in-up ds-stagger-4">
+      Foi convidado para a plataforma? Abra o link enviado para o seu e-mail.
+    </p>
+
+    <p class="auth-premium__footer-link ds-animate-fade-in-up ds-stagger-5">
       Ainda não tem conta?
       <router-link :to="{ name: 'cadastro' }">Cadastre-se grátis</router-link>
     </p>
