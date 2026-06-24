@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { useAuth } from '@/composables/useAuth';
-import { DesignSystemBrand, DesignSystemLayout } from '@/constants/design-system';
+import { DesignSystemLayout } from '@/constants/design-system';
+import { useEmpresaStore } from '@/stores/empresa.store';
 
 const drawer = ref(true);
 const auth = useAuth();
 const { usuario, logout } = auth;
+const empresaStore = useEmpresaStore();
+
+onMounted(() => {
+  void empresaStore.carregarEmpresaAtual();
+  void empresaStore.carregarEmpresas();
+});
 </script>
 
 <template>
@@ -21,15 +28,12 @@ const { usuario, logout } = auth;
           aria-label="Abrir menu"
           @click="drawer = !drawer"
         />
-        <q-toolbar-title class="text-weight-bold">
-          {{ DesignSystemBrand.nome }}
-        </q-toolbar-title>
 
         <q-space />
 
         <app-empresa-switcher />
 
-        <q-btn flat round icon="account_circle" aria-label="Menu da conta">
+        <q-btn flat round icon="account_circle" aria-label="Menu da conta" class="q-ml-sm">
           <q-menu>
             <q-list style="min-width: 240px">
               <q-item>
@@ -58,12 +62,8 @@ const { usuario, logout } = auth;
       show-if-above
       :width="DesignSystemLayout.drawerWidth"
     >
-      <div class="drawer-brand">
-        <q-icon :name="DesignSystemBrand.icone" color="primary" size="28px" />
-        <div>
-          <strong>{{ DesignSystemBrand.nome }}</strong>
-          <span>{{ DesignSystemBrand.taglinePadrao }}</span>
-        </div>
+      <div class="drawer-brand drawer-brand--logo">
+        <app-empresa-marca />
       </div>
 
       <q-list padding>
@@ -85,11 +85,19 @@ const { usuario, logout } = auth;
           </q-item-section>
           <q-item-section>Funcionários</q-item-section>
         </q-item>
+        <q-item clickable v-ripple :to="{ name: 'empresas' }">
+          <q-item-section avatar>
+            <q-icon name="business" />
+          </q-item-section>
+          <q-item-section>Empresas</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <app-troca-empresa-overlay />
   </q-layout>
 </template>

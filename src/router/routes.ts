@@ -76,6 +76,21 @@ export const routes: RouteRecordRaw[] = [
         name: 'funcionarios-editar',
         component: () => import('@/pages/funcionarios/FuncionarioFormPage.vue'),
       },
+      {
+        path: 'empresas',
+        name: 'empresas',
+        component: () => import('@/pages/empresas/EmpresasListPage.vue'),
+      },
+      {
+        path: 'empresas/nova',
+        name: 'empresas-nova',
+        component: () => import('@/pages/empresas/EmpresaFormPage.vue'),
+      },
+      {
+        path: 'empresas/atual',
+        name: 'empresas-atual',
+        component: () => import('@/pages/empresas/EmpresaConfigPage.vue'),
+      },
     ],
   },
   {

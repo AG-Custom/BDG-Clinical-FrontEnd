@@ -1,0 +1,432 @@
+---
+description: Performance, percepção de velocidade e fluidez da interface no BGD Clinical
+alwaysApply: true
+---
+
+# Performance e Percepção de Velocidade — BGD Clinical
+
+## Objetivo
+
+O usuário deve sentir que o sistema responde imediatamente às suas ações.
+
+Nem toda lentidão é causada pelo backend. Muitas vezes a sensação de sistema lento é criada por:
+
+- Animações excessivas
+- Re-renderizações desnecessárias
+- Overlays pesados
+- Layout instável
+- Spinners infinitos
+- Transições longas
+- Carregamentos bloqueantes
+- Efeitos visuais caros
+
+A prioridade do projeto é:
+
+1. Responsividade percebida
+2. Fluidez da navegação
+3. Estabilidade visual
+4. Beleza visual
+
+Se houver conflito entre estética e velocidade percebida, velocidade deve vencer.
+
+---
+
+## Regra Principal
+
+O usuário nunca deve esperar sem feedback.
+
+Toda ação deve:
+
+- Atualizar algo visualmente em até 100ms
+- Exibir estado claro de carregamento quando necessário
+- Evitar mudanças bruscas de layout
+- Evitar elementos piscando ou reaparecendo
+
+---
+
+## Overlays de Bloqueio
+
+Usar apenas quando a ação realmente impede qualquer interação.
+
+Exemplos:
+
+- Troca de clínica
+- Troca de tenant
+- Login
+- Logout
+- Inicialização crítica
+
+### Obrigatório
+
+- `position: fixed`
+- `inset: 0`
+- `min-height: 100dvh`
+- `<teleport to="body">`
+- `z-index: var(--ds-z-blocking-overlay)`
+- Fundo sólido `var(--ds-bg-surface)`
+- Texto simples
+- `contain: strict`
+- Sem animações
+
+Componente de referência: `AppTrocaEmpresaOverlay.vue`.
+
+### Proibido
+
+- `backdrop-filter`
+- Blur
+- Transparência excessiva
+- Glassmorphism
+- Spinners animados
+- Skeletons animados
+- GIFs
+- Card centralizado com fundo semi-transparente
+- `:loading` no botão **e** overlay ao mesmo tempo
+
+---
+
+## Spinners
+
+Spinners transmitem sensação de espera.
+
+Sempre que possível substituir por:
+
+- Texto informativo
+- Estado disabled
+- Overlay estático
+
+### Evitar
+
+- Spinner dentro de botão
+- Spinner dentro de tabela
+- Spinner dentro de modal
+- Spinner global simultâneo
+
+O usuário nunca deve ver vários carregamentos ao mesmo tempo.
+
+---
+
+## Animações
+
+Animações devem ser exceção.
+
+### Permitido
+
+- Login
+- Landing pages
+- Marketing
+- Onboarding
+
+### Evitar
+
+- Dashboards
+- Formulários
+- Tabelas
+- Fluxos operacionais
+
+---
+
+## Duração Máxima
+
+Hover:
+
+- 100ms
+
+Fade:
+
+- 150ms
+
+Transições:
+
+- 150ms a 200ms
+
+Nunca ultrapassar:
+
+- 250ms
+
+---
+
+## Animações Proibidas
+
+- Infinite animations
+- Floating effects
+- Pulsing contínuo
+- Orb animations
+- Particle effects
+- Background animado
+- Gradientes animados
+- Skeleton shimmer
+
+---
+
+## CSS de Alto Custo
+
+Evitar:
+
+### Filtros
+
+- `backdrop-filter`
+- `blur()`
+- `grayscale()`
+- `brightness()`
+- `contrast()`
+
+### Sombras
+
+Evitar sombras grandes em:
+
+- Dialogs
+- Drawers
+- Overlays
+- Containers fullscreen
+
+### Transparências
+
+Evitar múltiplas camadas com:
+
+- `opacity`
+- `rgba`
+- `color-mix`
+
+sobre toda a viewport.
+
+---
+
+## Layout Shift
+
+Nada deve "pular" na tela.
+
+### Evitar
+
+- Conteúdo aparecendo sem reservar espaço
+- Cards mudando tamanho após carregamento
+- Tabelas expandindo após render
+- Inputs crescendo dinamicamente
+
+### Preferir
+
+- Alturas previsíveis
+- Espaços reservados
+- Estrutura estável
+
+---
+
+## Vue
+
+### Evitar
+
+- `watch` desnecessário
+- `deep: true`
+- Watchers em cascata
+- `computed` muito pesados
+- Objetos criados dentro do template
+- Funções executadas diretamente no template
+
+### Preferir
+
+- `computed`
+- Memoização
+- Estado local
+- Componentização
+- Lazy loading
+
+---
+
+## Re-renderizações
+
+Toda renderização tem custo.
+
+### Evitar
+
+Recriar:
+
+- Páginas inteiras
+- Layouts
+- Tabelas completas
+- Listas completas
+
+quando apenas um item mudou.
+
+---
+
+## Tabelas
+
+Tabelas são uma das maiores fontes de lentidão.
+
+### Obrigatório
+
+- Paginação
+- Lazy loading
+- Busca server-side quando necessário
+- Virtual scroll para grandes volumes
+
+### Evitar
+
+- Milhares de registros simultâneos
+- Filtros rodando no cliente
+- Ordenações pesadas no navegador
+- Múltiplos watchers por linha
+
+---
+
+## Formulários
+
+### Evitar
+
+- Validação pesada a cada tecla
+- Requests a cada digitação
+- Máscaras complexas em muitos campos
+- Re-render completo do formulário
+
+### Preferir
+
+- Debounce
+- Validação por blur
+- Validação por submit
+
+---
+
+## Requests
+
+### Nunca
+
+- Disparar múltiplas requests iguais
+
+### Evitar
+
+- Refetch automático excessivo
+- Atualização completa da página
+- Recarregar listas inteiras
+- Polling agressivo
+
+### Preferir
+
+- Cache
+- Atualização parcial
+- Optimistic UI
+
+Após troca de tenant com `window.location.reload()`, manter overlay estático até o reload — sem animação de saída.
+
+---
+
+## Navegação
+
+A navegação deve parecer instantânea.
+
+### Evitar
+
+- Tela branca
+- Fade longo
+- Loading screen entre páginas
+- Animações de entrada
+
+### Preferir
+
+- Pré-carregamento
+- Skeleton estático
+- Persistência de layout
+
+---
+
+## Quasar
+
+### Evitar
+
+- `QInnerLoading` em excesso
+- `QDialog` aninhado
+- `QTable` sem paginação
+- `QVirtualScroll` mal configurado
+- Múltiplos drawers simultâneos
+- `q-inner-loading` + overlay global na mesma ação
+
+---
+
+## Componentes
+
+### Evitar
+
+- Componentes gigantes
+- Mais de uma responsabilidade
+- Estados compartilhados excessivos
+- Dependências cruzadas
+
+### Preferir
+
+- Componentes pequenos
+- Responsabilidade única
+- Renderização isolada
+
+---
+
+## Imagens
+
+### Obrigatório
+
+- Lazy loading
+- Compressão
+- Formato moderno
+
+### Evitar
+
+- PNG enorme
+- Imagem acima do necessário
+- Carregamento imediato de imagens fora da viewport
+
+---
+
+## Indicadores de Performance
+
+O sistema deve manter:
+
+### Interações
+
+Resposta visual: ≤ 100ms
+
+### Navegação
+
+Mudança de tela: ≤ 300ms percebidos
+
+### Feedback
+
+Feedback visual: ≤ 100ms
+
+### Overlay
+
+Aparecimento: instantâneo
+
+---
+
+## Checklist de Merge
+
+### Bloqueio
+
+- [ ] Overlay cobre a viewport inteira?
+- [ ] Overlay está fora do layout via `teleport`?
+- [ ] Sem blur?
+- [ ] Sem spinner?
+
+### CSS
+
+- [ ] Sem `backdrop-filter`?
+- [ ] Sem animação infinita?
+- [ ] Sem gradient animado?
+- [ ] Sem sombras exageradas?
+
+### Vue
+
+- [ ] Sem `watch` desnecessário?
+- [ ] Sem `deep` watch?
+- [ ] Sem re-render completo?
+
+### Dados
+
+- [ ] Sem refetch desnecessário?
+- [ ] Sem requests duplicadas?
+- [ ] Sem atualização total quando parcial resolve?
+
+### UX
+
+- [ ] Feedback em menos de 100ms?
+- [ ] Layout permanece estável?
+- [ ] Navegação parece instantânea?
+
+Se qualquer resposta for "não", revisar antes do merge.

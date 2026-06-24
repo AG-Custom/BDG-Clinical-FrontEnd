@@ -2,17 +2,26 @@ import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+import type { LoginResult, RegistrarRequest } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
-import type { RegistrarRequest } from '@/services/auth.service';
 
 export function useAuth() {
   const router = useRouter();
   const authStore = useAuthStore();
   const { usuario, carregando, isAutenticado, permissoes } = storeToRefs(authStore);
 
-  async function login(email: string, senha: string): Promise<void> {
-    await authStore.login({ email, senha });
-    await router.push({ name: 'dashboard' });
+  async function login(
+    email: string,
+    senha: string,
+    empresaId?: string | null,
+  ): Promise<LoginResult> {
+    const result = await authStore.login({ email, senha, empresaId: empresaId ?? null });
+
+    if (result.status === 'authenticated') {
+      await router.push({ name: 'dashboard' });
+    }
+
+    return result;
   }
 
   async function registrar(payload: RegistrarRequest): Promise<void> {
