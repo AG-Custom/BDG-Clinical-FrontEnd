@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { useAdmin } from '@/composables/useAdmin';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { unidadeService } from '@/services/unidade.service';
@@ -10,13 +11,16 @@ import type { Unidade } from '@/types/entidades/unidade';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
+const { isAdmin } = useAdmin();
 
 const unidades = ref<Unidade[]>([]);
 const carregando = ref(false);
 const incluirInativas = ref(false);
 const dialogDesativar = ref(false);
+const dialogReativar = ref(false);
 const unidadeSelecionada = ref<Unidade | null>(null);
 const desativando = ref(false);
+const reativando = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
@@ -42,6 +46,11 @@ function abrirDialogDesativar(unidade: Unidade): void {
   dialogDesativar.value = true;
 }
 
+function abrirDialogReativar(unidade: Unidade): void {
+  unidadeSelecionada.value = unidade;
+  dialogReativar.value = true;
+}
+
 async function confirmarDesativar(): Promise<void> {
   if (!unidadeSelecionada.value) {
     return;
@@ -59,6 +68,26 @@ async function confirmarDesativar(): Promise<void> {
     notificacao.erro(obterMensagem(error));
   } finally {
     desativando.value = false;
+  }
+}
+
+async function confirmarReativar(): Promise<void> {
+  if (!unidadeSelecionada.value) {
+    return;
+  }
+
+  reativando.value = true;
+
+  try {
+    await unidadeService.reativar(unidadeSelecionada.value.id);
+    notificacao.sucesso('Unidade reativada com sucesso.');
+    dialogReativar.value = false;
+    unidadeSelecionada.value = null;
+    await carregarUnidades();
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    reativando.value = false;
   }
 }
 
@@ -83,7 +112,8 @@ onMounted(() => {
         icon="add"
         unelevated
         no-caps
-        :to="{ name: 'unidades-nova' }"
+        :disable="!isAdmin"
+        :to="isAdmin ? { name: 'unidades-nova' } : undefined"
       />
     </app-page-header>
 
@@ -126,6 +156,7 @@ onMounted(() => {
               icon="edit"
               color="primary"
               aria-label="Editar unidade"
+              :disable="!isAdmin"
               @click="editarUnidade(props.row.id)"
             />
             <q-btn
@@ -136,7 +167,19 @@ onMounted(() => {
               icon="block"
               color="negative"
               aria-label="Desativar unidade"
+              :disable="!isAdmin"
               @click="abrirDialogDesativar(props.row)"
+            />
+            <q-btn
+              v-else
+              flat
+              round
+              dense
+              icon="restore"
+              color="positive"
+              aria-label="Reativar unidade"
+              :disable="!isAdmin"
+              @click="abrirDialogReativar(props.row)"
             />
           </q-td>
         </template>
@@ -155,7 +198,8 @@ onMounted(() => {
             icon="add"
             unelevated
             no-caps
-            :to="{ name: 'unidades-nova' }"
+            :disable="!isAdmin"
+            :to="isAdmin ? { name: 'unidades-nova' } : undefined"
           />
         </div>
       </q-card-section>
@@ -181,6 +225,31 @@ onMounted(() => {
             no-caps
             :loading="desativando"
             @click="confirmarDesativar"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="dialogReativar" persistent>
+      <q-card style="min-width: 320px">
+        <q-card-section>
+          <div class="text-h6">Reativar unidade</div>
+        </q-card-section>
+
+        <q-card-section>
+          Tem certeza que deseja reativar
+          <strong>{{ unidadeSelecionada?.nome }}</strong>?
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="primary" no-caps v-close-popup />
+          <q-btn
+            flat
+            label="Reativar"
+            color="positive"
+            no-caps
+            :loading="reativando"
+            @click="confirmarReativar"
           />
         </q-card-actions>
       </q-card>

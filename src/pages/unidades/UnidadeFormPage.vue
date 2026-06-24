@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { useAdmin } from '@/composables/useAdmin';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { unidadeService } from '@/services/unidade.service';
@@ -10,6 +11,7 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
+const { isAdmin } = useAdmin();
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -96,6 +98,7 @@ onMounted(() => {
             v-model="form.nome"
             label="Nome"
             outlined
+            :readonly="!isAdmin"
             :rules="[(value: string) => Boolean(value) || 'Informe o nome da unidade']"
           />
 
@@ -105,6 +108,7 @@ onMounted(() => {
             outlined
             type="textarea"
             autogrow
+            :readonly="!isAdmin"
             :rules="[(value: string) => Boolean(value) || 'Informe o endereço']"
           />
 
@@ -116,6 +120,7 @@ onMounted(() => {
               unelevated
               no-caps
               :loading="salvando"
+              :disable="!isAdmin"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

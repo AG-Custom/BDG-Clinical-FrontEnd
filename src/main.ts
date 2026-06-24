@@ -9,17 +9,26 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import { registerGlobalComponents } from './boot';
 import router from './router';
+import { useAuthStore } from './stores/auth.store';
 
-const app = createApp(App);
+async function iniciar(): Promise<void> {
+  const app = createApp(App);
 
-app.use(createPinia());
-app.use(router);
-app.use(Quasar, {
-  plugins: {
-    Notify,
-  },
-});
+  app.use(createPinia());
 
-registerGlobalComponents(app);
+  const authStore = useAuthStore();
+  await authStore.inicializar();
 
-app.mount('#app');
+  app.use(router);
+  app.use(Quasar, {
+    plugins: {
+      Notify,
+    },
+  });
+
+  registerGlobalComponents(app);
+
+  app.mount('#app');
+}
+
+void iniciar();

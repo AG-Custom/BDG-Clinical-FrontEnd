@@ -1,4 +1,5 @@
 import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth.store';
@@ -27,6 +28,7 @@ export function useAuth() {
     usuario,
     carregando,
     isAutenticado,
+    isAdmin: computed(() => authStore.isAdmin),
     permissoes,
     login,
     registrar,
