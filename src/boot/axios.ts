@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
+import { AUTH_TOKEN_KEY } from '@/constants/auth';
 import type { ApiError, ApiResponse } from '@/types/api/api';
 
 export const api = axios.create({
@@ -8,7 +9,7 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth.token');
+  const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

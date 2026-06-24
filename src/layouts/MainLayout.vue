@@ -24,6 +24,11 @@ const { usuario, logout } = auth;
         <q-toolbar-title class="text-weight-bold">
           {{ DesignSystemBrand.nome }}
         </q-toolbar-title>
+
+        <q-space />
+
+        <app-empresa-switcher />
+
         <q-btn flat round icon="account_circle" aria-label="Menu da conta">
           <q-menu>
             <q-list style="min-width: 240px">
@@ -67,6 +72,12 @@ const { usuario, logout } = auth;
             <q-icon name="space_dashboard" />
           </q-item-section>
           <q-item-section>Início</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple :to="{ name: 'unidades' }">
+          <q-item-section avatar>
+            <q-icon name="apartment" />
+          </q-item-section>
+          <q-item-section>Unidades</q-item-section>
         </q-item>
       </q-list>
     </q-drawer>

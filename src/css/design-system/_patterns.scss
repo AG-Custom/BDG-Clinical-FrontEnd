@@ -88,6 +88,11 @@
   max-width: var(--ds-layout-content-max);
 }
 
+.page-content--fluid {
+  max-width: none;
+  width: 100%;
+}
+
 .metric-card {
   border-radius: var(--ds-radius-md);
 }
