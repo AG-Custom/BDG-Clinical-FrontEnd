@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia';
 
 import { AUTH_TOKEN_KEY, AUTH_USUARIO_KEY } from '@/constants/auth';
-import { authService, type LoginRequest, type RegistrarRequest } from '@/services/auth.service';
+import {
+  authService,
+  extrairSessaoAuth,
+  type LoginRequest,
+  type LoginResult,
+  type RegistrarRequest,
+} from '@/services/auth.service';
 import type { EmpresaResumo } from '@/types/entidades/empresa';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
 
@@ -63,6 +69,7 @@ export const useAuthStore = defineStore('auth', {
         this.logout();
       }
     },
+
     async sincronizarUsuario(): Promise<void> {
       if (!this.token) {
         return;
@@ -72,17 +79,35 @@ export const useAuthStore = defineStore('auth', {
       this.usuario = usuario;
       sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuario));
     },
-    async login(payload: LoginRequest): Promise<void> {
+
+    async login(payload: LoginRequest): Promise<LoginResult> {
       this.carregando = true;
 
       try {
         const response = await authService.login(payload);
-        this.persistirSessao(response.token, response.usuario);
+
+        if (response.requiresCompanySelection) {
+          return {
+            status: 'company_selection_required',
+            companies: response.companies ?? [],
+          };
+        }
+
+        const sessao = extrairSessaoAuth(response);
+
+        if (!sessao) {
+          throw new Error('Resposta de login inválida.');
+        }
+
+        this.persistirSessao(sessao.token, sessao.usuario);
         await this.sincronizarUsuario();
+
+        return { status: 'authenticated' };
       } finally {
         this.carregando = false;
       }
     },
+
     async registrar(payload: RegistrarRequest): Promise<void> {
       this.carregando = true;
 
@@ -94,6 +119,7 @@ export const useAuthStore = defineStore('auth', {
         this.carregando = false;
       }
     },
+
     logout(): void {
       this.token = null;
       this.usuario = null;
@@ -103,9 +129,11 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USUARIO_KEY);
     },
+
     possuiPermissao(permissao: string): boolean {
       return this.permissoes.includes(permissao);
     },
+
     persistirSessao(token: string, usuario: UsuarioAutenticado): void {
       this.token = token;
       this.usuario = usuario;
@@ -114,6 +142,18 @@ export const useAuthStore = defineStore('auth', {
       sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuario));
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USUARIO_KEY);
+    },
+
+    atualizarEmpresaResumo(empresa: EmpresaResumo): void {
+      if (!this.usuario) {
+        return;
+      }
+
+      this.usuario = {
+        ...this.usuario,
+        empresaAtual: empresa,
+      };
+      sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(this.usuario));
     },
   },
 });

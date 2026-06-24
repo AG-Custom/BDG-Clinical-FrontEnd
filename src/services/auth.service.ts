@@ -1,10 +1,12 @@
 import { api } from '@/boot/axios';
 import type { ApiResponse } from '@/types/api/api';
+import type { EmpresaContexto } from '@/types/entidades/empresa';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
 
 export interface LoginRequest {
   email: string;
   senha: string;
+  empresaId?: string | null;
 }
 
 export interface RegistrarRequest {
@@ -13,12 +15,25 @@ export interface RegistrarRequest {
   email: string;
   senha: string;
   cnpj?: string;
+  telefone?: string;
+  corPrincipal?: string;
 }
 
-export interface LoginResponse {
+export interface AuthSessionResponse {
+  requiresCompanySelection: boolean;
+  token: string | null;
+  usuario: UsuarioAutenticado | null;
+  companies: EmpresaContexto[] | null;
+}
+
+export interface LoginResponseLegacy {
   token: string;
   usuario: UsuarioAutenticado;
 }
+
+export type LoginResult =
+  | { status: 'authenticated' }
+  | { status: 'company_selection_required'; companies: EmpresaContexto[] };
 
 export interface ValidarEmailPrimeiroAcessoRequest {
   token: string;
@@ -36,22 +51,49 @@ export interface ConcluirPrimeiroAcessoRequest {
   senha: string;
 }
 
+export function extrairSessaoAuth(
+  response: AuthSessionResponse,
+): { token: string; usuario: UsuarioAutenticado } | null {
+  if (response.requiresCompanySelection || !response.token || !response.usuario) {
+    return null;
+  }
+
+  return {
+    token: response.token,
+    usuario: response.usuario,
+  };
+}
+
 export const authService = {
-  async login(payload: LoginRequest): Promise<LoginResponse> {
-    const { data } = await api.post<ApiResponse<LoginResponse>>('/api/auth/login', payload);
+  async login(payload: LoginRequest): Promise<AuthSessionResponse> {
+    const { data } = await api.post<ApiResponse<AuthSessionResponse>>('/api/auth/login', payload);
 
     return data.data;
   },
-  async registrar(payload: RegistrarRequest): Promise<LoginResponse> {
-    const { data } = await api.post<ApiResponse<LoginResponse>>('/api/auth/registrar', payload);
+
+  async trocarEmpresa(empresaId: string): Promise<AuthSessionResponse> {
+    const { data } = await api.post<ApiResponse<AuthSessionResponse>>('/api/auth/switch-company', {
+      empresaId,
+    });
 
     return data.data;
   },
+
+  async registrar(payload: RegistrarRequest): Promise<LoginResponseLegacy> {
+    const { data } = await api.post<ApiResponse<LoginResponseLegacy>>(
+      '/api/auth/registrar',
+      payload,
+    );
+
+    return data.data;
+  },
+
   async me(): Promise<UsuarioAutenticado> {
     const { data } = await api.get<ApiResponse<UsuarioAutenticado>>('/api/auth/me');
 
     return data.data;
   },
+
   async validarEmailPrimeiroAcesso(
     payload: ValidarEmailPrimeiroAcessoRequest,
   ): Promise<ValidarEmailPrimeiroAcessoResponse> {
@@ -62,8 +104,11 @@ export const authService = {
 
     return data.data;
   },
-  async concluirPrimeiroAcesso(payload: ConcluirPrimeiroAcessoRequest): Promise<LoginResponse> {
-    const { data } = await api.post<ApiResponse<LoginResponse>>(
+
+  async concluirPrimeiroAcesso(
+    payload: ConcluirPrimeiroAcessoRequest,
+  ): Promise<LoginResponseLegacy> {
+    const { data } = await api.post<ApiResponse<LoginResponseLegacy>>(
       '/api/auth/primeiro-acesso/concluir',
       payload,
     );

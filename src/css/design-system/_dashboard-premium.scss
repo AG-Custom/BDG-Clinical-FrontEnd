@@ -21,6 +21,11 @@
   border-bottom: none;
 }
 
+.shell-premium .drawer-brand--logo {
+  justify-content: center;
+  padding: var(--ds-space-8) var(--ds-space-4) var(--ds-space-6);
+}
+
 .shell-premium .drawer-brand strong {
   font-size: var(--ds-font-size-lg);
   font-weight: var(--ds-font-weight-bold);

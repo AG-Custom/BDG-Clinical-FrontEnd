@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuth } from '@/composables/useAuth';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
-import { DesignSystemAuth } from '@/constants/design-system';
+import { DesignSystemAuth, DesignSystemColors } from '@/constants/design-system';
 import { IdentidadeConstants } from '@/constants/identidade';
+import { validarCorHex } from '@/utils/whitelabel';
 
 const router = useRouter();
 const auth = useAuth();
@@ -20,6 +21,8 @@ const form = reactive({
   email: '',
   senha: '',
   cnpj: '',
+  telefone: '',
+  corPrincipal: DesignSystemColors.primary[600],
 });
 
 const mostrarSenha = ref(false);
@@ -32,6 +35,8 @@ async function cadastrar(): Promise<void> {
       email: form.email,
       senha: form.senha,
       cnpj: form.cnpj || undefined,
+      telefone: form.telefone || undefined,
+      corPrincipal: form.corPrincipal || undefined,
     });
 
     await router.push({ name: 'dashboard' });
@@ -89,12 +94,43 @@ async function cadastrar(): Promise<void> {
       />
 
       <q-input
+        v-model="form.telefone"
+        label="Telefone da clínica (opcional)"
+        outlined
+        mask="(##) #####-####"
+        unmasked-value
+        class="ds-animate-fade-in-up ds-stagger-5"
+      />
+
+      <div class="register-cor ds-animate-fade-in-up ds-stagger-6">
+        <label class="register-cor__label">Cor principal (opcional)</label>
+        <div class="register-cor__picker row items-center q-gutter-md">
+          <q-color
+            v-model="form.corPrincipal"
+            format-model="hex"
+            no-header
+            no-footer
+          />
+          <q-input
+            v-model="form.corPrincipal"
+            label="Hex"
+            outlined
+            class="col"
+            :rules="[
+              (value: string) =>
+                !value || validarCorHex(value) || 'Use o formato #RGB ou #RRGGBB',
+            ]"
+          />
+        </div>
+      </div>
+
+      <q-input
         v-model="form.senha"
         label="Senha"
         :type="mostrarSenha ? 'text' : 'password'"
         outlined
         autocomplete="new-password"
-        class="ds-animate-fade-in-up ds-stagger-5"
+        class="ds-animate-fade-in-up ds-stagger-7"
         :rules="[
           (value: string) => Boolean(value) || 'Informe a senha',
           (value: string) =>
@@ -120,7 +156,7 @@ async function cadastrar(): Promise<void> {
         type="submit"
         unelevated
         no-caps
-        class="full-width auth-premium__submit ds-animate-fade-in-up ds-stagger-6"
+        class="full-width auth-premium__submit ds-animate-fade-in-up ds-stagger-8"
         :loading="carregando"
       />
     </q-form>
@@ -131,3 +167,18 @@ async function cadastrar(): Promise<void> {
     </p>
   </app-auth-shell>
 </template>
+
+<style scoped lang="scss">
+.register-cor {
+  &__label {
+    display: block;
+    margin-bottom: var(--ds-space-2);
+    color: var(--ds-text-secondary);
+    font-size: var(--ds-font-size-sm);
+  }
+
+  &__picker {
+    flex-wrap: wrap;
+  }
+}
+</style>

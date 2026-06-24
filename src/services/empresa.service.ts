@@ -1,29 +1,45 @@
 import { api } from '@/boot/axios';
+import type { AuthSessionResponse } from '@/services/auth.service';
 import type { ApiResponse } from '@/types/api/api';
-import type { EmpresaResumo } from '@/types/entidades/empresa';
-import type { UsuarioAutenticado } from '@/types/entidades/usuario';
-
-export interface SelecionarEmpresaRequest {
-  empresaId: string;
-}
-
-export interface SelecionarEmpresaResponse {
-  token: string;
-  usuario: UsuarioAutenticado;
-  empresa: EmpresaResumo;
-}
+import type {
+  AtualizarEmpresaRequest,
+  CriarEmpresaRequest,
+  Empresa,
+  EmpresaContexto,
+} from '@/types/entidades/empresa';
 
 export const empresaService = {
-  async listar(): Promise<EmpresaResumo[]> {
-    const { data } = await api.get<ApiResponse<EmpresaResumo[]>>('/api/empresas');
+  async listar(): Promise<EmpresaContexto[]> {
+    const { data } = await api.get<ApiResponse<EmpresaContexto[]>>('/api/companies');
 
     return data.data;
   },
 
-  async selecionar(empresaId: string): Promise<SelecionarEmpresaResponse> {
-    const { data } = await api.post<ApiResponse<SelecionarEmpresaResponse>>(
-      '/api/auth/selecionar-empresa',
-      { empresaId },
+  async criar(payload: CriarEmpresaRequest): Promise<AuthSessionResponse> {
+    const { data } = await api.post<ApiResponse<AuthSessionResponse>>('/api/companies', payload);
+
+    return data.data;
+  },
+
+  async obterAtual(): Promise<Empresa> {
+    const { data } = await api.get<ApiResponse<Empresa>>('/api/companies/current');
+
+    return data.data;
+  },
+
+  async atualizarAtual(payload: AtualizarEmpresaRequest): Promise<Empresa> {
+    const { data } = await api.put<ApiResponse<Empresa>>('/api/companies/current', payload);
+
+    return data.data;
+  },
+
+  async enviarLogo(arquivo: File): Promise<Empresa> {
+    const formData = new FormData();
+    formData.append('file', arquivo);
+
+    const { data } = await api.post<ApiResponse<Empresa>>(
+      '/api/companies/current/logo',
+      formData,
     );
 
     return data.data;
