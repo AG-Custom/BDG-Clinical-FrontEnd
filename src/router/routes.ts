@@ -35,6 +35,21 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/dashboard/DashboardPage.vue'),
         meta: { permissao: 'dashboard.visualizar' },
       },
+      {
+        path: 'unidades',
+        name: 'unidades',
+        component: () => import('@/pages/unidades/UnidadesListPage.vue'),
+      },
+      {
+        path: 'unidades/nova',
+        name: 'unidades-nova',
+        component: () => import('@/pages/unidades/UnidadeFormPage.vue'),
+      },
+      {
+        path: 'unidades/:id/editar',
+        name: 'unidades-editar',
+        component: () => import('@/pages/unidades/UnidadeFormPage.vue'),
+      },
     ],
   },
   {

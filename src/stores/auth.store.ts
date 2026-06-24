@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 
+import { AUTH_TOKEN_KEY, AUTH_USUARIO_KEY } from '@/constants/auth';
 import { authService, type LoginRequest, type RegistrarRequest } from '@/services/auth.service';
+import type { EmpresaResumo } from '@/types/entidades/empresa';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
 
 interface AuthState {
@@ -9,18 +11,44 @@ interface AuthState {
   carregando: boolean;
 }
 
-const tokenSalvo = localStorage.getItem('auth.token');
-const usuarioSalvo = localStorage.getItem('auth.usuario');
+function lerTokenSalvo(): string | null {
+  return sessionStorage.getItem(AUTH_TOKEN_KEY) ?? localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function lerUsuarioSalvo(): UsuarioAutenticado | null {
+  const usuarioJson =
+    sessionStorage.getItem(AUTH_USUARIO_KEY) ?? localStorage.getItem(AUTH_USUARIO_KEY);
+
+  return usuarioJson ? (JSON.parse(usuarioJson) as UsuarioAutenticado) : null;
+}
+
+function migrarLocalParaSession(): void {
+  const tokenLocal = localStorage.getItem(AUTH_TOKEN_KEY);
+  const usuarioLocal = localStorage.getItem(AUTH_USUARIO_KEY);
+
+  if (tokenLocal && !sessionStorage.getItem(AUTH_TOKEN_KEY)) {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, tokenLocal);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  }
+
+  if (usuarioLocal && !sessionStorage.getItem(AUTH_USUARIO_KEY)) {
+    sessionStorage.setItem(AUTH_USUARIO_KEY, usuarioLocal);
+    localStorage.removeItem(AUTH_USUARIO_KEY);
+  }
+}
+
+migrarLocalParaSession();
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
-    token: tokenSalvo,
-    usuario: usuarioSalvo ? (JSON.parse(usuarioSalvo) as UsuarioAutenticado) : null,
+    token: lerTokenSalvo(),
+    usuario: lerUsuarioSalvo(),
     carregando: false,
   }),
   getters: {
     isAutenticado: (state) => Boolean(state.token),
     permissoes: (state) => state.usuario?.permissoes ?? [],
+    empresaAtual: (state): EmpresaResumo | null => state.usuario?.empresaAtual ?? null,
   },
   actions: {
     async login(payload: LoginRequest): Promise<void> {
@@ -47,8 +75,10 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.usuario = null;
 
-      localStorage.removeItem('auth.token');
-      localStorage.removeItem('auth.usuario');
+      sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      sessionStorage.removeItem(AUTH_USUARIO_KEY);
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USUARIO_KEY);
     },
     possuiPermissao(permissao: string): boolean {
       return this.permissoes.includes(permissao);
@@ -57,8 +87,10 @@ export const useAuthStore = defineStore('auth', {
       this.token = token;
       this.usuario = usuario;
 
-      localStorage.setItem('auth.token', token);
-      localStorage.setItem('auth.usuario', JSON.stringify(usuario));
+      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+      sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuario));
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USUARIO_KEY);
     },
   },
 });
