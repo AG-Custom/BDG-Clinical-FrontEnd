@@ -22,7 +22,7 @@ const { obterMensagem } = useTratarErroFormulario();
 const { isAdmin } = useAdmin();
 
 const unidadesMedida = ref<UnidadeMedida[]>([]);
-const carregando = ref(false);
+const carregando = ref(true);
 const incluirInativas = ref(false);
 const filtroTipo = ref<TipoUnidadeMedida | null>(null);
 const termoBusca = ref('');
@@ -207,7 +207,7 @@ onMounted(() => {
 
     <q-card flat bordered>
       <q-table
-        v-if="unidadesMedida.length > 0 || carregando"
+        v-if="unidadesMedida.length > 0"
         :rows="unidadesMedida"
         :columns="colunas"
         row-key="id"
@@ -262,7 +262,11 @@ onMounted(() => {
         </template>
       </q-table>
 
-      <q-card-section v-else-if="!carregando">
+      <q-card-section v-else-if="carregando">
+        <app-table-skeleton :columns="colunas.length" />
+      </q-card-section>
+
+      <q-card-section v-else>
         <app-empty-state
           icon="straighten"
           titulo="Nenhuma unidade de medida cadastrada"

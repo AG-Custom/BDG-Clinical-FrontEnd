@@ -19,7 +19,7 @@ const { isAdmin } = useAdmin();
 const pacientes = ref<Paciente[]>([]);
 const unidades = ref<Unidade[]>([]);
 const unidadesPorId = ref<Map<string, string>>(new Map());
-const carregando = ref(false);
+const carregando = ref(true);
 const incluirInativos = ref(false);
 const filtroUnidadeId = ref<string | null>(null);
 const dialogDesativar = ref(false);
@@ -187,7 +187,7 @@ onMounted(async () => {
 
     <q-card flat bordered>
       <q-table
-        v-if="pacientes.length > 0 || carregando"
+        v-if="pacientes.length > 0"
         :rows="pacientes"
         :columns="colunas"
         row-key="id"
@@ -266,7 +266,11 @@ onMounted(async () => {
         </template>
       </q-table>
 
-      <q-card-section v-else-if="!carregando">
+      <q-card-section v-else-if="carregando">
+        <app-table-skeleton :columns="colunas.length" />
+      </q-card-section>
+
+      <q-card-section v-else>
         <app-empty-state
           icon="personal_injury"
           titulo="Nenhum paciente cadastrado"

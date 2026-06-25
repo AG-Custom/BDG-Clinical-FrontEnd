@@ -17,7 +17,7 @@ const { isAdmin } = useAdmin();
 
 const produtos = ref<Produto[]>([]);
 const tiposProduto = ref<TipoProduto[]>([]);
-const carregando = ref(false);
+const carregando = ref(true);
 const incluirInativos = ref(false);
 const filtroTipoProdutoId = ref<string | null>(null);
 const dialogDesativar = ref(false);
@@ -192,7 +192,7 @@ onMounted(async () => {
 
     <q-card flat bordered>
       <q-table
-        v-if="produtos.length > 0 || carregando"
+        v-if="produtos.length > 0"
         :rows="produtos"
         :columns="colunas"
         row-key="id"
@@ -259,7 +259,11 @@ onMounted(async () => {
         </template>
       </q-table>
 
-      <q-card-section v-else-if="!carregando">
+      <q-card-section v-else-if="carregando">
+        <app-table-skeleton :columns="colunas.length" />
+      </q-card-section>
+
+      <q-card-section v-else>
         <app-empty-state
           icon="inventory_2"
           titulo="Nenhum produto cadastrado"

@@ -7,6 +7,7 @@ import AppEmpresaMarca from '@/components/shared/AppEmpresaMarca.vue';
 import AppEmpresaSwitcher from '@/components/shared/AppEmpresaSwitcher.vue';
 import AppEmptyState from '@/components/shared/AppEmptyState.vue';
 import AppPageHeader from '@/components/shared/AppPageHeader.vue';
+import AppTableSkeleton from '@/components/shared/AppTableSkeleton.vue';
 import AppTrocaEmpresaOverlay from '@/components/shared/AppTrocaEmpresaOverlay.vue';
 
 export function registerGlobalComponents(app: App): void {
@@ -17,5 +18,6 @@ export function registerGlobalComponents(app: App): void {
   app.component('AppEmpresaSwitcher', AppEmpresaSwitcher);
   app.component('AppEmptyState', AppEmptyState);
   app.component('AppPageHeader', AppPageHeader);
+  app.component('AppTableSkeleton', AppTableSkeleton);
   app.component('AppTrocaEmpresaOverlay', AppTrocaEmpresaOverlay);
 }

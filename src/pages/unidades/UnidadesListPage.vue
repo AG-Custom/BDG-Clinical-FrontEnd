@@ -14,7 +14,7 @@ const { obterMensagem } = useTratarErroFormulario();
 const { isAdmin } = useAdmin();
 
 const unidades = ref<Unidade[]>([]);
-const carregando = ref(false);
+const carregando = ref(true);
 const incluirInativas = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
@@ -130,7 +130,7 @@ onMounted(() => {
 
     <q-card flat bordered>
       <q-table
-        v-if="unidades.length > 0 || carregando"
+        v-if="unidades.length > 0"
         :rows="unidades"
         :columns="colunas"
         row-key="id"
@@ -185,7 +185,11 @@ onMounted(() => {
         </template>
       </q-table>
 
-      <q-card-section v-else-if="!carregando">
+      <q-card-section v-else-if="carregando">
+        <app-table-skeleton :columns="colunas.length" />
+      </q-card-section>
+
+      <q-card-section v-else>
         <app-empty-state
           icon="apartment"
           titulo="Nenhuma unidade cadastrada"

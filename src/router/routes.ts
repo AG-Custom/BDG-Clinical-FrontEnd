@@ -152,6 +152,46 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/unidades-medida/UnidadeMedidaFormPage.vue'),
       },
       {
+        path: 'saldos-estoque',
+        name: 'saldos-estoque',
+        component: () => import('@/pages/estoque/SaldosEstoqueListPage.vue'),
+      },
+      {
+        path: 'movimentacoes-estoque',
+        name: 'movimentacoes-estoque',
+        component: () => import('@/pages/estoque/MovimentacoesEstoqueListPage.vue'),
+      },
+      {
+        path: 'fornecedores',
+        name: 'fornecedores',
+        component: () => import('@/pages/fornecedores/FornecedoresListPage.vue'),
+      },
+      {
+        path: 'fornecedores/novo',
+        name: 'fornecedores-novo',
+        component: () => import('@/pages/fornecedores/FornecedorFormPage.vue'),
+      },
+      {
+        path: 'fornecedores/:id/editar',
+        name: 'fornecedores-editar',
+        component: () => import('@/pages/fornecedores/FornecedorFormPage.vue'),
+      },
+      {
+        path: 'pedidos-fornecedor',
+        name: 'pedidos-fornecedor',
+        component: () => import('@/pages/pedidos-fornecedor/PedidosFornecedorListPage.vue'),
+      },
+      {
+        path: 'pedidos-fornecedor/novo',
+        name: 'pedidos-fornecedor-novo',
+        component: () => import('@/pages/pedidos-fornecedor/PedidoFornecedorFormPage.vue'),
+      },
+      {
+        path: 'pedidos-fornecedor/:id/editar',
+        name: 'pedidos-fornecedor-editar',
+        component: () => import('@/pages/pedidos-fornecedor/PedidoFornecedorFormPage.vue'),
+      },
+      {
         path: 'empresas',
         name: 'empresas',
         component: () => import('@/pages/empresas/EmpresasListPage.vue'),

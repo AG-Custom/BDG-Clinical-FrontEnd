@@ -258,6 +258,7 @@ Tabelas são uma das maiores fontes de lentidão.
 - Lazy loading
 - Busca server-side quando necessário
 - Virtual scroll para grandes volumes
+- **Três estados de conteúdo** na carga inicial e em buscas que esvaziam a lista (ver seção *Listagens — carregamento e empty state*)
 
 ### Evitar
 
@@ -324,6 +325,63 @@ A navegação deve parecer instantânea.
 - Pré-carregamento
 - Skeleton estático
 - Persistência de layout
+
+---
+
+## Listagens — carregamento e empty state
+
+Exibir `AppEmptyState` antes da API responder cria **falso negativo** (“nenhum registro”) e quebra a percepção de velocidade. É um problema de **performance percebida**, não só de UX.
+
+### Por que importa
+
+- Reserva espaço visual → menos layout shift
+- Feedback imediato sem spinner na tabela
+- Empty state só quando a lista está **realmente** vazia
+- Evita o “flash” de conteúdo errado por ~1s
+
+### Padrão obrigatório (CRUD index)
+
+```vue
+const carregando = ref(true); // inicia true na montagem
+
+<q-table
+  v-if="itens.length > 0"
+  :rows="itens"
+  :loading="carregando"
+  ...
+/>
+
+<q-card-section v-else-if="carregando">
+  <app-table-skeleton :columns="colunas.length" />
+</q-card-section>
+
+<q-card-section v-else>
+  <app-empty-state ... />
+</q-card-section>
+```
+
+### Regras
+
+| Situação | Exibir |
+|----------|--------|
+| `carregando && itens.length === 0` | `AppTableSkeleton` |
+| `!carregando && itens.length === 0` | `AppEmptyState` |
+| `itens.length > 0` | `q-table` com `:loading="carregando"` em recargas |
+
+### Proibido
+
+- `carregando = ref(false)` na montagem de listagem que busca dados no `onMounted`
+- `v-if="itens.length > 0 \|\| carregando"` no `q-table` com lista vazia (mostra tabela vazia ou spinner interno)
+- `AppEmptyState` com `v-else-if="!carregando"` sem skeleton no ramo de carregamento
+- Skeleton com shimmer/wave/pulse (`animation` diferente de `none` no `q-skeleton`)
+
+### Componente de referência
+
+- `src/components/shared/AppTableSkeleton.vue` — skeleton **estático** (`animation="none"`), colunas alinhadas à tabela real via `:columns="colunas.length"`
+
+### Recargas com dados na tela
+
+Quando a lista **já tem linhas**, usar apenas `:loading="carregando"` no `q-table`. Não trocar para skeleton — o usuário mantém contexto e a atualização é parcial.
 
 ---
 
@@ -428,5 +486,7 @@ Aparecimento: instantâneo
 - [ ] Feedback em menos de 100ms?
 - [ ] Layout permanece estável?
 - [ ] Navegação parece instantânea?
+- [ ] Listagem usa skeleton na carga inicial (não empty state antes da API)?
+- [ ] `carregando` inicia `true` em páginas que buscam dados ao montar?
 
 Se qualquer resposta for "não", revisar antes do merge.

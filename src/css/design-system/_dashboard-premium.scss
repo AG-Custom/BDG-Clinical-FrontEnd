@@ -50,6 +50,18 @@
   font-weight: var(--ds-font-weight-semibold);
 }
 
+.shell-premium .drawer-menu__sub-icon {
+  min-width: 28px;
+
+  .q-icon {
+    color: var(--ds-brand-primary);
+  }
+}
+
+.shell-premium .q-item.q-router-link--active .drawer-menu__sub-icon .q-icon {
+  color: var(--ds-color-primary-700);
+}
+
 .dashboard-premium {
   max-width: var(--ds-layout-content-max);
   margin: 0 auto;
