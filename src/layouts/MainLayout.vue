@@ -1,14 +1,40 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { useAuth } from '@/composables/useAuth';
 import { DesignSystemLayout } from '@/constants/design-system';
 import { useEmpresaStore } from '@/stores/empresa.store';
 
+const ROTAS_SECAO_FUNCIONARIOS = new Set([
+  'funcionarios',
+  'funcionarios-novo',
+  'funcionarios-editar',
+  'cargos',
+  'cargos-novo',
+  'cargos-editar',
+]);
+
 const drawer = ref(true);
+const funcionariosMenuAberto = ref(false);
+const route = useRoute();
 const auth = useAuth();
 const { usuario, logout } = auth;
 const empresaStore = useEmpresaStore();
+
+const isSecaoFuncionarios = computed(() =>
+  ROTAS_SECAO_FUNCIONARIOS.has(route.name as string),
+);
+
+watch(
+  () => route.name,
+  () => {
+    if (isSecaoFuncionarios.value) {
+      funcionariosMenuAberto.value = true;
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   void empresaStore.carregarEmpresaAtual();
@@ -79,12 +105,20 @@ onMounted(() => {
           </q-item-section>
           <q-item-section>Unidades</q-item-section>
         </q-item>
-        <q-item clickable v-ripple :to="{ name: 'funcionarios' }">
-          <q-item-section avatar>
-            <q-icon name="groups" />
-          </q-item-section>
-          <q-item-section>Funcionários</q-item-section>
-        </q-item>
+        <q-expansion-item
+          v-model="funcionariosMenuAberto"
+          icon="groups"
+          label="Funcionários"
+          expand-separator
+          :header-class="isSecaoFuncionarios ? 'drawer-menu__section--active' : ''"
+        >
+          <q-item clickable v-ripple :to="{ name: 'funcionarios' }" :inset-level="1">
+            <q-item-section>Colaboradores</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'cargos' }" :inset-level="1">
+            <q-item-section>Cargos</q-item-section>
+          </q-item>
+        </q-expansion-item>
         <q-item clickable v-ripple :to="{ name: 'empresas' }">
           <q-item-section avatar>
             <q-icon name="business" />
@@ -101,3 +135,10 @@ onMounted(() => {
     <app-troca-empresa-overlay />
   </q-layout>
 </template>
+
+<style scoped lang="scss">
+.drawer-menu__section--active {
+  color: var(--ds-color-primary-700);
+  font-weight: var(--ds-font-weight-semibold);
+}
+</style>

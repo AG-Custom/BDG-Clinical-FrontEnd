@@ -6,8 +6,10 @@ import { useAdmin } from '@/composables/useAdmin';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { funcionarioService } from '@/services/funcionario.service';
+import { cargoService } from '@/services/cargo.service';
 import { unidadeService } from '@/services/unidade.service';
 import { extrairDadosVinculo } from '@/types/entidades/funcionario';
+import type { Cargo } from '@/types/entidades/cargo';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const route = useRoute();
@@ -19,6 +21,7 @@ const { isAdmin } = useAdmin();
 const carregando = ref(false);
 const salvando = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
+const cargosDisponiveis = ref<Cargo[]>([]);
 
 const isEdicao = computed(() => route.name === 'funcionarios-editar');
 const funcionarioId = computed(() => route.params.id as string | undefined);
@@ -31,6 +34,7 @@ const form = reactive({
   emailLogin: '',
   linkToEmpresa: false,
   unidadeIds: [] as string[],
+  cargoId: null as string | null,
   flagAplicador: false,
 });
 
@@ -38,6 +42,13 @@ const opcoesUnidades = computed(() =>
   unidadesDisponiveis.value.map((unidade) => ({
     label: unidade.nome,
     value: unidade.id,
+  })),
+);
+
+const opcoesCargos = computed(() =>
+  cargosDisponiveis.value.map((cargo) => ({
+    label: cargo.ativo ? cargo.nome : `${cargo.nome} (inativo)`,
+    value: cargo.id,
   })),
 );
 
@@ -76,6 +87,27 @@ async function carregarUnidades(): Promise<void> {
   }
 }
 
+async function carregarCargos(): Promise<void> {
+  try {
+    cargosDisponiveis.value = await cargoService.listar(false);
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function garantirCargoNaLista(cargoId: string): Promise<void> {
+  if (cargosDisponiveis.value.some((cargo) => cargo.id === cargoId)) {
+    return;
+  }
+
+  try {
+    const cargo = await cargoService.obter(cargoId);
+    cargosDisponiveis.value = [cargo, ...cargosDisponiveis.value];
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
 async function carregarFuncionario(): Promise<void> {
   if (!isEdicao.value || !funcionarioId.value) {
     return;
@@ -91,9 +123,14 @@ async function carregarFuncionario(): Promise<void> {
     form.telefone = funcionario.telefone ?? '';
     form.email = funcionario.email ?? '';
     form.unidadeIds = vinculo.unidadeIds;
+    form.cargoId = vinculo.cargoId;
     form.flagAplicador = vinculo.flagAplicador;
     form.linkToEmpresa = vinculo.linkToEmpresa;
     emailLoginEdicao.value = funcionario.emailLogin;
+
+    if (vinculo.cargoId) {
+      await garantirCargoNaLista(vinculo.cargoId);
+    }
   } catch (error) {
     notificacao.erro(obterMensagem(error));
     await router.push({ name: 'funcionarios' });
@@ -106,7 +143,7 @@ function montarPayloadVinculo() {
   return {
     linkToEmpresa: form.linkToEmpresa,
     unidadeIds: form.linkToEmpresa ? null : form.unidadeIds,
-    cargoId: null,
+    cargoId: form.cargoId,
     flagAplicador: form.flagAplicador,
   };
 }
@@ -153,7 +190,7 @@ function cancelar(): void {
 }
 
 onMounted(async () => {
-  await carregarUnidades();
+  await Promise.all([carregarUnidades(), carregarCargos()]);
   await carregarFuncionario();
 });
 </script>
@@ -265,6 +302,22 @@ onMounted(async () => {
               opcoesUnidades.length === 0
                 ? 'Cadastre unidades antes de vincular o funcionário.'
                 : 'Selecione as unidades em que o colaborador atuará.'
+            "
+          />
+
+          <q-select
+            v-model="form.cargoId"
+            :options="opcoesCargos"
+            label="Cargo (opcional)"
+            outlined
+            clearable
+            emit-value
+            map-options
+            :disable="!isAdmin || opcoesCargos.length === 0"
+            :hint="
+              opcoesCargos.length === 0
+                ? 'Cadastre cargos antes de vincular o colaborador.'
+                : 'Selecione o cargo do colaborador na clínica.'
             "
           />
 

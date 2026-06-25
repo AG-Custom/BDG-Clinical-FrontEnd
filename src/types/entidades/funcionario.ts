@@ -54,6 +54,19 @@ export function obterNomesUnidadesVinculo(
     .filter((nome): nome is string => Boolean(nome));
 }
 
+export function obterNomeCargoVinculo(
+  funcionario: Funcionario,
+  cargosPorId: Map<string, string>,
+): string {
+  const cargoId = extrairDadosVinculo(funcionario).cargoId;
+
+  if (!cargoId) {
+    return '—';
+  }
+
+  return cargosPorId.get(cargoId) ?? '—';
+}
+
 function obterLinksReferencia(funcionario: Funcionario): FuncionarioLink[] {
   const linksAtivos = funcionario.links.filter((link) => link.ativo);
 
@@ -95,6 +108,7 @@ export function obterVinculoLabel(funcionario: Funcionario): string {
 export function extrairDadosVinculo(funcionario: Funcionario): {
   linkToEmpresa: boolean;
   unidadeIds: string[];
+  cargoId: string | null;
   flagAplicador: boolean;
 } {
   const linksReferencia = obterLinksReferencia(funcionario);
@@ -102,7 +116,8 @@ export function extrairDadosVinculo(funcionario: Funcionario): {
   const unidadeIds = linksReferencia
     .map((link) => link.unidadeId)
     .filter((id): id is string => Boolean(id));
+  const cargoId = linksReferencia.find((link) => link.cargoId)?.cargoId ?? null;
   const flagAplicador = linksReferencia.some((link) => link.flagAplicador);
 
-  return { linkToEmpresa, unidadeIds, flagAplicador };
+  return { linkToEmpresa, unidadeIds, cargoId, flagAplicador };
 }
