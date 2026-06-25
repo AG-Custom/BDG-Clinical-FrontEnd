@@ -105,6 +105,12 @@ onMounted(() => {
           </q-item-section>
           <q-item-section>Unidades</q-item-section>
         </q-item>
+        <q-item clickable v-ripple :to="{ name: 'pacientes' }">
+          <q-item-section avatar>
+            <q-icon name="personal_injury" />
+          </q-item-section>
+          <q-item-section>Pacientes</q-item-section>
+        </q-item>
         <q-expansion-item
           v-model="funcionariosMenuAberto"
           icon="groups"
