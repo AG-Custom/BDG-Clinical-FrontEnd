@@ -6,9 +6,14 @@ import { useAdmin } from '@/composables/useAdmin';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { funcionarioService } from '@/services/funcionario.service';
+import { cargoService } from '@/services/cargo.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Funcionario } from '@/types/entidades/funcionario';
-import { obterNomesUnidadesVinculo, obterVinculoLabel } from '@/types/entidades/funcionario';
+import {
+  obterNomeCargoVinculo,
+  obterNomesUnidadesVinculo,
+  obterVinculoLabel,
+} from '@/types/entidades/funcionario';
 
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -17,6 +22,7 @@ const { isAdmin } = useAdmin();
 
 const funcionarios = ref<Funcionario[]>([]);
 const unidadesPorId = ref<Map<string, string>>(new Map());
+const cargosPorId = ref<Map<string, string>>(new Map());
 const carregando = ref(false);
 const incluirInativos = ref(false);
 const dialogDesativar = ref(false);
@@ -27,6 +33,7 @@ const reativando = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
+  { name: 'cargo', label: 'Cargo', field: 'cargo', align: 'left' as const },
   {
     name: 'emailLogin',
     label: 'E-mail de login',
@@ -62,6 +69,15 @@ async function carregarUnidades(): Promise<void> {
   try {
     const unidades = await unidadeService.listar(true);
     unidadesPorId.value = new Map(unidades.map((unidade) => [unidade.id, unidade.nome]));
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function carregarCargos(): Promise<void> {
+  try {
+    const cargos = await cargoService.listar(true);
+    cargosPorId.value = new Map(cargos.map((cargo) => [cargo.id, cargo.nome]));
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   }
@@ -134,7 +150,7 @@ function editarFuncionario(id: string): void {
 }
 
 onMounted(async () => {
-  await carregarUnidades();
+  await Promise.all([carregarUnidades(), carregarCargos()]);
   await carregarFuncionarios();
 });
 </script>
@@ -177,6 +193,12 @@ onMounted(async () => {
         :loading="carregando"
         :rows-per-page-options="[10, 25, 50]"
       >
+        <template #body-cell-cargo="props">
+          <q-td :props="props">
+            {{ obterNomeCargoVinculo(props.row, cargosPorId) }}
+          </q-td>
+        </template>
+
         <template #body-cell-telefone="props">
           <q-td :props="props">
             {{ formatarTelefone(props.row.telefone) }}

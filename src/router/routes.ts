@@ -77,6 +77,21 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/funcionarios/FuncionarioFormPage.vue'),
       },
       {
+        path: 'cargos',
+        name: 'cargos',
+        component: () => import('@/pages/cargos/CargosListPage.vue'),
+      },
+      {
+        path: 'cargos/novo',
+        name: 'cargos-novo',
+        component: () => import('@/pages/cargos/CargoFormPage.vue'),
+      },
+      {
+        path: 'cargos/:id/editar',
+        name: 'cargos-editar',
+        component: () => import('@/pages/cargos/CargoFormPage.vue'),
+      },
+      {
         path: 'empresas',
         name: 'empresas',
         component: () => import('@/pages/empresas/EmpresasListPage.vue'),
