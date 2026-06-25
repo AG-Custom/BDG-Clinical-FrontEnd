@@ -15,8 +15,21 @@ const ROTAS_SECAO_FUNCIONARIOS = new Set([
   'cargos-editar',
 ]);
 
+const ROTAS_SECAO_ESTOQUE = new Set([
+  'produtos',
+  'produtos-novo',
+  'produtos-editar',
+  'tipos-produto',
+  'tipos-produto-novo',
+  'tipos-produto-editar',
+  'unidades-medida',
+  'unidades-medida-nova',
+  'unidades-medida-editar',
+]);
+
 const drawer = ref(true);
 const funcionariosMenuAberto = ref(false);
+const estoqueMenuAberto = ref(false);
 const route = useRoute();
 const auth = useAuth();
 const { usuario, logout } = auth;
@@ -26,11 +39,17 @@ const isSecaoFuncionarios = computed(() =>
   ROTAS_SECAO_FUNCIONARIOS.has(route.name as string),
 );
 
+const isSecaoEstoque = computed(() => ROTAS_SECAO_ESTOQUE.has(route.name as string));
+
 watch(
   () => route.name,
   () => {
     if (isSecaoFuncionarios.value) {
       funcionariosMenuAberto.value = true;
+    }
+
+    if (isSecaoEstoque.value) {
+      estoqueMenuAberto.value = true;
     }
   },
   { immediate: true },
@@ -123,6 +142,23 @@ onMounted(() => {
           </q-item>
           <q-item clickable v-ripple :to="{ name: 'cargos' }" :inset-level="1">
             <q-item-section>Cargos</q-item-section>
+          </q-item>
+        </q-expansion-item>
+        <q-expansion-item
+          v-model="estoqueMenuAberto"
+          icon="inventory_2"
+          label="Estoque"
+          expand-separator
+          :header-class="isSecaoEstoque ? 'drawer-menu__section--active' : ''"
+        >
+          <q-item clickable v-ripple :to="{ name: 'produtos' }" :inset-level="1">
+            <q-item-section>Produtos</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'tipos-produto' }" :inset-level="1">
+            <q-item-section>Tipos de produto</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'unidades-medida' }" :inset-level="1">
+            <q-item-section>Unidades de medida</q-item-section>
           </q-item>
         </q-expansion-item>
         <q-item clickable v-ripple :to="{ name: 'empresas' }">

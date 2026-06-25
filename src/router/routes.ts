@@ -107,6 +107,51 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/cargos/CargoFormPage.vue'),
       },
       {
+        path: 'produtos',
+        name: 'produtos',
+        component: () => import('@/pages/produtos/ProdutosListPage.vue'),
+      },
+      {
+        path: 'produtos/novo',
+        name: 'produtos-novo',
+        component: () => import('@/pages/produtos/ProdutoFormPage.vue'),
+      },
+      {
+        path: 'produtos/:id/editar',
+        name: 'produtos-editar',
+        component: () => import('@/pages/produtos/ProdutoFormPage.vue'),
+      },
+      {
+        path: 'tipos-produto',
+        name: 'tipos-produto',
+        component: () => import('@/pages/tipos-produto/TiposProdutoListPage.vue'),
+      },
+      {
+        path: 'tipos-produto/novo',
+        name: 'tipos-produto-novo',
+        component: () => import('@/pages/tipos-produto/TipoProdutoFormPage.vue'),
+      },
+      {
+        path: 'tipos-produto/:id/editar',
+        name: 'tipos-produto-editar',
+        component: () => import('@/pages/tipos-produto/TipoProdutoFormPage.vue'),
+      },
+      {
+        path: 'unidades-medida',
+        name: 'unidades-medida',
+        component: () => import('@/pages/unidades-medida/UnidadesMedidaListPage.vue'),
+      },
+      {
+        path: 'unidades-medida/nova',
+        name: 'unidades-medida-nova',
+        component: () => import('@/pages/unidades-medida/UnidadeMedidaFormPage.vue'),
+      },
+      {
+        path: 'unidades-medida/:id/editar',
+        name: 'unidades-medida-editar',
+        component: () => import('@/pages/unidades-medida/UnidadeMedidaFormPage.vue'),
+      },
+      {
         path: 'empresas',
         name: 'empresas',
         component: () => import('@/pages/empresas/EmpresasListPage.vue'),
