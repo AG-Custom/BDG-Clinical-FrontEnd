@@ -22,6 +22,7 @@ const carregando = ref(false);
 const salvando = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const cargosDisponiveis = ref<Cargo[]>([]);
+const dadosIniciaisCarregados = ref(false);
 
 const isEdicao = computed(() => route.name === 'funcionarios-editar');
 const funcionarioId = computed(() => route.params.id as string | undefined);
@@ -50,6 +51,18 @@ const opcoesCargos = computed(() =>
     label: cargo.ativo ? cargo.nome : `${cargo.nome} (inativo)`,
     value: cargo.id,
   })),
+);
+
+const mostrarAlertaUnidades = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    isAdmin.value &&
+    !form.linkToEmpresa &&
+    opcoesUnidades.value.length === 0,
+);
+
+const mostrarAlertaCargos = computed(
+  () => dadosIniciaisCarregados.value && isAdmin.value && opcoesCargos.value.length === 0,
 );
 
 watch(
@@ -92,6 +105,24 @@ async function carregarCargos(): Promise<void> {
     cargosDisponiveis.value = await cargoService.listar(false);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function carregarDependenciasIniciais(): Promise<void> {
+  try {
+    await Promise.all([carregarUnidades(), carregarCargos()]);
+  } finally {
+    dadosIniciaisCarregados.value = true;
+  }
+}
+
+async function recarregarDependencias(): Promise<void> {
+  dadosIniciaisCarregados.value = false;
+
+  try {
+    await Promise.all([carregarUnidades(), carregarCargos()]);
+  } finally {
+    dadosIniciaisCarregados.value = true;
   }
 }
 
@@ -190,7 +221,7 @@ function cancelar(): void {
 }
 
 onMounted(async () => {
-  await Promise.all([carregarUnidades(), carregarCargos()]);
+  await carregarDependenciasIniciais();
   await carregarFuncionario();
 });
 </script>
@@ -301,11 +332,14 @@ onMounted(async () => {
             map-options
             :rules="[validarUnidades]"
             :disable="!isAdmin || opcoesUnidades.length === 0"
-            :hint="
-              opcoesUnidades.length === 0
-                ? 'Cadastre unidades antes de vincular o funcionário.'
-                : 'Selecione as unidades em que o colaborador atuará.'
-            "
+            hint="Selecione as unidades em que o colaborador atuará."
+          />
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaUnidades"
+            mensagem="Nenhuma unidade cadastrada. Cadastre uma unidade para vincular o colaborador."
+            rotulo-acao="Cadastrar unidade"
+            :destino="{ name: 'unidades-nova' }"
+            @atualizar="recarregarDependencias"
           />
 
           <q-select
@@ -317,11 +351,14 @@ onMounted(async () => {
             emit-value
             map-options
             :disable="!isAdmin || opcoesCargos.length === 0"
-            :hint="
-              opcoesCargos.length === 0
-                ? 'Cadastre cargos antes de vincular o colaborador.'
-                : 'Selecione o cargo do colaborador na clínica.'
-            "
+            hint="Selecione o cargo do colaborador na clínica."
+          />
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaCargos"
+            mensagem="Nenhum cargo cadastrado. Cadastre um cargo para vincular ao colaborador."
+            rotulo-acao="Cadastrar cargo"
+            :destino="{ name: 'cargos-novo' }"
+            @atualizar="recarregarDependencias"
           />
 
           <q-separator class="q-my-sm" />

@@ -85,7 +85,7 @@ export const DesignSystemSpacing = {
 
 export const DesignSystemLayout = {
   headerHeight: '56px',
-  drawerWidth: 280,
+  drawerWidth: 300,
   contentMaxWidth: 1280,
   formMaxWidth: 720,
   formWideMaxWidth: 960,

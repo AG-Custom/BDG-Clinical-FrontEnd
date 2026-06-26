@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAplicador } from '@/composables/useAplicador';
@@ -17,13 +17,14 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
 } from '@/types/entidades/aplicacao-paciente';
-import { isAplicadorHabilitadoNaUnidade } from '@/types/entidades/funcionario';
+import { isAplicadorHabilitadoNaUnidade, extrairDadosVinculo } from '@/types/entidades/funcionario';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import { formatarSaldoComUnidade } from '@/types/entidades/saldo-estoque';
 import type { Paciente } from '@/types/entidades/paciente';
 import type { Produto } from '@/types/entidades/produto';
 import type { Sintoma } from '@/types/entidades/sintoma';
 import type { Unidade } from '@/types/entidades/unidade';
+import { normalizarLista } from '@/utils/normalizar-lista';
 
 const route = useRoute();
 const router = useRouter();
@@ -43,6 +44,7 @@ const funcionariosDisponiveis = ref<Funcionario[]>([]);
 const sintomasDisponiveis = ref<Sintoma[]>([]);
 const saldoDisponivel = ref<number | null>(null);
 const siglaSaldo = ref('');
+const dadosIniciaisCarregados = ref(false);
 
 const isEdicao = computed(() => route.name === 'aplicacoes-paciente-editar');
 const aplicacaoId = computed(() => route.params.id as string | undefined);
@@ -67,25 +69,33 @@ const form = reactive({
   observacao: '',
 });
 
+const unidadeIdSelecionada = toRef(form, 'unidadeId');
+
 const opcoesUnidades = computed(() =>
-  unidadesDisponiveis.value.map((unidade) => ({
-    label: unidade.ativo ? unidade.nome : `${unidade.nome} (inativa)`,
-    value: unidade.id,
-  })),
+  unidadesDisponiveis.value
+    .filter((unidade) => unidade.ativo)
+    .map((unidade) => ({
+      label: unidade.nome,
+      value: unidade.id,
+    })),
 );
 
 const opcoesPacientes = computed(() =>
-  pacientesDisponiveis.value.map((paciente) => ({
-    label: paciente.ativo ? paciente.nome : `${paciente.nome} (inativo)`,
-    value: paciente.id,
-  })),
+  pacientesDisponiveis.value
+    .filter((paciente) => paciente.ativo)
+    .map((paciente) => ({
+      label: paciente.nome,
+      value: paciente.id,
+    })),
 );
 
 const opcoesProdutos = computed(() =>
-  produtosDisponiveis.value.map((produto) => ({
-    label: produto.ativo ? produto.nome : `${produto.nome} (inativo)`,
-    value: produto.id,
-  })),
+  produtosDisponiveis.value
+    .filter((produto) => produto.ativo)
+    .map((produto) => ({
+      label: produto.nome,
+      value: produto.id,
+    })),
 );
 
 const produtosPorId = computed(
@@ -93,28 +103,74 @@ const produtosPorId = computed(
 );
 
 const aplicadoresFiltrados = computed(() => {
-  if (!form.unidadeId) {
+  if (!unidadeIdSelecionada.value) {
     return [];
   }
 
   return funcionariosDisponiveis.value.filter((funcionario) =>
-    isAplicadorHabilitadoNaUnidade(funcionario, form.unidadeId!),
+    isAplicadorHabilitadoNaUnidade(funcionario, unidadeIdSelecionada.value!),
   );
 });
 
 const opcoesAplicadores = computed(() =>
-  aplicadoresFiltrados.value.map((funcionario) => ({
-    label: funcionario.ativo ? funcionario.nome : `${funcionario.nome} (inativo)`,
-    value: funcionario.id,
-  })),
+  aplicadoresFiltrados.value
+    .filter((funcionario) => funcionario.ativo)
+    .map((funcionario) => ({
+      label: funcionario.nome,
+      value: funcionario.id,
+    })),
 );
 
 const opcoesSintomas = computed(() =>
-  sintomasDisponiveis.value.map((sintoma) => ({
-    label: sintoma.ativo ? sintoma.nome : `${sintoma.nome} (inativo)`,
-    value: sintoma.id,
-  })),
+  sintomasDisponiveis.value
+    .filter((sintoma) => sintoma.ativo)
+    .map((sintoma) => ({
+      label: sintoma.nome,
+      value: sintoma.id,
+    })),
 );
+
+const podeEditarCampos = computed(
+  () => podeGerenciarAplicacoes.value && !somenteLeitura.value,
+);
+
+const mostrarAlertaUnidades = computed(
+  () => dadosIniciaisCarregados.value && unidadesDisponiveis.value.length === 0,
+);
+
+const mostrarAlertaPacientes = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    Boolean(unidadeIdSelecionada.value) &&
+    pacientesDisponiveis.value.length === 0,
+);
+
+const mostrarAlertaProdutos = computed(
+  () => dadosIniciaisCarregados.value && produtosDisponiveis.value.length === 0,
+);
+
+const mostrarAlertaAplicadores = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    Boolean(unidadeIdSelecionada.value) &&
+    opcoesAplicadores.value.length === 0,
+);
+
+const mostrarAlertaSintomas = computed(
+  () => dadosIniciaisCarregados.value && sintomasDisponiveis.value.length === 0,
+);
+
+const hintAplicador = computed(() => {
+  if (mostrarAlertaAplicadores.value) {
+    return undefined;
+  }
+
+  if (!unidadeIdSelecionada.value) {
+    return 'Selecione a unidade para listar os aplicadores disponíveis.';
+  }
+
+  return undefined;
+});
 
 const hintQuantidade = computed(() => {
   if (!form.produtoId) {
@@ -134,8 +190,24 @@ const captionSaldo = computed(() => {
   return `Saldo disponível: ${formatarSaldoComUnidade(saldoDisponivel.value, siglaSaldo.value)}`;
 });
 
-const podeEditarCampos = computed(
-  () => podeGerenciarAplicacoes.value && !somenteLeitura.value,
+const temAplicadoresNaEmpresa = computed(() =>
+  funcionariosDisponiveis.value.some(
+    (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
+  ),
+);
+
+const mensagemAlertaAplicador = computed(() =>
+  temAplicadoresNaEmpresa.value
+    ? 'Nenhum aplicador vinculado a esta unidade. Vincule um colaborador existente ou cadastre um novo com permissão de aplicação.'
+    : 'Nenhum aplicador cadastrado. Cadastre um colaborador e marque a opção "Pode realizar aplicações".',
+);
+
+const rotuloAlertaAplicador = computed(() =>
+  temAplicadoresNaEmpresa.value ? 'Gerenciar colaboradores' : 'Cadastrar colaborador',
+);
+
+const destinoAlertaAplicador = computed(() =>
+  temAplicadoresNaEmpresa.value ? { name: 'funcionarios' } : { name: 'funcionarios-novo' },
 );
 
 function validarUnidade(value: string | null): boolean | string {
@@ -276,13 +348,25 @@ async function carregarDadosIniciais(): Promise<void> {
         sintomaService.listar(),
       ]);
 
-    unidadesDisponiveis.value = listaUnidades;
-    produtosDisponiveis.value = listaProdutos;
-    funcionariosDisponiveis.value = listaFuncionarios;
-    sintomasDisponiveis.value = listaSintomas;
+    unidadesDisponiveis.value = normalizarLista(listaUnidades);
+    produtosDisponiveis.value = normalizarLista(listaProdutos);
+    funcionariosDisponiveis.value = normalizarLista(listaFuncionarios);
+    sintomasDisponiveis.value = normalizarLista(listaSintomas);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
+  } finally {
+    dadosIniciaisCarregados.value = true;
   }
+}
+
+async function recarregarDependencias(): Promise<void> {
+  await carregarDadosIniciais();
+
+  if (form.unidadeId) {
+    await carregarPacientesDaUnidade();
+  }
+
+  await carregarSaldo();
 }
 
 async function carregarAplicacao(): Promise<void> {
@@ -438,55 +522,80 @@ onMounted(async () => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.unidadeId"
-                class="form-field--required"
-                :options="opcoesUnidades"
-                label="Unidade"
-                outlined
-                emit-value
-                map-options
-                :rules="[validarUnidade]"
-                :readonly="!podeEditarCampos || camposImutaveis"
-                :disable="!podeEditarCampos || camposImutaveis || opcoesUnidades.length === 0"
-                @update:model-value="onUnidadeChange"
-              />
+              <div class="form-field-stack">
+                <q-select
+                  v-model="form.unidadeId"
+                  class="form-field--required"
+                  :options="opcoesUnidades"
+                  label="Unidade"
+                  outlined
+                  emit-value
+                  map-options
+                  :rules="[validarUnidade]"
+                  :readonly="!podeEditarCampos || camposImutaveis"
+                  :disable="!podeEditarCampos || camposImutaveis"
+                  @update:model-value="onUnidadeChange"
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaUnidades"
+                  inline
+                  mensagem="Nenhuma unidade cadastrada. Cadastre uma unidade antes de registrar a aplicação."
+                  rotulo-acao="Cadastrar unidade"
+                  :destino="{ name: 'unidades-nova' }"
+                  @atualizar="recarregarDependencias"
+                />
+              </div>
             </div>
             <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.pacienteId"
-                class="form-field--required"
-                :options="opcoesPacientes"
-                label="Paciente"
-                outlined
-                emit-value
-                map-options
-                :rules="[validarPaciente]"
-                :readonly="!podeEditarCampos || camposImutaveis"
-                :disable="
-                  !podeEditarCampos ||
-                  camposImutaveis ||
-                  !form.unidadeId ||
-                  opcoesPacientes.length === 0
-                "
-              />
+              <div class="form-field-stack">
+                <q-select
+                  v-model="form.pacienteId"
+                  class="form-field--required"
+                  :options="opcoesPacientes"
+                  label="Paciente"
+                  outlined
+                  emit-value
+                  map-options
+                  :rules="[validarPaciente]"
+                  :readonly="!podeEditarCampos || camposImutaveis"
+                  :disable="!podeEditarCampos || camposImutaveis || !form.unidadeId"
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaPacientes"
+                  inline
+                  mensagem="Nenhum paciente nesta unidade. Cadastre um paciente para continuar."
+                  rotulo-acao="Cadastrar paciente"
+                  :destino="{ name: 'pacientes-novo' }"
+                  @atualizar="recarregarDependencias"
+                />
+              </div>
             </div>
           </div>
 
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.produtoId"
-                class="form-field--required"
-                :options="opcoesProdutos"
-                label="Produto"
-                outlined
-                emit-value
-                map-options
-                :rules="[validarProduto]"
-                :readonly="!podeEditarCampos || camposImutaveis"
-                :disable="!podeEditarCampos || camposImutaveis || opcoesProdutos.length === 0"
-              />
+              <div class="form-field-stack">
+                <q-select
+                  v-model="form.produtoId"
+                  class="form-field--required"
+                  :options="opcoesProdutos"
+                  label="Produto"
+                  outlined
+                  emit-value
+                  map-options
+                  :rules="[validarProduto]"
+                  :readonly="!podeEditarCampos || camposImutaveis"
+                  :disable="!podeEditarCampos || camposImutaveis"
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaProdutos"
+                  inline
+                  mensagem="Nenhum produto cadastrado. Cadastre um produto para registrar a aplicação."
+                  rotulo-acao="Cadastrar produto"
+                  :destino="{ name: 'produtos-novo' }"
+                  @atualizar="recarregarDependencias"
+                />
+              </div>
             </div>
             <div class="col-12 col-md-6">
               <q-input
@@ -507,23 +616,29 @@ onMounted(async () => {
 
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.aplicadorId"
-                class="form-field--required"
-                :options="opcoesAplicadores"
-                label="Aplicador"
-                outlined
-                emit-value
-                map-options
-                :rules="[validarAplicador]"
-                :readonly="!podeEditarCampos || camposImutaveis"
-                :disable="
-                  !podeEditarCampos ||
-                  camposImutaveis ||
-                  !form.unidadeId ||
-                  opcoesAplicadores.length === 0
-                "
-              />
+              <div class="form-field-stack">
+                <q-select
+                  v-model="form.aplicadorId"
+                  class="form-field--required"
+                  :options="opcoesAplicadores"
+                  label="Aplicador"
+                  outlined
+                  emit-value
+                  map-options
+                  :hint="hintAplicador"
+                  :rules="[validarAplicador]"
+                  :readonly="!podeEditarCampos || camposImutaveis"
+                  :disable="!podeEditarCampos || camposImutaveis || !form.unidadeId"
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaAplicadores"
+                  inline
+                  :mensagem="mensagemAlertaAplicador"
+                  :rotulo-acao="rotuloAlertaAplicador"
+                  :destino="destinoAlertaAplicador"
+                  @atualizar="recarregarDependencias"
+                />
+              </div>
             </div>
             <div class="col-12 col-md-6">
               <q-input
@@ -552,18 +667,28 @@ onMounted(async () => {
               />
             </div>
             <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.sintomaIds"
-                :options="opcoesSintomas"
-                label="Sintomas"
-                outlined
-                multiple
-                use-chips
-                emit-value
-                map-options
-                :readonly="!podeEditarCampos"
-                :disable="!podeEditarCampos || opcoesSintomas.length === 0"
-              />
+              <div class="form-field-stack">
+                <q-select
+                  v-model="form.sintomaIds"
+                  :options="opcoesSintomas"
+                  label="Sintomas"
+                  outlined
+                  multiple
+                  use-chips
+                  emit-value
+                  map-options
+                  :readonly="!podeEditarCampos"
+                  :disable="!podeEditarCampos"
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaSintomas"
+                  inline
+                  mensagem="Nenhum sintoma cadastrado. Cadastre sintomas para registrar na aplicação."
+                  rotulo-acao="Cadastrar sintoma"
+                  :destino="{ name: 'sintomas-novo' }"
+                  @atualizar="recarregarDependencias"
+                />
+              </div>
             </div>
           </div>
 

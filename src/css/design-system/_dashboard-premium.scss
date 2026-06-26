@@ -60,6 +60,35 @@
 .shell-premium .q-expansion-item__label {
   white-space: normal;
   line-height: var(--ds-line-height-normal);
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.shell-premium .drawer-menu__label {
+  min-width: 0;
+  white-space: normal;
+  line-height: var(--ds-line-height-normal);
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.shell-premium .drawer-menu__group-label {
+  margin-top: var(--ds-space-1);
+  padding-top: var(--ds-space-2);
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-semibold);
+  letter-spacing: 0.03em;
+  line-height: var(--ds-line-height-normal);
+  white-space: normal;
+
+  &--active {
+    color: var(--ds-color-primary-700);
+  }
+}
+
+.shell-premium .drawer-nav .q-expansion-item .q-item__section--avatar {
+  min-width: 28px;
 }
 
 .shell-premium .drawer-nav .q-expansion-item {

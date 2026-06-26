@@ -192,6 +192,16 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/estoque/MovimentacoesEstoqueListPage.vue'),
       },
       {
+        path: 'movimentacoes-estoque/entrada',
+        name: 'movimentacoes-estoque-entrada',
+        component: () => import('@/pages/estoque/MovimentacaoEstoqueFormPage.vue'),
+      },
+      {
+        path: 'movimentacoes-estoque/saida',
+        name: 'movimentacoes-estoque-saida',
+        component: () => import('@/pages/estoque/MovimentacaoEstoqueFormPage.vue'),
+      },
+      {
         path: 'fornecedores',
         name: 'fornecedores',
         component: () => import('@/pages/fornecedores/FornecedoresListPage.vue'),

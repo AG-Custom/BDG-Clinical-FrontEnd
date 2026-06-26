@@ -311,7 +311,7 @@ onMounted(async () => {
         <app-empty-state
           icon="swap_horiz"
           titulo="Nenhuma movimentação encontrada"
-          texto="Ajuste os filtros ou registre entradas via recebimento de pedidos."
+          texto="Ajuste os filtros ou registre entradas e saídas manualmente."
         />
       </q-card-section>
     </q-card>

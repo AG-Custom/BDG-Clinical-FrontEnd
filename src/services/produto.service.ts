@@ -23,7 +23,7 @@ export const produtoService = {
       params: Object.keys(query).length > 0 ? query : undefined,
     });
 
-    return data.data;
+    return data.data ?? [];
   },
 
   async obter(id: string): Promise<Produto> {

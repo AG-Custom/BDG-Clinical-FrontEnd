@@ -12,7 +12,7 @@ export const funcionarioService = {
       params: includeInactive ? { includeInactive: true } : undefined,
     });
 
-    return data.data;
+    return data.data ?? [];
   },
 
   async obter(id: string): Promise<Funcionario> {
