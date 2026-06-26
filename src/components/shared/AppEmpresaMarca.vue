@@ -4,14 +4,24 @@ import { computed } from 'vue';
 import { DesignSystemBrand } from '@/constants/design-system';
 import { useEmpresaStore } from '@/stores/empresa.store';
 
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean;
+  }>(),
+  {
+    compact: false,
+  },
+);
+
 const empresaStore = useEmpresaStore();
 
 const logoUrl = computed(() => empresaStore.logoEmpresaAtual);
 const nome = computed(() => empresaStore.nomeEmpresaAtual);
+const iconeSize = computed(() => (props.compact ? '36px' : '48px'));
 </script>
 
 <template>
-  <div class="empresa-marca">
+  <div class="empresa-marca" :class="{ 'empresa-marca--compact': compact }">
     <div v-if="logoUrl" class="empresa-marca__logo">
       <img :src="logoUrl" :alt="`Logo ${nome}`" />
     </div>
@@ -19,7 +29,7 @@ const nome = computed(() => empresaStore.nomeEmpresaAtual);
       v-else
       :name="DesignSystemBrand.icone"
       color="primary"
-      size="48px"
+      :size="iconeSize"
       class="empresa-marca__icone"
     />
   </div>
@@ -49,6 +59,13 @@ const nome = computed(() => empresaStore.nomeEmpresaAtual);
 
   &__icone {
     opacity: 0.9;
+  }
+
+  &--compact {
+    .empresa-marca__logo {
+      width: 72px;
+      height: 72px;
+    }
   }
 }
 </style>

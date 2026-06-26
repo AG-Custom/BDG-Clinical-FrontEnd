@@ -58,35 +58,35 @@ async function cadastrar(): Promise<void> {
     >
       <q-input
         v-model="form.nomeEmpresa"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-1"
         label="Nome da clínica"
         outlined
         autocomplete="organization"
-        class="ds-animate-fade-in-up ds-stagger-1"
         :rules="[(value: string) => Boolean(value) || 'Informe o nome da clínica']"
       />
 
       <q-input
         v-model="form.nome"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-2"
         label="Seu nome"
         outlined
         autocomplete="name"
-        class="ds-animate-fade-in-up ds-stagger-2"
         :rules="[(value: string) => Boolean(value) || 'Informe o seu nome']"
       />
 
       <q-input
         v-model="form.email"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-3"
         label="E-mail"
         type="email"
         outlined
         autocomplete="email"
-        class="ds-animate-fade-in-up ds-stagger-3"
         :rules="[(value: string) => Boolean(value) || 'Informe o e-mail']"
       />
 
       <q-input
         v-model="form.cnpj"
-        label="CNPJ (opcional)"
+        label="CNPJ"
         outlined
         mask="##.###.###/####-##"
         unmasked-value
@@ -95,7 +95,7 @@ async function cadastrar(): Promise<void> {
 
       <q-input
         v-model="form.telefone"
-        label="Telefone da clínica (opcional)"
+        label="Telefone da clínica"
         outlined
         mask="(##) #####-####"
         unmasked-value
@@ -103,7 +103,7 @@ async function cadastrar(): Promise<void> {
       />
 
       <div class="register-cor ds-animate-fade-in-up ds-stagger-6">
-        <label class="register-cor__label">Cor principal (opcional)</label>
+        <label class="register-cor__label">Cor principal</label>
         <div class="register-cor__picker row items-center q-gutter-md">
           <q-color
             v-model="form.corPrincipal"
@@ -126,11 +126,11 @@ async function cadastrar(): Promise<void> {
 
       <q-input
         v-model="form.senha"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-7"
         label="Senha"
         :type="mostrarSenha ? 'text' : 'password'"
         outlined
         autocomplete="new-password"
-        class="ds-animate-fade-in-up ds-stagger-7"
         :rules="[
           (value: string) => Boolean(value) || 'Informe a senha',
           (value: string) =>

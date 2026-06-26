@@ -168,7 +168,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       titulo="Configurações da clínica"
       :subtitulo="`Personalize os dados de ${empresaStore.nomeEmpresaAtual}.`"
@@ -181,6 +181,7 @@ onUnmounted(() => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome da clínica"
             outlined
             :readonly="!isAdmin"

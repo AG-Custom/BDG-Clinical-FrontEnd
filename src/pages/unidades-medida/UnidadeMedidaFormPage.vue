@@ -94,7 +94,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       :titulo="isEdicao ? 'Editar unidade de medida' : 'Nova unidade de medida'"
       :subtitulo="
@@ -111,6 +111,7 @@ onMounted(() => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome"
             outlined
             :readonly="!isAdmin"
@@ -122,6 +123,7 @@ onMounted(() => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model="form.sigla"
+                class="form-field--required"
                 label="Sigla"
                 outlined
                 :readonly="!isAdmin"
@@ -132,6 +134,7 @@ onMounted(() => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.tipo"
+                class="form-field--required"
                 :options="opcoesTipos"
                 label="Tipo"
                 outlined

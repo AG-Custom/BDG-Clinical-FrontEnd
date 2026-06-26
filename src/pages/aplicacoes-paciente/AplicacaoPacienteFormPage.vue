@@ -412,7 +412,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form-wide q-pa-md">
     <app-page-header
       :titulo="isEdicao ? 'Editar aplicação' : 'Nova aplicação'"
       :subtitulo="
@@ -440,6 +440,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.unidadeId"
+                class="form-field--required"
                 :options="opcoesUnidades"
                 label="Unidade"
                 outlined
@@ -454,6 +455,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.pacienteId"
+                class="form-field--required"
                 :options="opcoesPacientes"
                 label="Paciente"
                 outlined
@@ -475,6 +477,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.produtoId"
+                class="form-field--required"
                 :options="opcoesProdutos"
                 label="Produto"
                 outlined
@@ -488,6 +491,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model.number="form.quantidadeUtilizada"
+                class="form-field--required"
                 label="Quantidade utilizada"
                 outlined
                 type="number"
@@ -505,6 +509,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.aplicadorId"
+                class="form-field--required"
                 :options="opcoesAplicadores"
                 label="Aplicador"
                 outlined
@@ -523,6 +528,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model="form.dataAplicacao"
+                class="form-field--required"
                 label="Data da aplicação"
                 outlined
                 type="datetime-local"
@@ -563,7 +569,7 @@ onMounted(async () => {
 
           <q-input
             v-model="form.observacao"
-            label="Observações (opcional)"
+            label="Observações"
             outlined
             type="textarea"
             autogrow

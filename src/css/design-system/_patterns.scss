@@ -93,6 +93,19 @@
   width: 100%;
 }
 
+.page-content--form {
+  max-width: var(--ds-layout-form-max);
+}
+
+.page-content--form-wide {
+  max-width: var(--ds-layout-form-wide-max);
+}
+
+.form-field--required .q-field__label::after {
+  content: ' *';
+  color: var(--ds-color-error-500);
+}
+
 .metric-card {
   border-radius: var(--ds-radius-md);
 }

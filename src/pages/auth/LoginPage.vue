@@ -73,21 +73,21 @@ function voltarParaCredenciais(): void {
     >
       <q-input
         v-model="form.email"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-1"
         label="E-mail"
         type="email"
         outlined
         autocomplete="email"
-        class="ds-animate-fade-in-up ds-stagger-1"
         :rules="[(value: string) => Boolean(value) || 'Informe o e-mail']"
       />
 
       <q-input
         v-model="form.senha"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-2"
         label="Senha"
         :type="mostrarSenha ? 'text' : 'password'"
         outlined
         autocomplete="current-password"
-        class="ds-animate-fade-in-up ds-stagger-2"
         :rules="[(value: string) => Boolean(value) || 'Informe a senha']"
       >
         <template #append>

@@ -149,11 +149,11 @@ function voltarParaEmail(): void {
     >
       <q-input
         v-model="formEmail.email"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-1"
         label="E-mail de login"
         type="email"
         outlined
         autocomplete="email"
-        class="ds-animate-fade-in-up ds-stagger-1"
         :rules="[(value: string) => Boolean(value) || 'Informe o e-mail']"
       />
 
@@ -175,11 +175,11 @@ function voltarParaEmail(): void {
     >
       <q-input
         v-model="formSenha.senha"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-1"
         label="Senha"
         :type="mostrarSenha ? 'text' : 'password'"
         outlined
         autocomplete="new-password"
-        class="ds-animate-fade-in-up ds-stagger-1"
         :rules="[
           (value: string) => Boolean(value) || 'Informe a senha',
           (value: string) =>
@@ -201,11 +201,11 @@ function voltarParaEmail(): void {
 
       <q-input
         v-model="formSenha.confirmarSenha"
+        class="form-field--required ds-animate-fade-in-up ds-stagger-2"
         label="Confirmar senha"
         :type="mostrarConfirmarSenha ? 'text' : 'password'"
         outlined
         autocomplete="new-password"
-        class="ds-animate-fade-in-up ds-stagger-2"
         :rules="[
           (value: string) => Boolean(value) || 'Confirme a senha',
           validarConfirmacaoSenha,

@@ -61,6 +61,60 @@ const auth = useAuth();
 const { usuario, logout } = auth;
 const empresaStore = useEmpresaStore();
 
+type MenuSecao = 'atendimento' | 'funcionarios' | 'produtos' | 'estoque' | 'compras';
+
+function fecharOutrasSecoesMenu(secaoAtiva: MenuSecao): void {
+  if (secaoAtiva !== 'atendimento') {
+    atendimentoMenuAberto.value = false;
+  }
+
+  if (secaoAtiva !== 'funcionarios') {
+    funcionariosMenuAberto.value = false;
+  }
+
+  if (secaoAtiva !== 'produtos') {
+    produtosMenuAberto.value = false;
+  }
+
+  if (secaoAtiva !== 'estoque') {
+    estoqueMenuAberto.value = false;
+  }
+
+  if (secaoAtiva !== 'compras') {
+    comprasMenuAberto.value = false;
+  }
+}
+
+watch(atendimentoMenuAberto, (aberto) => {
+  if (aberto) {
+    fecharOutrasSecoesMenu('atendimento');
+  }
+});
+
+watch(funcionariosMenuAberto, (aberto) => {
+  if (aberto) {
+    fecharOutrasSecoesMenu('funcionarios');
+  }
+});
+
+watch(produtosMenuAberto, (aberto) => {
+  if (aberto) {
+    fecharOutrasSecoesMenu('produtos');
+  }
+});
+
+watch(estoqueMenuAberto, (aberto) => {
+  if (aberto) {
+    fecharOutrasSecoesMenu('estoque');
+  }
+});
+
+watch(comprasMenuAberto, (aberto) => {
+  if (aberto) {
+    fecharOutrasSecoesMenu('compras');
+  }
+});
+
 const isSecaoAtendimento = computed(() =>
   ROTAS_SECAO_ATENDIMENTO.has(route.name as string),
 );
@@ -153,11 +207,13 @@ onMounted(() => {
       show-if-above
       :width="DesignSystemLayout.drawerWidth"
     >
-      <div class="drawer-brand drawer-brand--logo">
-        <app-empresa-marca />
-      </div>
+      <div class="drawer-shell">
+        <div class="drawer-brand drawer-brand--logo">
+          <app-empresa-marca compact />
+        </div>
 
-      <q-list padding>
+        <q-scroll-area class="drawer-nav">
+          <q-list padding>
         <q-item clickable v-ripple to="/" exact>
           <q-item-section avatar>
             <q-icon name="space_dashboard" />
@@ -174,7 +230,6 @@ onMounted(() => {
           v-model="atendimentoMenuAberto"
           icon="personal_injury"
           label="Atendimento"
-          expand-separator
           :header-class="isSecaoAtendimento ? 'drawer-menu__section--active' : ''"
         >
           <q-item clickable v-ripple :to="{ name: 'pacientes' }" :inset-level="1">
@@ -200,7 +255,6 @@ onMounted(() => {
           v-model="funcionariosMenuAberto"
           icon="groups"
           label="Funcionários"
-          expand-separator
           :header-class="isSecaoFuncionarios ? 'drawer-menu__section--active' : ''"
         >
           <q-item clickable v-ripple :to="{ name: 'funcionarios' }" :inset-level="1">
@@ -220,7 +274,6 @@ onMounted(() => {
           v-model="produtosMenuAberto"
           icon="category"
           label="Produtos"
-          expand-separator
           :header-class="isSecaoProdutos ? 'drawer-menu__section--active' : ''"
         >
           <q-item clickable v-ripple :to="{ name: 'produtos' }" :inset-level="1">
@@ -246,7 +299,6 @@ onMounted(() => {
           v-model="estoqueMenuAberto"
           icon="inventory_2"
           label="Estoque"
-          expand-separator
           :header-class="isSecaoEstoque ? 'drawer-menu__section--active' : ''"
         >
           <q-item clickable v-ripple :to="{ name: 'saldos-estoque' }" :inset-level="1">
@@ -266,7 +318,6 @@ onMounted(() => {
           v-model="comprasMenuAberto"
           icon="shopping_cart"
           label="Compras"
-          expand-separator
           :header-class="isSecaoCompras ? 'drawer-menu__section--active' : ''"
         >
           <q-item clickable v-ripple :to="{ name: 'fornecedores' }" :inset-level="1">
@@ -288,7 +339,9 @@ onMounted(() => {
           </q-item-section>
           <q-item-section>Empresas</q-item-section>
         </q-item>
-      </q-list>
+          </q-list>
+        </q-scroll-area>
+      </div>
     </q-drawer>
 
     <q-page-container>

@@ -196,7 +196,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       :titulo="isEdicao ? 'Editar funcionário' : 'Novo funcionário'"
       :subtitulo="
@@ -215,6 +215,7 @@ onMounted(async () => {
 
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome"
             outlined
             :readonly="!isAdmin"
@@ -225,7 +226,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model="form.telefone"
-                label="Telefone (opcional)"
+                label="Telefone"
                 outlined
                 mask="(##) #####-####"
                 unmasked-value
@@ -236,7 +237,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model="form.email"
-                label="E-mail de contato (opcional)"
+                label="E-mail de contato"
                 type="email"
                 outlined
                 :readonly="!isAdmin"
@@ -251,6 +252,7 @@ onMounted(async () => {
           <q-input
             v-if="!isEdicao"
             v-model="form.emailLogin"
+            class="form-field--required"
             label="E-mail de login"
             type="email"
             outlined
@@ -289,6 +291,7 @@ onMounted(async () => {
           <q-select
             v-if="!form.linkToEmpresa"
             v-model="form.unidadeIds"
+            :class="{ 'form-field--required': !form.linkToEmpresa }"
             :options="opcoesUnidades"
             label="Unidades"
             outlined
@@ -308,7 +311,7 @@ onMounted(async () => {
           <q-select
             v-model="form.cargoId"
             :options="opcoesCargos"
-            label="Cargo (opcional)"
+            label="Cargo"
             outlined
             clearable
             emit-value
