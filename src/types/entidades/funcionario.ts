@@ -121,3 +121,26 @@ export function extrairDadosVinculo(funcionario: Funcionario): {
 
   return { linkToEmpresa, unidadeIds, cargoId, flagAplicador };
 }
+
+function obterLinksAtivos(funcionario: Funcionario): FuncionarioLink[] {
+  if (!funcionario.ativo) {
+    return [];
+  }
+
+  const linksAtivos = funcionario.links.filter((link) => link.ativo);
+
+  return linksAtivos.length > 0 ? linksAtivos : funcionario.links;
+}
+
+export function isAplicadorHabilitadoNaUnidade(
+  funcionario: Funcionario,
+  unidadeId: string,
+): boolean {
+  if (!funcionario.ativo) {
+    return false;
+  }
+
+  return obterLinksAtivos(funcionario).some(
+    (link) => link.flagAplicador && (Boolean(link.empresaId) || link.unidadeId === unidadeId),
+  );
+}

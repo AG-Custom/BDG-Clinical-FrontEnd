@@ -77,6 +77,36 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/pacientes/PacienteFormPage.vue'),
       },
       {
+        path: 'aplicacoes-paciente',
+        name: 'aplicacoes-paciente',
+        component: () => import('@/pages/aplicacoes-paciente/AplicacoesPacienteListPage.vue'),
+      },
+      {
+        path: 'aplicacoes-paciente/nova',
+        name: 'aplicacoes-paciente-nova',
+        component: () => import('@/pages/aplicacoes-paciente/AplicacaoPacienteFormPage.vue'),
+      },
+      {
+        path: 'aplicacoes-paciente/:id/editar',
+        name: 'aplicacoes-paciente-editar',
+        component: () => import('@/pages/aplicacoes-paciente/AplicacaoPacienteFormPage.vue'),
+      },
+      {
+        path: 'sintomas',
+        name: 'sintomas',
+        component: () => import('@/pages/sintomas/SintomasListPage.vue'),
+      },
+      {
+        path: 'sintomas/novo',
+        name: 'sintomas-novo',
+        component: () => import('@/pages/sintomas/SintomaFormPage.vue'),
+      },
+      {
+        path: 'sintomas/:id/editar',
+        name: 'sintomas-editar',
+        component: () => import('@/pages/sintomas/SintomaFormPage.vue'),
+      },
+      {
         path: 'funcionarios',
         name: 'funcionarios',
         component: () => import('@/pages/funcionarios/FuncionariosListPage.vue'),
@@ -150,6 +180,46 @@ export const routes: RouteRecordRaw[] = [
         path: 'unidades-medida/:id/editar',
         name: 'unidades-medida-editar',
         component: () => import('@/pages/unidades-medida/UnidadeMedidaFormPage.vue'),
+      },
+      {
+        path: 'saldos-estoque',
+        name: 'saldos-estoque',
+        component: () => import('@/pages/estoque/SaldosEstoqueListPage.vue'),
+      },
+      {
+        path: 'movimentacoes-estoque',
+        name: 'movimentacoes-estoque',
+        component: () => import('@/pages/estoque/MovimentacoesEstoqueListPage.vue'),
+      },
+      {
+        path: 'fornecedores',
+        name: 'fornecedores',
+        component: () => import('@/pages/fornecedores/FornecedoresListPage.vue'),
+      },
+      {
+        path: 'fornecedores/novo',
+        name: 'fornecedores-novo',
+        component: () => import('@/pages/fornecedores/FornecedorFormPage.vue'),
+      },
+      {
+        path: 'fornecedores/:id/editar',
+        name: 'fornecedores-editar',
+        component: () => import('@/pages/fornecedores/FornecedorFormPage.vue'),
+      },
+      {
+        path: 'pedidos-fornecedor',
+        name: 'pedidos-fornecedor',
+        component: () => import('@/pages/pedidos-fornecedor/PedidosFornecedorListPage.vue'),
+      },
+      {
+        path: 'pedidos-fornecedor/novo',
+        name: 'pedidos-fornecedor-novo',
+        component: () => import('@/pages/pedidos-fornecedor/PedidoFornecedorFormPage.vue'),
+      },
+      {
+        path: 'pedidos-fornecedor/:id/editar',
+        name: 'pedidos-fornecedor-editar',
+        component: () => import('@/pages/pedidos-fornecedor/PedidoFornecedorFormPage.vue'),
       },
       {
         path: 'empresas',

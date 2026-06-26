@@ -23,7 +23,7 @@ const { isAdmin } = useAdmin();
 const funcionarios = ref<Funcionario[]>([]);
 const unidadesPorId = ref<Map<string, string>>(new Map());
 const cargosPorId = ref<Map<string, string>>(new Map());
-const carregando = ref(false);
+const carregando = ref(true);
 const incluirInativos = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
@@ -185,7 +185,7 @@ onMounted(async () => {
 
     <q-card flat bordered>
       <q-table
-        v-if="funcionarios.length > 0 || carregando"
+        v-if="funcionarios.length > 0"
         :rows="funcionarios"
         :columns="colunas"
         row-key="id"
@@ -280,7 +280,11 @@ onMounted(async () => {
         </template>
       </q-table>
 
-      <q-card-section v-else-if="!carregando">
+      <q-card-section v-else-if="carregando">
+        <app-table-skeleton :columns="colunas.length" />
+      </q-card-section>
+
+      <q-card-section v-else>
         <app-empty-state
           icon="groups"
           titulo="Nenhum funcionário cadastrado"

@@ -6,6 +6,18 @@ import { useAuth } from '@/composables/useAuth';
 import { DesignSystemLayout } from '@/constants/design-system';
 import { useEmpresaStore } from '@/stores/empresa.store';
 
+const ROTAS_SECAO_ATENDIMENTO = new Set([
+  'pacientes',
+  'pacientes-novo',
+  'pacientes-editar',
+  'aplicacoes-paciente',
+  'aplicacoes-paciente-nova',
+  'aplicacoes-paciente-editar',
+  'sintomas',
+  'sintomas-novo',
+  'sintomas-editar',
+]);
+
 const ROTAS_SECAO_FUNCIONARIOS = new Set([
   'funcionarios',
   'funcionarios-novo',
@@ -15,7 +27,7 @@ const ROTAS_SECAO_FUNCIONARIOS = new Set([
   'cargos-editar',
 ]);
 
-const ROTAS_SECAO_ESTOQUE = new Set([
+const ROTAS_SECAO_PRODUTOS = new Set([
   'produtos',
   'produtos-novo',
   'produtos-editar',
@@ -27,29 +39,63 @@ const ROTAS_SECAO_ESTOQUE = new Set([
   'unidades-medida-editar',
 ]);
 
+const ROTAS_SECAO_ESTOQUE = new Set(['saldos-estoque', 'movimentacoes-estoque']);
+
+const ROTAS_SECAO_COMPRAS = new Set([
+  'fornecedores',
+  'fornecedores-novo',
+  'fornecedores-editar',
+  'pedidos-fornecedor',
+  'pedidos-fornecedor-novo',
+  'pedidos-fornecedor-editar',
+]);
+
 const drawer = ref(true);
+const atendimentoMenuAberto = ref(false);
 const funcionariosMenuAberto = ref(false);
+const produtosMenuAberto = ref(false);
 const estoqueMenuAberto = ref(false);
+const comprasMenuAberto = ref(false);
 const route = useRoute();
 const auth = useAuth();
 const { usuario, logout } = auth;
 const empresaStore = useEmpresaStore();
 
+const isSecaoAtendimento = computed(() =>
+  ROTAS_SECAO_ATENDIMENTO.has(route.name as string),
+);
+
 const isSecaoFuncionarios = computed(() =>
   ROTAS_SECAO_FUNCIONARIOS.has(route.name as string),
 );
 
+const isSecaoProdutos = computed(() => ROTAS_SECAO_PRODUTOS.has(route.name as string));
+
 const isSecaoEstoque = computed(() => ROTAS_SECAO_ESTOQUE.has(route.name as string));
+
+const isSecaoCompras = computed(() => ROTAS_SECAO_COMPRAS.has(route.name as string));
 
 watch(
   () => route.name,
   () => {
+    if (isSecaoAtendimento.value) {
+      atendimentoMenuAberto.value = true;
+    }
+
     if (isSecaoFuncionarios.value) {
       funcionariosMenuAberto.value = true;
     }
 
+    if (isSecaoProdutos.value) {
+      produtosMenuAberto.value = true;
+    }
+
     if (isSecaoEstoque.value) {
       estoqueMenuAberto.value = true;
+    }
+
+    if (isSecaoCompras.value) {
+      comprasMenuAberto.value = true;
     }
   },
   { immediate: true },
@@ -124,12 +170,32 @@ onMounted(() => {
           </q-item-section>
           <q-item-section>Unidades</q-item-section>
         </q-item>
-        <q-item clickable v-ripple :to="{ name: 'pacientes' }">
-          <q-item-section avatar>
-            <q-icon name="personal_injury" />
-          </q-item-section>
-          <q-item-section>Pacientes</q-item-section>
-        </q-item>
+        <q-expansion-item
+          v-model="atendimentoMenuAberto"
+          icon="personal_injury"
+          label="Atendimento"
+          expand-separator
+          :header-class="isSecaoAtendimento ? 'drawer-menu__section--active' : ''"
+        >
+          <q-item clickable v-ripple :to="{ name: 'pacientes' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="people" size="20px" />
+            </q-item-section>
+            <q-item-section>Pacientes</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'aplicacoes-paciente' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="vaccines" size="20px" />
+            </q-item-section>
+            <q-item-section>Aplicações</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'sintomas' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="healing" size="20px" />
+            </q-item-section>
+            <q-item-section>Sintomas</q-item-section>
+          </q-item>
+        </q-expansion-item>
         <q-expansion-item
           v-model="funcionariosMenuAberto"
           icon="groups"
@@ -138,10 +204,42 @@ onMounted(() => {
           :header-class="isSecaoFuncionarios ? 'drawer-menu__section--active' : ''"
         >
           <q-item clickable v-ripple :to="{ name: 'funcionarios' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="people" size="20px" />
+            </q-item-section>
             <q-item-section>Colaboradores</q-item-section>
           </q-item>
           <q-item clickable v-ripple :to="{ name: 'cargos' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="badge" size="20px" />
+            </q-item-section>
             <q-item-section>Cargos</q-item-section>
+          </q-item>
+        </q-expansion-item>
+        <q-expansion-item
+          v-model="produtosMenuAberto"
+          icon="category"
+          label="Produtos"
+          expand-separator
+          :header-class="isSecaoProdutos ? 'drawer-menu__section--active' : ''"
+        >
+          <q-item clickable v-ripple :to="{ name: 'produtos' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="list_alt" size="20px" />
+            </q-item-section>
+            <q-item-section>Catálogo</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'tipos-produto' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="label" size="20px" />
+            </q-item-section>
+            <q-item-section>Tipos de produto</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'unidades-medida' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="straighten" size="20px" />
+            </q-item-section>
+            <q-item-section>Unidades de medida</q-item-section>
           </q-item>
         </q-expansion-item>
         <q-expansion-item
@@ -151,14 +249,37 @@ onMounted(() => {
           expand-separator
           :header-class="isSecaoEstoque ? 'drawer-menu__section--active' : ''"
         >
-          <q-item clickable v-ripple :to="{ name: 'produtos' }" :inset-level="1">
-            <q-item-section>Produtos</q-item-section>
+          <q-item clickable v-ripple :to="{ name: 'saldos-estoque' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="widgets" size="20px" />
+            </q-item-section>
+            <q-item-section>Saldos</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'tipos-produto' }" :inset-level="1">
-            <q-item-section>Tipos de produto</q-item-section>
+          <q-item clickable v-ripple :to="{ name: 'movimentacoes-estoque' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="swap_horiz" size="20px" />
+            </q-item-section>
+            <q-item-section>Movimentações</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'unidades-medida' }" :inset-level="1">
-            <q-item-section>Unidades de medida</q-item-section>
+        </q-expansion-item>
+        <q-expansion-item
+          v-model="comprasMenuAberto"
+          icon="shopping_cart"
+          label="Compras"
+          expand-separator
+          :header-class="isSecaoCompras ? 'drawer-menu__section--active' : ''"
+        >
+          <q-item clickable v-ripple :to="{ name: 'fornecedores' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="store" size="20px" />
+            </q-item-section>
+            <q-item-section>Fornecedores</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'pedidos-fornecedor' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="receipt_long" size="20px" />
+            </q-item-section>
+            <q-item-section>Pedidos ao fornecedor</q-item-section>
           </q-item>
         </q-expansion-item>
         <q-item clickable v-ripple :to="{ name: 'empresas' }">

@@ -44,7 +44,7 @@ const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const empresaStore = useEmpresaStore();
 
-const carregando = ref(false);
+const carregando = ref(true);
 const trocandoId = ref<string | null>(null);
 
 const colunas = [
@@ -112,7 +112,7 @@ onMounted(() => {
 
     <q-card flat bordered>
       <q-table
-        v-if="empresaStore.empresasDisponiveis.length > 0 || carregando"
+        v-if="empresaStore.empresasDisponiveis.length > 0"
         :rows="empresaStore.empresasDisponiveis"
         :columns="colunas"
         row-key="empresaId"
@@ -189,7 +189,11 @@ onMounted(() => {
         </template>
       </q-table>
 
-      <q-card-section v-else-if="!carregando">
+      <q-card-section v-else-if="carregando">
+        <app-table-skeleton :columns="colunas.length" />
+      </q-card-section>
+
+      <q-card-section v-else>
         <app-empty-state
           icon="business"
           titulo="Nenhuma clínica encontrada"

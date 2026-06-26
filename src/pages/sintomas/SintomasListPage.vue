@@ -5,20 +5,20 @@ import { useRouter } from 'vue-router';
 import { useAdmin } from '@/composables/useAdmin';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
-import { cargoService } from '@/services/cargo.service';
-import type { Cargo } from '@/types/entidades/cargo';
+import { sintomaService } from '@/services/sintoma.service';
+import type { Sintoma } from '@/types/entidades/sintoma';
 
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const { isAdmin } = useAdmin();
 
-const cargos = ref<Cargo[]>([]);
+const sintomas = ref<Sintoma[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
-const cargoSelecionado = ref<Cargo | null>(null);
+const sintomaSelecionado = ref<Sintoma | null>(null);
 const desativando = ref(false);
 const reativando = ref(false);
 
@@ -28,11 +28,11 @@ const colunas = [
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
 
-async function carregarCargos(): Promise<void> {
+async function carregarSintomas(): Promise<void> {
   carregando.value = true;
 
   try {
-    cargos.value = await cargoService.listar(incluirInativos.value);
+    sintomas.value = await sintomaService.listar(incluirInativos.value);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -40,29 +40,29 @@ async function carregarCargos(): Promise<void> {
   }
 }
 
-function abrirDialogDesativar(cargo: Cargo): void {
-  cargoSelecionado.value = cargo;
+function abrirDialogDesativar(sintoma: Sintoma): void {
+  sintomaSelecionado.value = sintoma;
   dialogDesativar.value = true;
 }
 
-function abrirDialogReativar(cargo: Cargo): void {
-  cargoSelecionado.value = cargo;
+function abrirDialogReativar(sintoma: Sintoma): void {
+  sintomaSelecionado.value = sintoma;
   dialogReativar.value = true;
 }
 
 async function confirmarDesativar(): Promise<void> {
-  if (!cargoSelecionado.value) {
+  if (!sintomaSelecionado.value) {
     return;
   }
 
   desativando.value = true;
 
   try {
-    await cargoService.desativar(cargoSelecionado.value.id);
-    notificacao.sucesso('Cargo desativado com sucesso.');
+    await sintomaService.desativar(sintomaSelecionado.value.id);
+    notificacao.sucesso('Sintoma desativado com sucesso.');
     dialogDesativar.value = false;
-    cargoSelecionado.value = null;
-    await carregarCargos();
+    sintomaSelecionado.value = null;
+    await carregarSintomas();
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -71,18 +71,18 @@ async function confirmarDesativar(): Promise<void> {
 }
 
 async function confirmarReativar(): Promise<void> {
-  if (!cargoSelecionado.value) {
+  if (!sintomaSelecionado.value) {
     return;
   }
 
   reativando.value = true;
 
   try {
-    await cargoService.reativar(cargoSelecionado.value.id);
-    notificacao.sucesso('Cargo reativado com sucesso.');
+    await sintomaService.reativar(sintomaSelecionado.value.id);
+    notificacao.sucesso('Sintoma reativado com sucesso.');
     dialogReativar.value = false;
-    cargoSelecionado.value = null;
-    await carregarCargos();
+    sintomaSelecionado.value = null;
+    await carregarSintomas();
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -90,29 +90,29 @@ async function confirmarReativar(): Promise<void> {
   }
 }
 
-function editarCargo(id: string): void {
-  router.push({ name: 'cargos-editar', params: { id } });
+function editarSintoma(id: string): void {
+  router.push({ name: 'sintomas-editar', params: { id } });
 }
 
 onMounted(() => {
-  void carregarCargos();
+  void carregarSintomas();
 });
 </script>
 
 <template>
   <q-page class="page-content page-content--fluid q-pa-md">
     <app-page-header
-      titulo="Cargos"
-      subtitulo="Gerencie os cargos dos colaboradores."
+      titulo="Sintomas"
+      subtitulo="Gerencie os sintomas registrados em aplicações."
     >
       <q-btn
         color="primary"
-        label="Novo cargo"
+        label="Novo sintoma"
         icon="add"
         unelevated
         no-caps
         :disable="!isAdmin"
-        :to="isAdmin ? { name: 'cargos-novo' } : undefined"
+        :to="isAdmin ? { name: 'sintomas-novo' } : undefined"
       />
     </app-page-header>
 
@@ -122,15 +122,15 @@ onMounted(() => {
           v-model="incluirInativos"
           label="Incluir inativos"
           color="primary"
-          @update:model-value="carregarCargos"
+          @update:model-value="carregarSintomas"
         />
       </q-card-section>
     </q-card>
 
     <q-card flat bordered>
       <q-table
-        v-if="cargos.length > 0"
-        :rows="cargos"
+        v-if="sintomas.length > 0"
+        :rows="sintomas"
         :columns="colunas"
         row-key="id"
         flat
@@ -154,9 +154,9 @@ onMounted(() => {
               dense
               icon="edit"
               color="primary"
-              aria-label="Editar cargo"
+              aria-label="Editar sintoma"
               :disable="!isAdmin"
-              @click="editarCargo(props.row.id)"
+              @click="editarSintoma(props.row.id)"
             />
             <q-btn
               v-if="props.row.ativo"
@@ -165,7 +165,7 @@ onMounted(() => {
               dense
               icon="block"
               color="negative"
-              aria-label="Desativar cargo"
+              aria-label="Desativar sintoma"
               :disable="!isAdmin"
               @click="abrirDialogDesativar(props.row)"
             />
@@ -176,7 +176,7 @@ onMounted(() => {
               dense
               icon="restore"
               color="positive"
-              aria-label="Reativar cargo"
+              aria-label="Reativar sintoma"
               :disable="!isAdmin"
               @click="abrirDialogReativar(props.row)"
             />
@@ -190,19 +190,19 @@ onMounted(() => {
 
       <q-card-section v-else>
         <app-empty-state
-          icon="badge"
-          titulo="Nenhum cargo cadastrado"
-          texto="Cadastre os cargos da sua clínica para vincular aos colaboradores."
+          icon="healing"
+          titulo="Nenhum sintoma cadastrado"
+          texto="Cadastre sintomas para registrar em aplicações realizadas nos pacientes."
         />
         <div class="text-center q-mt-md">
           <q-btn
             color="primary"
-            label="Novo cargo"
+            label="Novo sintoma"
             icon="add"
             unelevated
             no-caps
             :disable="!isAdmin"
-            :to="isAdmin ? { name: 'cargos-novo' } : undefined"
+            :to="isAdmin ? { name: 'sintomas-novo' } : undefined"
           />
         </div>
       </q-card-section>
@@ -211,12 +211,12 @@ onMounted(() => {
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">
         <q-card-section>
-          <div class="text-h6">Desativar cargo</div>
+          <div class="text-h6">Desativar sintoma</div>
         </q-card-section>
 
         <q-card-section>
           Tem certeza que deseja desativar
-          <strong>{{ cargoSelecionado?.nome }}</strong>?
+          <strong>{{ sintomaSelecionado?.nome }}</strong>?
         </q-card-section>
 
         <q-card-actions align="right">
@@ -236,12 +236,12 @@ onMounted(() => {
     <q-dialog v-model="dialogReativar" persistent>
       <q-card style="min-width: 320px">
         <q-card-section>
-          <div class="text-h6">Reativar cargo</div>
+          <div class="text-h6">Reativar sintoma</div>
         </q-card-section>
 
         <q-card-section>
           Tem certeza que deseja reativar
-          <strong>{{ cargoSelecionado?.nome }}</strong>?
+          <strong>{{ sintomaSelecionado?.nome }}</strong>?
         </q-card-section>
 
         <q-card-actions align="right">

@@ -71,16 +71,28 @@ q-page.page-content (padding)
 ├── q-card flat bordered (filtros — opcional)
 │   └── row com q-input de busca
 └── q-card flat bordered
-    ├── q-table (dados)
-    └── AppEmptyState (quando vazio)
+    ├── q-table (quando há dados)
+    ├── AppTableSkeleton (carregando, lista vazia)
+    └── AppEmptyState (carregamento concluído, lista vazia)
 ```
+
+### Estados da listagem (performance percebida)
+
+Ver também `.cursor/rules/01-performance.mdc` — seção *Listagens — carregamento e empty state*.
+
+1. **Carregando sem dados** → `AppTableSkeleton` (`carregando === true`, `itens.length === 0`)
+2. **Dados** → `q-table` (`itens.length > 0`, `:loading="carregando"` em recargas)
+3. **Vazio confirmado** → `AppEmptyState` (`carregando === false`, `itens.length === 0`)
+
+`const carregando = ref(true)` na montagem — nunca `false` antes da primeira resposta da API.
 
 ### Convenções de tabela
 
 - Paginação server-side quando > 50 registros
 - Ações por linha: ícones `edit`, `delete` com `flat round dense`
 - Status via `q-badge` com cores semânticas
-- Loading via `:loading` do q-table
+- Loading com dados na tela: `:loading` do `q-table` apenas
+- Loading sem dados na tela: `AppTableSkeleton`, não spinner dentro da tabela
 
 ---
 
@@ -138,7 +150,9 @@ q-page (centralizado)
 | Estado | Componente / Padrão |
 |--------|---------------------|
 | Loading global | `:loading` no botão ou `q-inner-loading` no card |
-| Lista vazia | `AppEmptyState` |
+| Lista carregando (sem linhas) | `AppTableSkeleton` |
+| Lista vazia (após API) | `AppEmptyState` |
+| Lista recarregando (com linhas) | `:loading` no `q-table` |
 | Erro de API | `useNotificacao().erro()` |
 | Sucesso | `useNotificacao().sucesso()` |
 | Confirmação de exclusão | `q-dialog` com botões Cancelar (flat) + Excluir (negative) |
