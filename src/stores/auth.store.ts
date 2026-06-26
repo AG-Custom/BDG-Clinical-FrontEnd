@@ -17,6 +17,7 @@ import {
   salvarTokenAuth,
   salvarUsuarioAuth,
 } from '@/utils/auth-storage';
+import { aplicarMarcaDocumento, restaurarMarcaDocumentoPadrao } from '@/utils/whitelabel';
 
 interface AuthState {
   token: string | null;
@@ -60,6 +61,10 @@ export const useAuthStore = defineStore('auth', {
       const usuario = await authService.me();
       this.usuario = usuario;
       salvarUsuarioAuth(usuario);
+      aplicarMarcaDocumento({
+        nome: usuario.empresaAtual?.nome,
+        logo: usuario.empresaAtual?.logo,
+      });
     },
 
     async login(payload: LoginRequest): Promise<LoginResult> {
@@ -106,6 +111,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.usuario = null;
       limparAuthStorage();
+      restaurarMarcaDocumentoPadrao();
     },
 
     possuiPermissao(permissao: string): boolean {
@@ -117,6 +123,10 @@ export const useAuthStore = defineStore('auth', {
       this.usuario = usuario;
       salvarTokenAuth(token);
       salvarUsuarioAuth(usuario);
+      aplicarMarcaDocumento({
+        nome: usuario.empresaAtual?.nome,
+        logo: usuario.empresaAtual?.logo,
+      });
     },
 
     atualizarEmpresaResumo(empresa: EmpresaResumo): void {

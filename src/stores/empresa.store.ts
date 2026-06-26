@@ -5,7 +5,7 @@ import { empresaService } from '@/services/empresa.service';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Empresa, EmpresaContexto, CriarEmpresaRequest } from '@/types/entidades/empresa';
 import { contextoParaResumo } from '@/types/entidades/empresa';
-import { aplicarCorPrincipal } from '@/utils/whitelabel';
+import { aplicarCorPrincipal, aplicarMarcaDocumento } from '@/utils/whitelabel';
 
 interface EmpresaState {
   empresasDisponiveis: EmpresaContexto[];
@@ -126,6 +126,7 @@ export const useEmpresaStore = defineStore('empresa', {
 
     definirEmpresaDetalhes(empresa: Empresa): void {
       this.empresaDetalhes = empresa;
+      aplicarMarcaDocumento({ nome: empresa.nome, logo: empresa.logo });
 
       const authStore = useAuthStore();
       authStore.atualizarEmpresaResumo({

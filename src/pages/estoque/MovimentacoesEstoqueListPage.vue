@@ -16,7 +16,7 @@ import {
   deDataParaFimDiaIso,
   deDataParaInicioDiaIso,
   formatarDataMovimentacao,
-  formatarOrigemMovimentacao,
+  formatarMotivoMovimentacao,
   obterCorTipoMovimentacao,
 } from '@/types/entidades/movimentacao-estoque';
 import type { Produto } from '@/types/entidades/produto';
@@ -43,7 +43,7 @@ const colunas = [
   { name: 'produto', label: 'Produto', field: 'produtoNome', align: 'left' as const },
   { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center' as const },
   { name: 'quantidade', label: 'Quantidade', field: 'quantidade', align: 'right' as const },
-  { name: 'origem', label: 'Origem', field: 'origem', align: 'left' as const },
+  { name: 'motivo', label: 'Motivo', field: 'motivo', align: 'left' as const },
   { name: 'observacao', label: 'Observação', field: 'observacao', align: 'left' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
@@ -265,9 +265,9 @@ onMounted(async () => {
           </q-td>
         </template>
 
-        <template #body-cell-origem="props">
+        <template #body-cell-motivo="props">
           <q-td :props="props">
-            {{ formatarOrigemMovimentacao(props.row.origem) }}
+            {{ formatarMotivoMovimentacao(props.row.motivo, props.row.origem) }}
           </q-td>
         </template>
 

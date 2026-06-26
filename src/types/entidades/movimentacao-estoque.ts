@@ -10,6 +10,16 @@ export const ORIGENS_MOVIMENTACAO_ESTOQUE = [
 
 export type OrigemMovimentacaoEstoque = (typeof ORIGENS_MOVIMENTACAO_ESTOQUE)[number];
 
+export const MOTIVOS_MOVIMENTACAO_ESTOQUE = [
+  'Compra',
+  'Devolucao',
+  'Ajuste',
+  'Aplicacao',
+  'Perda',
+] as const;
+
+export type MotivoMovimentacaoEstoque = (typeof MOTIVOS_MOVIMENTACAO_ESTOQUE)[number];
+
 export interface MovimentacaoEstoque {
   id: string;
   unidadeId: string;
@@ -17,6 +27,7 @@ export interface MovimentacaoEstoque {
   produtoId: string;
   produtoNome: string;
   tipo: TipoMovimentacaoEstoque;
+  motivo: MotivoMovimentacaoEstoque | string;
   quantidade: number;
   data: string;
   origem: OrigemMovimentacaoEstoque | string;
@@ -63,6 +74,23 @@ export function obterCorTipoMovimentacao(tipo: TipoMovimentacaoEstoque): string 
       return 'negative';
     default:
       return 'grey';
+  }
+}
+
+export function formatarMotivoMovimentacao(motivo: string | null | undefined, origem?: string): string {
+  switch (motivo) {
+    case 'Compra':
+      return 'Compra';
+    case 'Devolucao':
+      return 'Devolução';
+    case 'Ajuste':
+      return 'Ajuste';
+    case 'Aplicacao':
+      return 'Aplicação';
+    case 'Perda':
+      return 'Perda';
+    default:
+      return origem ? formatarOrigemMovimentacao(origem) : motivo ?? '—';
   }
 }
 
