@@ -9,10 +9,12 @@ import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service'
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
 import { produtoService } from '@/services/produto.service';
+import { procedimentoService } from '@/services/procedimento.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { AplicacaoPaciente } from '@/types/entidades/aplicacao-paciente';
 import {
   formatarDataAplicacao,
+  formatarItemAplicado,
   formatarResumoSintomas,
 } from '@/types/entidades/aplicacao-paciente';
 import { extrairDadosVinculo } from '@/types/entidades/funcionario';
@@ -23,6 +25,7 @@ import {
 } from '@/types/entidades/movimentacao-estoque';
 import type { Paciente } from '@/types/entidades/paciente';
 import type { Produto } from '@/types/entidades/produto';
+import type { Procedimento } from '@/types/entidades/procedimento';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const router = useRouter();
@@ -34,11 +37,13 @@ const aplicacoes = ref<AplicacaoPaciente[]>([]);
 const unidades = ref<Unidade[]>([]);
 const pacientes = ref<Paciente[]>([]);
 const produtos = ref<Produto[]>([]);
+const procedimentos = ref<Procedimento[]>([]);
 const funcionarios = ref<Funcionario[]>([]);
 const carregando = ref(true);
 const filtroUnidadeId = ref<string | null>(null);
 const filtroPacienteId = ref<string | null>(null);
 const filtroProdutoId = ref<string | null>(null);
+const filtroProcedimentoId = ref<string | null>(null);
 const filtroAplicadorId = ref<string | null>(null);
 const filtroCancelada = ref<boolean | null>(null);
 const filtroDataInicio = ref('');
@@ -56,7 +61,12 @@ const colunas = [
     sortable: true,
   },
   { name: 'paciente', label: 'Paciente', field: 'pacienteNome', align: 'left' as const },
-  { name: 'produto', label: 'Produto', field: 'produtoNome', align: 'left' as const },
+  {
+    name: 'itemAplicado',
+    label: 'Item aplicado',
+    field: 'itemAplicado',
+    align: 'left' as const,
+  },
   {
     name: 'quantidade',
     label: 'Qtd',
@@ -100,6 +110,14 @@ const opcoesProdutosFiltro = computed(() => [
   })),
 ]);
 
+const opcoesProcedimentosFiltro = computed(() => [
+  { label: 'Todos os procedimentos', value: null },
+  ...procedimentos.value.map((procedimento) => ({
+    label: procedimento.ativo ? procedimento.nome : `${procedimento.nome} (inativo)`,
+    value: procedimento.id,
+  })),
+]);
+
 const aplicadoresDisponiveis = computed(() =>
   funcionarios.value.filter(
     (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
@@ -126,14 +144,17 @@ async function carregarPacientesFiltro(): Promise<void> {
 
 async function carregarFiltros(): Promise<void> {
   try {
-    const [listaUnidades, listaProdutos, listaFuncionarios] = await Promise.all([
+    const [listaUnidades, listaProdutos, listaProcedimentos, listaFuncionarios] =
+      await Promise.all([
       unidadeService.listar(true),
       produtoService.listar(),
+      procedimentoService.listar({ includeInactive: true }),
       funcionarioService.listar(),
     ]);
 
     unidades.value = listaUnidades;
     produtos.value = listaProdutos;
+    procedimentos.value = listaProcedimentos;
     funcionarios.value = listaFuncionarios;
 
     await carregarPacientesFiltro();
@@ -150,6 +171,7 @@ async function carregarAplicacoes(): Promise<void> {
       unidadeId: filtroUnidadeId.value ?? undefined,
       pacienteId: filtroPacienteId.value ?? undefined,
       produtoId: filtroProdutoId.value ?? undefined,
+      procedimentoId: filtroProcedimentoId.value ?? undefined,
       aplicadorId: filtroAplicadorId.value ?? undefined,
       cancelada: filtroCancelada.value ?? undefined,
       dataInicio: filtroDataInicio.value
@@ -263,6 +285,18 @@ onMounted(async () => {
           </div>
           <div class="col-12 col-md-4">
             <q-select
+              v-model="filtroProcedimentoId"
+              :options="opcoesProcedimentosFiltro"
+              label="Procedimento"
+              outlined
+              dense
+              emit-value
+              map-options
+              @update:model-value="carregarAplicacoes"
+            />
+          </div>
+          <div class="col-12 col-md-4">
+            <q-select
               v-model="filtroAplicadorId"
               :options="opcoesAplicadoresFiltro"
               label="Aplicador"
@@ -324,6 +358,22 @@ onMounted(async () => {
         <template #body-cell-dataAplicacao="props">
           <q-td :props="props">
             {{ formatarDataAplicacao(props.row.dataAplicacao) }}
+          </q-td>
+        </template>
+
+        <template #body-cell-itemAplicado="props">
+          <q-td :props="props">
+            {{ formatarItemAplicado(props.row) }}
+          </q-td>
+        </template>
+
+        <template #body-cell-quantidade="props">
+          <q-td :props="props">
+            {{
+              props.row.quantidadeUtilizada !== null && props.row.quantidadeUtilizada !== undefined
+                ? props.row.quantidadeUtilizada.toLocaleString('pt-BR')
+                : '—'
+            }}
           </q-td>
         </template>
 
@@ -400,7 +450,7 @@ onMounted(async () => {
 
         <q-card-section>
           Tem certeza que deseja cancelar a aplicação de
-          <strong>{{ aplicacaoSelecionada?.produtoNome }}</strong>
+          <strong>{{ aplicacaoSelecionada ? formatarItemAplicado(aplicacaoSelecionada) : '' }}</strong>
           em <strong>{{ aplicacaoSelecionada?.pacienteNome }}</strong>?
           O estoque será estornado.
         </q-card-section>

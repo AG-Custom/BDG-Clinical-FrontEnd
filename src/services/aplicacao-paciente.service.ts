@@ -23,6 +23,10 @@ export const aplicacaoPacienteService = {
       query.produtoId = params.produtoId;
     }
 
+    if (params.procedimentoId) {
+      query.procedimentoId = params.procedimentoId;
+    }
+
     if (params.aplicadorId) {
       query.aplicadorId = params.aplicadorId;
     }

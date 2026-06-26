@@ -5,84 +5,46 @@ import { useRouter } from 'vue-router';
 import { useAdmin } from '@/composables/useAdmin';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
-import { produtoService } from '@/services/produto.service';
-import { tipoProdutoService } from '@/services/tipo-produto.service';
-import type { Produto } from '@/types/entidades/produto';
-import type { TipoProduto } from '@/types/entidades/tipo-produto';
+import { procedimentoService } from '@/services/procedimento.service';
+import type { Procedimento } from '@/types/entidades/procedimento';
 
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const { isAdmin } = useAdmin();
 
-const produtos = ref<Produto[]>([]);
-const tiposProduto = ref<TipoProduto[]>([]);
+const procedimentos = ref<Procedimento[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
-const filtroTipoProdutoId = ref<string | null>(null);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
-const produtoSelecionado = ref<Produto | null>(null);
+const procedimentoSelecionado = ref<Procedimento | null>(null);
 const desativando = ref(false);
 const reativando = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
   {
-    name: 'tipoProduto',
-    label: 'Tipo',
-    field: 'tipoProdutoNome',
-    align: 'left' as const,
-    sortable: true,
-  },
-  {
-    name: 'unidadeMedida',
-    label: 'Unidade de medida',
-    field: 'unidadeMedidaSigla',
+    name: 'produtoAplicado',
+    label: 'Produto aplicado',
+    field: 'produtoAplicadoNome',
     align: 'left' as const,
   },
   {
-    name: 'estoqueMinimo',
-    label: 'Estoque mínimo',
-    field: 'estoqueMinimo',
-    align: 'right' as const,
-    sortable: true,
-  },
-  {
-    name: 'controlaEstoque',
-    label: 'Controla estoque',
-    field: 'controlaEstoque',
+    name: 'itens',
+    label: 'Insumos',
+    field: 'itens',
     align: 'center' as const,
   },
   { name: 'status', label: 'Status', field: 'ativo', align: 'center' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
 
-const opcoesTiposFiltro = ref<{ label: string; value: string | null }[]>([
-  { label: 'Todos os tipos', value: null },
-]);
-
-async function carregarTiposProduto(): Promise<void> {
-  try {
-    tiposProduto.value = await tipoProdutoService.listar(true);
-    opcoesTiposFiltro.value = [
-      { label: 'Todos os tipos', value: null },
-      ...tiposProduto.value.map((tipo) => ({
-        label: tipo.ativo ? tipo.nome : `${tipo.nome} (inativo)`,
-        value: tipo.id,
-      })),
-    ];
-  } catch (error) {
-    notificacao.erro(obterMensagem(error));
-  }
-}
-
-async function carregarProdutos(): Promise<void> {
+async function carregarProcedimentos(): Promise<void> {
   carregando.value = true;
 
   try {
-    produtos.value = await produtoService.listar({
-      tipoProdutoId: filtroTipoProdutoId.value ?? undefined,
+    procedimentos.value = await procedimentoService.listar({
       includeInactive: incluirInativos.value,
     });
   } catch (error) {
@@ -92,29 +54,29 @@ async function carregarProdutos(): Promise<void> {
   }
 }
 
-function abrirDialogDesativar(produto: Produto): void {
-  produtoSelecionado.value = produto;
+function abrirDialogDesativar(procedimento: Procedimento): void {
+  procedimentoSelecionado.value = procedimento;
   dialogDesativar.value = true;
 }
 
-function abrirDialogReativar(produto: Produto): void {
-  produtoSelecionado.value = produto;
+function abrirDialogReativar(procedimento: Procedimento): void {
+  procedimentoSelecionado.value = procedimento;
   dialogReativar.value = true;
 }
 
 async function confirmarDesativar(): Promise<void> {
-  if (!produtoSelecionado.value) {
+  if (!procedimentoSelecionado.value) {
     return;
   }
 
   desativando.value = true;
 
   try {
-    await produtoService.desativar(produtoSelecionado.value.id);
-    notificacao.sucesso('Produto desativado com sucesso.');
+    await procedimentoService.desativar(procedimentoSelecionado.value.id);
+    notificacao.sucesso('Procedimento desativado com sucesso.');
     dialogDesativar.value = false;
-    produtoSelecionado.value = null;
-    await carregarProdutos();
+    procedimentoSelecionado.value = null;
+    await carregarProcedimentos();
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -123,18 +85,18 @@ async function confirmarDesativar(): Promise<void> {
 }
 
 async function confirmarReativar(): Promise<void> {
-  if (!produtoSelecionado.value) {
+  if (!procedimentoSelecionado.value) {
     return;
   }
 
   reativando.value = true;
 
   try {
-    await produtoService.reativar(produtoSelecionado.value.id);
-    notificacao.sucesso('Produto reativado com sucesso.');
+    await procedimentoService.reativar(procedimentoSelecionado.value.id);
+    notificacao.sucesso('Procedimento reativado com sucesso.');
     dialogReativar.value = false;
-    produtoSelecionado.value = null;
-    await carregarProdutos();
+    procedimentoSelecionado.value = null;
+    await carregarProcedimentos();
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -142,97 +104,62 @@ async function confirmarReativar(): Promise<void> {
   }
 }
 
-function editarProduto(id: string): void {
-  router.push({ name: 'produtos-editar', params: { id } });
+function editarProcedimento(id: string): void {
+  router.push({ name: 'procedimentos-editar', params: { id } });
 }
 
-onMounted(async () => {
-  await carregarTiposProduto();
-  await carregarProdutos();
+onMounted(() => {
+  void carregarProcedimentos();
 });
 </script>
 
 <template>
   <q-page class="page-content page-content--fluid q-pa-md">
     <app-page-header
-      titulo="Produtos"
-      subtitulo="Cadastre produtos físicos para controle de estoque."
+      titulo="Procedimentos"
+      subtitulo="Kits reutilizáveis de insumos para aplicações em pacientes."
     >
       <q-btn
         color="primary"
-        label="Novo produto"
+        label="Novo procedimento"
         icon="add"
         unelevated
         no-caps
         :disable="!isAdmin"
-        :to="isAdmin ? { name: 'produtos-novo' } : undefined"
+        :to="isAdmin ? { name: 'procedimentos-novo' } : undefined"
       />
     </app-page-header>
 
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
-        <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-6">
-            <q-select
-              v-model="filtroTipoProdutoId"
-              :options="opcoesTiposFiltro"
-              label="Filtrar por tipo"
-              outlined
-              dense
-              emit-value
-              map-options
-              @update:model-value="carregarProdutos"
-            />
-          </div>
-          <div class="col-12 col-md-6">
-            <q-toggle
-              v-model="incluirInativos"
-              label="Incluir inativos"
-              color="primary"
-              @update:model-value="carregarProdutos"
-            />
-          </div>
-        </div>
+        <q-toggle
+          v-model="incluirInativos"
+          label="Incluir inativos"
+          color="primary"
+          @update:model-value="carregarProcedimentos"
+        />
       </q-card-section>
     </q-card>
 
     <q-card flat bordered>
       <q-table
-        v-if="produtos.length > 0"
-        :rows="produtos"
+        v-if="procedimentos.length > 0"
+        :rows="procedimentos"
         :columns="colunas"
         row-key="id"
         flat
         :loading="carregando"
         :rows-per-page-options="[10, 25, 50]"
       >
-        <template #body-cell-nome="props">
+        <template #body-cell-produtoAplicado="props">
           <q-td :props="props">
-            <div>{{ props.row.nome }}</div>
-            <div v-if="props.row.sku" class="text-caption text-grey-7">
-              SKU: {{ props.row.sku }}
-            </div>
+            {{ props.row.produtoAplicadoNome || '—' }}
           </q-td>
         </template>
 
-        <template #body-cell-unidadeMedida="props">
+        <template #body-cell-itens="props">
           <q-td :props="props">
-            {{ props.row.unidadeMedidaNome }} ({{ props.row.unidadeMedidaSigla }})
-          </q-td>
-        </template>
-
-        <template #body-cell-estoqueMinimo="props">
-          <q-td :props="props">
-            {{ props.row.estoqueMinimo }} {{ props.row.unidadeMedidaSigla }}
-          </q-td>
-        </template>
-
-        <template #body-cell-controlaEstoque="props">
-          <q-td :props="props">
-            <q-badge
-              :color="props.row.controlaEstoque !== false ? 'positive' : 'grey'"
-              :label="props.row.controlaEstoque !== false ? 'Sim' : 'Não'"
-            />
+            {{ props.row.itens?.length ?? 0 }}
           </q-td>
         </template>
 
@@ -253,9 +180,9 @@ onMounted(async () => {
               dense
               icon="edit"
               color="primary"
-              aria-label="Editar produto"
+              aria-label="Editar procedimento"
               :disable="!isAdmin"
-              @click="editarProduto(props.row.id)"
+              @click="editarProcedimento(props.row.id)"
             />
             <q-btn
               v-if="props.row.ativo"
@@ -264,7 +191,7 @@ onMounted(async () => {
               dense
               icon="block"
               color="negative"
-              aria-label="Desativar produto"
+              aria-label="Desativar procedimento"
               :disable="!isAdmin"
               @click="abrirDialogDesativar(props.row)"
             />
@@ -275,7 +202,7 @@ onMounted(async () => {
               dense
               icon="restore"
               color="positive"
-              aria-label="Reativar produto"
+              aria-label="Reativar procedimento"
               :disable="!isAdmin"
               @click="abrirDialogReativar(props.row)"
             />
@@ -289,19 +216,19 @@ onMounted(async () => {
 
       <q-card-section v-else>
         <app-empty-state
-          icon="inventory_2"
-          titulo="Nenhum produto cadastrado"
-          texto="Cadastre tipos de produto, unidades de medida e depois registre os itens do estoque."
+          icon="medical_services"
+          titulo="Nenhum procedimento cadastrado"
+          texto="Cadastre kits de insumos para agilizar o registro de aplicações em pacientes."
         />
         <div class="text-center q-mt-md">
           <q-btn
             color="primary"
-            label="Novo produto"
+            label="Novo procedimento"
             icon="add"
             unelevated
             no-caps
             :disable="!isAdmin"
-            :to="isAdmin ? { name: 'produtos-novo' } : undefined"
+            :to="isAdmin ? { name: 'procedimentos-novo' } : undefined"
           />
         </div>
       </q-card-section>
@@ -310,12 +237,12 @@ onMounted(async () => {
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">
         <q-card-section>
-          <div class="text-h6">Desativar produto</div>
+          <div class="text-h6">Desativar procedimento</div>
         </q-card-section>
 
         <q-card-section>
           Tem certeza que deseja desativar
-          <strong>{{ produtoSelecionado?.nome }}</strong>?
+          <strong>{{ procedimentoSelecionado?.nome }}</strong>?
         </q-card-section>
 
         <q-card-actions align="right">
@@ -335,12 +262,12 @@ onMounted(async () => {
     <q-dialog v-model="dialogReativar" persistent>
       <q-card style="min-width: 320px">
         <q-card-section>
-          <div class="text-h6">Reativar produto</div>
+          <div class="text-h6">Reativar procedimento</div>
         </q-card-section>
 
         <q-card-section>
           Tem certeza que deseja reativar
-          <strong>{{ produtoSelecionado?.nome }}</strong>?
+          <strong>{{ procedimentoSelecionado?.nome }}</strong>?
         </q-card-section>
 
         <q-card-actions align="right">

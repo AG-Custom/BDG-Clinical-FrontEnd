@@ -13,6 +13,9 @@ const ROTAS_SECAO_ATENDIMENTO = new Set([
   'aplicacoes-paciente',
   'aplicacoes-paciente-nova',
   'aplicacoes-paciente-editar',
+  'procedimentos',
+  'procedimentos-novo',
+  'procedimentos-editar',
   'sintomas',
   'sintomas-novo',
   'sintomas-editar',
@@ -258,6 +261,12 @@ onMounted(() => {
               <q-icon name="vaccines" size="20px" />
             </q-item-section>
             <q-item-section>Aplicações</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'procedimentos' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="medical_services" size="20px" />
+            </q-item-section>
+            <q-item-section>Procedimentos</q-item-section>
           </q-item>
           <q-item clickable v-ripple :to="{ name: 'sintomas' }" :inset-level="1">
             <q-item-section avatar class="drawer-menu__sub-icon">

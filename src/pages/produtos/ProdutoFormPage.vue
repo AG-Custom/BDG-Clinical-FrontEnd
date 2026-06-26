@@ -8,6 +8,7 @@ import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
 import { tipoProdutoService } from '@/services/tipo-produto.service';
 import { unidadeMedidaService } from '@/services/unidade-medida.service';
+import type { Produto } from '@/types/entidades/produto';
 import type { TipoProduto } from '@/types/entidades/tipo-produto';
 import type { UnidadeMedida } from '@/types/entidades/unidade-medida';
 import { formatarUnidadeMedidaLabel } from '@/types/entidades/unidade-medida';
@@ -29,6 +30,7 @@ const unidadeMedidaSelecionada = ref<UnidadeMedida | null>(null);
 const buscandoUnidadeMedida = ref(false);
 const dadosIniciaisCarregados = ref(false);
 const semUnidadesMedida = ref(false);
+const produtoOriginal = ref<Produto | null>(null);
 
 let sequenciaBuscaUnidade = 0;
 
@@ -40,6 +42,7 @@ const form = reactive({
   unidadeMedidaId: null as string | null,
   nome: '',
   estoqueMinimo: null as number | null,
+  controlaEstoque: true,
 });
 
 const opcoesTipos = computed(() =>
@@ -66,6 +69,9 @@ const mostrarAlertaUnidadesMedida = computed(
 
 const ajudaEstoqueMinimo =
   'Valor de referência para o controle de estoque. Quando o saldo do produto ficar abaixo deste mínimo, a clínica receberá um aviso.';
+
+const ajudaControlaEstoque =
+  'Quando ativo, compras, aplicações e ajustes manuais geram movimentação de estoque para este produto. Desative para itens que não precisam de rastreio de saldo.';
 
 function validarTipo(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o tipo do produto';
@@ -163,12 +169,24 @@ function atualizarUnidadeMedidaSelecionada(unidadeMedidaId: string | null): void
 }
 
 function montarPayload() {
-  return {
+  const payload = {
     tipoProdutoId: form.tipoProdutoId as string,
     unidadeMedidaId: form.unidadeMedidaId as string,
     nome: form.nome.trim(),
     estoqueMinimo: form.estoqueMinimo as number,
+    controlaEstoque: form.controlaEstoque,
   };
+
+  if (isEdicao.value && produtoOriginal.value) {
+    return {
+      ...payload,
+      sku: produtoOriginal.value.sku,
+      codigoInterno: produtoOriginal.value.codigoInterno,
+      codigoBarras: produtoOriginal.value.codigoBarras,
+    };
+  }
+
+  return payload;
 }
 
 async function garantirTipoNaLista(tipoProdutoId: string): Promise<void> {
@@ -242,11 +260,13 @@ async function carregarProduto(): Promise<void> {
 
   try {
     const produto = await produtoService.obter(produtoId.value);
+    produtoOriginal.value = produto;
 
     form.tipoProdutoId = produto.tipoProdutoId;
     form.unidadeMedidaId = produto.unidadeMedidaId;
     form.nome = produto.nome;
     form.estoqueMinimo = produto.estoqueMinimo;
+    form.controlaEstoque = produto.controlaEstoque ?? true;
 
     await Promise.all([
       garantirTipoNaLista(produto.tipoProdutoId),
@@ -407,6 +427,30 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div class="controla-estoque-field">
+            <div class="row items-center no-wrap">
+              <q-toggle
+                v-model="form.controlaEstoque"
+                label="Controla estoque"
+                color="primary"
+                :disable="!isAdmin"
+              />
+              <q-icon name="info_outline" size="20px" class="form-field-input-hint q-ml-xs">
+                <q-tooltip
+                  anchor="top middle"
+                  self="bottom middle"
+                  :offset="[0, 8]"
+                  max-width="300px"
+                >
+                  {{ ajudaControlaEstoque }}
+                </q-tooltip>
+              </q-icon>
+            </div>
+            <p class="controla-estoque-field__ajuda text-caption q-ma-none">
+              {{ ajudaControlaEstoque }}
+            </p>
+          </div>
+
           <div class="row q-gutter-sm q-mt-md">
             <q-btn
               color="primary"
@@ -424,3 +468,10 @@ onMounted(async () => {
     </q-card>
   </q-page>
 </template>
+
+<style scoped lang="scss">
+.controla-estoque-field__ajuda {
+  color: var(--ds-text-secondary);
+  padding-left: 52px;
+}
+</style>

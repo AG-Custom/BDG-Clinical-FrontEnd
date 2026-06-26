@@ -92,6 +92,21 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/aplicacoes-paciente/AplicacaoPacienteFormPage.vue'),
       },
       {
+        path: 'procedimentos',
+        name: 'procedimentos',
+        component: () => import('@/pages/procedimentos/ProcedimentosListPage.vue'),
+      },
+      {
+        path: 'procedimentos/novo',
+        name: 'procedimentos-novo',
+        component: () => import('@/pages/procedimentos/ProcedimentoFormPage.vue'),
+      },
+      {
+        path: 'procedimentos/:id/editar',
+        name: 'procedimentos-editar',
+        component: () => import('@/pages/procedimentos/ProcedimentoFormPage.vue'),
+      },
+      {
         path: 'sintomas',
         name: 'sintomas',
         component: () => import('@/pages/sintomas/SintomasListPage.vue'),

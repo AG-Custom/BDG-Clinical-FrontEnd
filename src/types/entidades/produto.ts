@@ -6,7 +6,11 @@ export interface Produto {
   unidadeMedidaNome: string;
   unidadeMedidaSigla: string;
   nome: string;
+  sku: string | null;
+  codigoInterno: string | null;
+  codigoBarras: string | null;
   estoqueMinimo: number;
+  controlaEstoque: boolean;
   ativo: boolean;
   criadoEm?: string;
   atualizadoEm?: string | null;
@@ -17,6 +21,10 @@ export interface CriarProdutoRequest {
   unidadeMedidaId: string;
   nome: string;
   estoqueMinimo: number;
+  sku?: string | null;
+  codigoInterno?: string | null;
+  codigoBarras?: string | null;
+  controlaEstoque?: boolean;
 }
 
 export interface AtualizarProdutoRequest {
@@ -24,6 +32,10 @@ export interface AtualizarProdutoRequest {
   unidadeMedidaId: string;
   nome: string;
   estoqueMinimo: number;
+  sku?: string | null;
+  codigoInterno?: string | null;
+  codigoBarras?: string | null;
+  controlaEstoque?: boolean;
 }
 
 export interface ListarProdutosParams {

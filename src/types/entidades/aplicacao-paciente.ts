@@ -8,35 +8,45 @@ export interface AplicacaoPacienteSintoma {
   nome: string;
 }
 
+export interface AplicacaoPacienteItemConsumido {
+  produtoId: string;
+  produtoNome: string;
+  quantidade: number;
+  controlaEstoque: boolean;
+}
+
 export interface AplicacaoPaciente {
   id: string;
   pacienteId: string;
   pacienteNome: string;
   compraPacienteId: string | null;
-  produtoId: string;
-  produtoNome: string;
+  produtoId: string | null;
+  produtoNome: string | null;
+  procedimentoId: string | null;
+  procedimentoNome: string | null;
   aplicadorId: string;
   aplicadorNome: string;
   unidadeId: string;
   unidadeNome: string;
   dataAplicacao: string;
-  quantidadeUtilizada: number;
+  quantidadeUtilizada: number | null;
   peso: number | null;
   observacao: string | null;
   realizado: boolean;
   cancelada: boolean;
   sintomas: AplicacaoPacienteSintoma[];
+  itensConsumidos: AplicacaoPacienteItemConsumido[];
   criadoEm: string;
   atualizadoEm: string | null;
 }
 
 export interface CriarAplicacaoPacienteRequest {
   pacienteId: string;
-  produtoId: string;
+  procedimentoId: string;
   aplicadorId: string;
   unidadeId: string;
-  quantidadeUtilizada: number;
   dataAplicacao: string;
+  quantidadeUtilizada?: number | null;
   peso?: number | null;
   observacao?: string | null;
   sintomaIds?: string[] | null;
@@ -54,6 +64,7 @@ export interface ListarAplicacoesPacienteParams {
   pacienteId?: string;
   unidadeId?: string;
   produtoId?: string;
+  procedimentoId?: string;
   aplicadorId?: string;
   cancelada?: boolean;
   dataInicio?: string;
@@ -83,6 +94,18 @@ export function formatarResumoSintomas(sintomas: AplicacaoPacienteSintoma[]): st
   }
 
   return sintomas.map((s) => s.nome).join(', ');
+}
+
+export function formatarItemAplicado(aplicacao: AplicacaoPaciente): string {
+  if (aplicacao.procedimentoNome) {
+    return aplicacao.procedimentoNome;
+  }
+
+  if (aplicacao.produtoNome) {
+    return aplicacao.produtoNome;
+  }
+
+  return '—';
 }
 
 export { deInputDatetimeLocalParaIso, deIsoParaInputDatetimeLocal };
