@@ -56,8 +56,10 @@ Quasar: `$generic-border-radius: 8px` e `$button-border-radius: 8px`.
 | Token | Valor | Elemento |
 |-------|-------|----------|
 | `--ds-layout-header-height` | 56px | Toolbar do header |
-| `--ds-layout-drawer-width` | 260px | Menu lateral |
+| `--ds-layout-drawer-width` | 280px | Menu lateral |
 | `--ds-layout-content-max` | 1280px | Largura máxima do conteúdo |
+| `--ds-layout-form-max` | 720px | Largura máxima de formulários simples |
+| `--ds-layout-form-wide-max` | 960px | Formulários com grids/tabelas |
 | `--ds-layout-auth-panel-max` | 420px | Painel login/cadastro |
 | `--ds-layout-page-padding` | 24px | Padding externo de páginas |
 
@@ -78,7 +80,7 @@ Quasar: `$generic-border-radius: 8px` e `$button-border-radius: 8px`.
 │ Header (56px, bg-white, bordered)           │
 ├──────────┬──────────────────────────────────┤
 │ Drawer   │ Page content (padding)           │
-│ (260px)  │ max-width: 1280px                │
+│ (280px)  │ max-width: 1280px                │
 │          │                                  │
 └──────────┴──────────────────────────────────┘
 ```

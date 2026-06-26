@@ -75,7 +75,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       :titulo="isEdicao ? 'Editar tipo de produto' : 'Novo tipo de produto'"
       :subtitulo="
@@ -92,6 +92,7 @@ onMounted(() => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome"
             outlined
             :readonly="!isAdmin"

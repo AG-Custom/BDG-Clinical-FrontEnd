@@ -253,7 +253,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       :titulo="isEdicao ? 'Editar produto' : 'Novo produto'"
       :subtitulo="
@@ -270,6 +270,7 @@ onMounted(async () => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-select
             v-model="form.tipoProdutoId"
+            class="form-field--required"
             :options="opcoesTipos"
             label="Tipo do produto"
             outlined
@@ -286,6 +287,7 @@ onMounted(async () => {
 
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome"
             outlined
             :readonly="!isAdmin"
@@ -296,6 +298,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.unidadeMedidaId"
+                class="form-field--required"
                 :options="opcoesUnidadesMedida"
                 label="Unidade de medida base"
                 outlined
@@ -328,6 +331,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model.number="form.estoqueMinimo"
+                class="form-field--required"
                 label="Estoque mínimo"
                 outlined
                 type="number"

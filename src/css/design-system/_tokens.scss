@@ -152,8 +152,10 @@
 
   /* ── Layout ── */
   --ds-layout-header-height: 56px;
-  --ds-layout-drawer-width: 260px;
+  --ds-layout-drawer-width: 280px;
   --ds-layout-content-max: 1280px;
+  --ds-layout-form-max: 720px;
+  --ds-layout-form-wide-max: 960px;
   --ds-layout-auth-panel-max: 420px;
   --ds-layout-page-padding: var(--ds-space-6);
   --ds-layout-section-gap: var(--ds-space-4);

@@ -492,7 +492,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form-wide q-pa-md">
     <app-page-header
       :titulo="
         isEdicao
@@ -525,6 +525,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.fornecedorId"
+                class="form-field--required"
                 :options="opcoesFornecedores"
                 label="Fornecedor"
                 outlined
@@ -556,6 +557,7 @@ onMounted(async () => {
             <div class="col-12 col-md-6">
               <q-select
                 v-model="form.unidadeId"
+                class="form-field--required"
                 :options="opcoesUnidades"
                 label="Unidade"
                 outlined
@@ -582,6 +584,7 @@ onMounted(async () => {
             <div class="col-12 col-md-4">
               <q-input
                 v-model="form.dataPedido"
+                class="form-field--required"
                 label="Data do pedido"
                 outlined
                 type="datetime-local"
@@ -604,7 +607,7 @@ onMounted(async () => {
 
           <q-input
             v-model="form.observacao"
-            label="Observação (opcional)"
+            label="Observação"
             outlined
             type="textarea"
             autogrow
@@ -637,6 +640,7 @@ onMounted(async () => {
               <div class="col-12 col-md-5">
                 <q-select
                   v-model="item.produtoId"
+                  class="form-field--required"
                   :options="opcoesProdutos"
                   label="Produto"
                   outlined
@@ -651,6 +655,7 @@ onMounted(async () => {
               <div class="col-6 col-md-2">
                 <q-input
                   v-model.number="item.quantidade"
+                  class="form-field--required"
                   label="Quantidade"
                   outlined
                   dense
@@ -694,12 +699,12 @@ onMounted(async () => {
                   <q-input
                     v-if="item.modoValor === 'unitario'"
                     :model-value="formatarMoedaParaInput(item.valorUnitario)"
+                    class="form-field--required q-mt-sm"
                     label="Valor por unidade"
                     outlined
                     dense
                     inputmode="numeric"
                     prefix="R$"
-                    class="q-mt-sm"
                     :readonly="!isAdmin"
                     :rules="[() => validarValorUnitario(item.valorUnitario)]"
                     @update:model-value="atualizarValorMoedaItem(item, 'unitario', String($event ?? ''))"
@@ -707,12 +712,12 @@ onMounted(async () => {
                   <q-input
                     v-else
                     :model-value="formatarMoedaParaInput(item.valorTotal)"
+                    class="form-field--required q-mt-sm"
                     label="Valor total"
                     outlined
                     dense
                     inputmode="numeric"
                     prefix="R$"
-                    class="q-mt-sm"
                     :readonly="!isAdmin"
                     :rules="[() => validarValorTotal(item.valorTotal)]"
                     @update:model-value="atualizarValorMoedaItem(item, 'total', String($event ?? ''))"

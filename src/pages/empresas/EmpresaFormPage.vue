@@ -101,7 +101,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       titulo="Nova clínica"
       subtitulo="Cadastre outra clínica com o mesmo e-mail de acesso."
@@ -112,6 +112,7 @@ onUnmounted(() => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome da clínica"
             outlined
             :rules="[(value: string) => Boolean(value) || 'Informe o nome da clínica']"
@@ -164,7 +165,7 @@ onUnmounted(() => {
                   </template>
                 </q-file>
 
-                <p class="empresa-logo__hint">PNG, JPEG ou WebP. Máximo 2 MB. Opcional.</p>
+                <p class="empresa-logo__hint">PNG, JPEG ou WebP. Máximo 2 MB.</p>
               </div>
             </div>
           </div>

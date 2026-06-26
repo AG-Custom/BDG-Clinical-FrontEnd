@@ -99,7 +99,7 @@ Ver também `.cursor/rules/01-performance.mdc` — seção *Listagens — carreg
 ## Formulário (CRUD create/edit)
 
 ```
-q-page.page-content (padding)
+q-page.page-content.page-content--form (padding)
 ├── AppPageHeader (titulo = "Novo X" ou "Editar X")
 ├── q-card flat bordered
 │   └── q-form.form-stack
@@ -107,9 +107,13 @@ q-page.page-content (padding)
 │       └── row com botões (Salvar + Cancelar)
 ```
 
+Formulários com grids/tabelas de linhas (ex.: pedido ao fornecedor): usar `page-content--form-wide` (960px). Listagens continuam com `page-content--fluid`.
+
 ### Convenções de formulário
 
-- Campos obrigatórios: validação via `:rules` do q-input
+- Largura: `page-content--form` (720px) ou `page-content--form-wide` (960px) — nunca `--fluid` em forms
+- Campos obrigatórios: classe `form-field--required` + validação via `:rules`
+- Campos opcionais: label limpo, sem sufixo "(opcional)"
 - Erros de API: `useTratarErroFormulario()` + `useNotificacao()`
 - Botão salvar à esquerda, cancelar à direita (ou cancelar flat)
 - Em mobile: botões full-width empilhados

@@ -105,7 +105,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <q-page class="page-content page-content--fluid q-pa-md">
+  <q-page class="page-content page-content--form q-pa-md">
     <app-page-header
       :titulo="isEdicao ? 'Editar fornecedor' : 'Novo fornecedor'"
       :subtitulo="
@@ -122,6 +122,7 @@ onMounted(() => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-input
             v-model="form.nome"
+            class="form-field--required"
             label="Nome"
             outlined
             :readonly="!isAdmin"
@@ -130,6 +131,7 @@ onMounted(() => {
 
           <q-input
             v-model="form.cnpj"
+            class="form-field--required"
             label="CNPJ"
             outlined
             mask="##.###.###/####-##"
@@ -143,7 +145,7 @@ onMounted(() => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model="form.telefone"
-                label="Telefone (opcional)"
+                label="Telefone"
                 outlined
                 mask="(##) #####-####"
                 unmasked-value
@@ -154,7 +156,7 @@ onMounted(() => {
             <div class="col-12 col-md-6">
               <q-input
                 v-model="form.email"
-                label="E-mail (opcional)"
+                label="E-mail"
                 type="email"
                 outlined
                 :readonly="!isAdmin"
