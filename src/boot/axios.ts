@@ -1,15 +1,14 @@
 import axios, { AxiosError } from 'axios';
 
-import { AUTH_TOKEN_KEY } from '@/constants/auth';
 import type { ApiError, ApiResponse } from '@/types/api/api';
-
+import { lerTokenAuth } from '@/utils/auth-storage';
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://localhost:7013',
   timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+  const token = lerTokenAuth();
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

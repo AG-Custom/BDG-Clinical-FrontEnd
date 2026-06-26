@@ -6,6 +6,7 @@ import AppMetricCard from '@/components/design-system/AppMetricCard.vue';
 import AppEmpresaMarca from '@/components/shared/AppEmpresaMarca.vue';
 import AppEmpresaSwitcher from '@/components/shared/AppEmpresaSwitcher.vue';
 import AppEmptyState from '@/components/shared/AppEmptyState.vue';
+import AppFormDependenciaAlert from '@/components/shared/AppFormDependenciaAlert.vue';
 import AppPageHeader from '@/components/shared/AppPageHeader.vue';
 import AppTableSkeleton from '@/components/shared/AppTableSkeleton.vue';
 import AppTrocaEmpresaOverlay from '@/components/shared/AppTrocaEmpresaOverlay.vue';
@@ -17,6 +18,7 @@ export function registerGlobalComponents(app: App): void {
   app.component('AppEmpresaMarca', AppEmpresaMarca);
   app.component('AppEmpresaSwitcher', AppEmpresaSwitcher);
   app.component('AppEmptyState', AppEmptyState);
+  app.component('AppFormDependenciaAlerta', AppFormDependenciaAlert);
   app.component('AppPageHeader', AppPageHeader);
   app.component('AppTableSkeleton', AppTableSkeleton);
   app.component('AppTrocaEmpresaOverlay', AppTrocaEmpresaOverlay);

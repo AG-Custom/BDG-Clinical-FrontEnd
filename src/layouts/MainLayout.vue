@@ -39,7 +39,12 @@ const ROTAS_SECAO_PRODUTOS = new Set([
   'unidades-medida-editar',
 ]);
 
-const ROTAS_SECAO_ESTOQUE = new Set(['saldos-estoque', 'movimentacoes-estoque']);
+const ROTAS_SECAO_ESTOQUE = new Set([
+  'saldos-estoque',
+  'movimentacoes-estoque',
+  'movimentacoes-estoque-entrada',
+  'movimentacoes-estoque-saida',
+]);
 
 const ROTAS_SECAO_COMPRAS = new Set([
   'fornecedores',
@@ -125,7 +130,17 @@ const isSecaoFuncionarios = computed(() =>
 
 const isSecaoProdutos = computed(() => ROTAS_SECAO_PRODUTOS.has(route.name as string));
 
+const ROTAS_SECAO_MOVIMENTACOES = new Set([
+  'movimentacoes-estoque',
+  'movimentacoes-estoque-entrada',
+  'movimentacoes-estoque-saida',
+]);
+
 const isSecaoEstoque = computed(() => ROTAS_SECAO_ESTOQUE.has(route.name as string));
+
+const isSecaoMovimentacoes = computed(() =>
+  ROTAS_SECAO_MOVIMENTACOES.has(route.name as string),
+);
 
 const isSecaoCompras = computed(() => ROTAS_SECAO_COMPRAS.has(route.name as string));
 
@@ -305,13 +320,48 @@ onMounted(() => {
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="widgets" size="20px" />
             </q-item-section>
-            <q-item-section>Saldos</q-item-section>
+            <q-item-section class="drawer-menu__label">Saldos</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'movimentacoes-estoque' }" :inset-level="1">
+          <q-item-label
+            header
+            inset
+            class="drawer-menu__group-label"
+            :class="{ 'drawer-menu__group-label--active': isSecaoMovimentacoes }"
+          >
+            Movimentações
+          </q-item-label>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ name: 'movimentacoes-estoque' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
-              <q-icon name="swap_horiz" size="20px" />
+              <q-icon name="history" size="20px" />
             </q-item-section>
-            <q-item-section>Movimentações</q-item-section>
+            <q-item-section class="drawer-menu__label">Histórico</q-item-section>
+          </q-item>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ name: 'movimentacoes-estoque-entrada' }"
+            :inset-level="1"
+          >
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="add_circle_outline" size="20px" />
+            </q-item-section>
+            <q-item-section class="drawer-menu__label">Registrar entrada</q-item-section>
+          </q-item>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ name: 'movimentacoes-estoque-saida' }"
+            :inset-level="1"
+          >
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="remove_circle_outline" size="20px" />
+            </q-item-section>
+            <q-item-section class="drawer-menu__label">Registrar saída</q-item-section>
           </q-item>
         </q-expansion-item>
         <q-expansion-item

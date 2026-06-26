@@ -53,6 +53,11 @@
   gap: var(--ds-space-3);
 }
 
+.form-field-stack {
+  display: grid;
+  gap: var(--ds-space-2);
+}
+
 .drawer-brand {
   display: flex;
   align-items: center;
@@ -104,6 +109,13 @@
 .form-field--required .q-field__label::after {
   content: ' *';
   color: var(--ds-color-error-500);
+}
+
+.form-field-label-hint,
+.form-field-input-hint {
+  color: var(--ds-brand-primary);
+  cursor: help;
+  flex-shrink: 0;
 }
 
 .metric-card {

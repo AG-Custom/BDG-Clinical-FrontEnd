@@ -118,6 +118,16 @@ Formulários com grids/tabelas de linhas (ex.: pedido ao fornecedor): usar `page
 - Botão salvar à esquerda, cancelar à direita (ou cancelar flat)
 - Em mobile: botões full-width empilhados
 
+### Alertas de dependência vazia
+
+Quando o formulário depende de outro cadastro (produto, unidade, aplicador etc.):
+
+- Componente: `<app-form-dependencia-alerta>` — registro global **`AppFormDependenciaAlerta`** (não `Alert`)
+- Posição: **abaixo** do campo, dentro de `form-field-stack` — nunca no `#hint` com campo `disabled`
+- Condição: API retornou `data: []` → `lista.length === 0` após `dadosIniciaisCarregados`
+- `:disable` sem `lista.length === 0`
+- Documentação completa: [07-alertas-dependencia-formulario.md](./07-alertas-dependencia-formulario.md)
+
 ---
 
 ## Detalhe (view)

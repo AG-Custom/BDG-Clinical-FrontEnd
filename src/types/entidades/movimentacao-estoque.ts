@@ -74,11 +74,23 @@ export function formatarOrigemMovimentacao(origem: string): string {
       return 'Aplicação ao paciente';
     case 'APLICACAO_PACIENTE_CANCELAMENTO':
       return 'Estorno de aplicação';
+    case 'AJUSTE_MANUAL':
+      return 'Entrada manual';
+    case 'PERDA_MANUAL':
+      return 'Saída manual';
     case 'MANUAL':
       return 'Manual';
     default:
       return origem;
   }
+}
+
+export interface RegistrarMovimentacaoManualRequest {
+  unidadeId: string;
+  produtoId: string;
+  quantidade: number;
+  data: string;
+  observacao?: string | null;
 }
 
 export function deDataParaInicioDiaIso(valor: string): string {

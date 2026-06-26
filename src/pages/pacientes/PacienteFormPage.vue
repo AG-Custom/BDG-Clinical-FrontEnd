@@ -19,6 +19,7 @@ const { isAdmin } = useAdmin();
 const carregando = ref(false);
 const salvando = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
+const dadosIniciaisCarregados = ref(false);
 
 const isEdicao = computed(() => route.name === 'pacientes-editar');
 const pacienteId = computed(() => route.params.id as string | undefined);
@@ -38,6 +39,10 @@ const opcoesUnidades = computed(() =>
     label: unidade.ativo ? unidade.nome : `${unidade.nome} (inativa)`,
     value: unidade.id,
   })),
+);
+
+const mostrarAlertaUnidades = computed(
+  () => dadosIniciaisCarregados.value && isAdmin.value && opcoesUnidades.value.length === 0,
 );
 
 function validarEmail(value: string): boolean | string {
@@ -81,7 +86,13 @@ async function carregarUnidades(): Promise<void> {
     unidadesDisponiveis.value = await unidadeService.listar(false);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
+  } finally {
+    dadosIniciaisCarregados.value = true;
   }
+}
+
+async function recarregarDependencias(): Promise<void> {
+  await carregarUnidades();
 }
 
 async function garantirUnidadeNaLista(unidadeId: string): Promise<void> {
@@ -172,6 +183,14 @@ onMounted(async () => {
         <q-inner-loading :showing="carregando" />
 
         <q-form class="form-stack" @submit.prevent="salvar">
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaUnidades"
+            mensagem="Nenhuma unidade cadastrada. Cadastre uma unidade antes de registrar o paciente."
+            rotulo-acao="Cadastrar unidade"
+            :destino="{ name: 'unidades-nova' }"
+            @atualizar="recarregarDependencias"
+          />
+
           <q-select
             v-model="form.unidadeId"
             class="form-field--required"
@@ -182,11 +201,7 @@ onMounted(async () => {
             map-options
             :rules="[validarUnidade]"
             :disable="!isAdmin || opcoesUnidades.length === 0"
-            :hint="
-              opcoesUnidades.length === 0
-                ? 'Cadastre unidades ativas antes de cadastrar pacientes.'
-                : 'Unidade em que o paciente será atendido.'
-            "
+            hint="Unidade em que o paciente será atendido."
           />
 
           <q-input

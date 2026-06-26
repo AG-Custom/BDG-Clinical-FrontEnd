@@ -3,6 +3,7 @@ import type { ApiResponse } from '@/types/api/api';
 import type {
   ListarMovimentacoesEstoqueParams,
   MovimentacaoEstoque,
+  RegistrarMovimentacaoManualRequest,
 } from '@/types/entidades/movimentacao-estoque';
 
 export const movimentacaoEstoqueService = {
@@ -36,6 +37,28 @@ export const movimentacaoEstoqueService = {
     const { data } = await api.get<ApiResponse<MovimentacaoEstoque[]>>('/api/stock-movements', {
       params: Object.keys(query).length > 0 ? query : undefined,
     });
+
+    return data.data ?? [];
+  },
+
+  async registrarEntradaManual(
+    payload: RegistrarMovimentacaoManualRequest,
+  ): Promise<MovimentacaoEstoque> {
+    const { data } = await api.post<ApiResponse<MovimentacaoEstoque>>(
+      '/api/stock-movements/adjustment',
+      payload,
+    );
+
+    return data.data;
+  },
+
+  async registrarSaidaManual(
+    payload: RegistrarMovimentacaoManualRequest,
+  ): Promise<MovimentacaoEstoque> {
+    const { data } = await api.post<ApiResponse<MovimentacaoEstoque>>(
+      '/api/stock-movements/loss',
+      payload,
+    );
 
     return data.data;
   },

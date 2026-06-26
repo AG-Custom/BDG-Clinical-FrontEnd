@@ -11,6 +11,21 @@ O perfil do usuário autenticado vem de **`GET /api/auth/me`** (Bearer token).
 
 O front sincroniza o usuário via `authStore.sincronizarUsuario()` após login e na inicialização da app.
 
+## Sessão e token (front-end)
+
+O backend usa **JWT Bearer** (`Authorization: Bearer {token}`) — **não** há cookie HTTP no fluxo atual.
+
+O token fica em **`localStorage`** (`src/utils/auth-storage.ts`), compartilhado entre **abas** do mesmo navegador. Isso permite abrir cadastros em nova aba (ex.: alertas de dependência em formulários) sem novo login.
+
+| Storage | Comportamento |
+|---------|----------------|
+| `localStorage` | Usado hoje — persiste entre abas até logout |
+| `sessionStorage` | Legado — migrado automaticamente para `localStorage` na leitura |
+
+Logout (`authStore.logout()`) limpa ambos os storages.
+
+**Não** voltar a salvar o token só em `sessionStorage` — nova aba não enxerga a sessão.
+
 ## No front-end
 
 ### Store e composable

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 
-import { AUTH_TOKEN_KEY, AUTH_USUARIO_KEY } from '@/constants/auth';
 import {
   authService,
   extrairSessaoAuth,
@@ -10,6 +9,14 @@ import {
 } from '@/services/auth.service';
 import type { EmpresaResumo } from '@/types/entidades/empresa';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
+import {
+  lerTokenAuth,
+  lerUsuarioAuth,
+  limparAuthStorage,
+  migrarSessionParaLocalStorage,
+  salvarTokenAuth,
+  salvarUsuarioAuth,
+} from '@/utils/auth-storage';
 
 interface AuthState {
   token: string | null;
@@ -17,38 +24,12 @@ interface AuthState {
   carregando: boolean;
 }
 
-function lerTokenSalvo(): string | null {
-  return sessionStorage.getItem(AUTH_TOKEN_KEY) ?? localStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-function lerUsuarioSalvo(): UsuarioAutenticado | null {
-  const usuarioJson =
-    sessionStorage.getItem(AUTH_USUARIO_KEY) ?? localStorage.getItem(AUTH_USUARIO_KEY);
-
-  return usuarioJson ? (JSON.parse(usuarioJson) as UsuarioAutenticado) : null;
-}
-
-function migrarLocalParaSession(): void {
-  const tokenLocal = localStorage.getItem(AUTH_TOKEN_KEY);
-  const usuarioLocal = localStorage.getItem(AUTH_USUARIO_KEY);
-
-  if (tokenLocal && !sessionStorage.getItem(AUTH_TOKEN_KEY)) {
-    sessionStorage.setItem(AUTH_TOKEN_KEY, tokenLocal);
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  }
-
-  if (usuarioLocal && !sessionStorage.getItem(AUTH_USUARIO_KEY)) {
-    sessionStorage.setItem(AUTH_USUARIO_KEY, usuarioLocal);
-    localStorage.removeItem(AUTH_USUARIO_KEY);
-  }
-}
-
-migrarLocalParaSession();
+migrarSessionParaLocalStorage();
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
-    token: lerTokenSalvo(),
-    usuario: lerUsuarioSalvo(),
+    token: lerTokenAuth(),
+    usuario: lerUsuarioAuth(),
     carregando: false,
   }),
   getters: {
@@ -78,7 +59,7 @@ export const useAuthStore = defineStore('auth', {
 
       const usuario = await authService.me();
       this.usuario = usuario;
-      sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuario));
+      salvarUsuarioAuth(usuario);
     },
 
     async login(payload: LoginRequest): Promise<LoginResult> {
@@ -124,11 +105,7 @@ export const useAuthStore = defineStore('auth', {
     logout(): void {
       this.token = null;
       this.usuario = null;
-
-      sessionStorage.removeItem(AUTH_TOKEN_KEY);
-      sessionStorage.removeItem(AUTH_USUARIO_KEY);
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem(AUTH_USUARIO_KEY);
+      limparAuthStorage();
     },
 
     possuiPermissao(permissao: string): boolean {
@@ -138,11 +115,8 @@ export const useAuthStore = defineStore('auth', {
     persistirSessao(token: string, usuario: UsuarioAutenticado): void {
       this.token = token;
       this.usuario = usuario;
-
-      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-      sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(usuario));
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem(AUTH_USUARIO_KEY);
+      salvarTokenAuth(token);
+      salvarUsuarioAuth(usuario);
     },
 
     atualizarEmpresaResumo(empresa: EmpresaResumo): void {
@@ -154,7 +128,7 @@ export const useAuthStore = defineStore('auth', {
         ...this.usuario,
         empresaAtual: empresa,
       };
-      sessionStorage.setItem(AUTH_USUARIO_KEY, JSON.stringify(this.usuario));
+      salvarUsuarioAuth(this.usuario);
     },
   },
 });

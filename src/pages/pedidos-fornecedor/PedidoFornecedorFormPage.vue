@@ -55,6 +55,8 @@ const fornecedorSelecionado = ref<Fornecedor | null>(null);
 const buscandoFornecedor = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const produtosDisponiveis = ref<Produto[]>([]);
+const dadosIniciaisCarregados = ref(false);
+const semFornecedores = ref(false);
 
 let sequenciaBuscaFornecedor = 0;
 
@@ -117,6 +119,30 @@ const produtosPorId = computed(
 
 const valorTotalPedido = computed(() =>
   itens.value.reduce((total, item) => total + calcularValorTotalLinhaItem(item), 0),
+);
+
+const mostrarAlertaUnidades = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    isAdmin.value &&
+    !somenteLeitura.value &&
+    opcoesUnidades.value.length === 0,
+);
+
+const mostrarAlertaProdutos = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    isAdmin.value &&
+    !somenteLeitura.value &&
+    opcoesProdutos.value.length === 0,
+);
+
+const mostrarAlertaFornecedores = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    isAdmin.value &&
+    !somenteLeitura.value &&
+    semFornecedores.value,
 );
 
 function validarFornecedor(value: string | null): boolean | string {
@@ -393,16 +419,24 @@ async function garantirProdutosDosItens(produtoIds: string[]): Promise<void> {
 
 async function carregarDadosIniciais(): Promise<void> {
   try {
-    const [unidades, produtos] = await Promise.all([
+    const [unidades, produtos, fornecedores] = await Promise.all([
       unidadeService.listar(false),
       produtoService.listar({ includeInactive: false }),
+      fornecedorService.listar({ limit: 1 }),
     ]);
 
     unidadesDisponiveis.value = unidades;
     produtosDisponiveis.value = produtos;
+    semFornecedores.value = fornecedores.length === 0;
   } catch (error) {
     notificacao.erro(obterMensagem(error));
+  } finally {
+    dadosIniciaisCarregados.value = true;
   }
+}
+
+async function recarregarDependencias(): Promise<void> {
+  await carregarDadosIniciais();
 }
 
 async function carregarPedido(): Promise<void> {
@@ -521,6 +555,14 @@ onMounted(async () => {
         <q-inner-loading :showing="carregando" />
 
         <q-form class="form-stack" @submit.prevent="salvar">
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaFornecedores"
+            mensagem="Nenhum fornecedor cadastrado. Cadastre um fornecedor para registrar o pedido."
+            rotulo-acao="Cadastrar fornecedor"
+            :destino="{ name: 'fornecedores-novo' }"
+            @atualizar="recarregarDependencias"
+          />
+
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
               <q-select
@@ -565,6 +607,13 @@ onMounted(async () => {
                 map-options
                 :rules="[validarUnidade]"
                 :disable="!isAdmin || somenteLeitura || opcoesUnidades.length === 0"
+              />
+              <app-form-dependencia-alerta
+                v-if="mostrarAlertaUnidades"
+                mensagem="Nenhuma unidade cadastrada. Cadastre uma unidade para registrar o pedido."
+                rotulo-acao="Cadastrar unidade"
+                :destino="{ name: 'unidades-nova' }"
+                @atualizar="recarregarDependencias"
               />
             </div>
           </div>
@@ -615,6 +664,14 @@ onMounted(async () => {
           />
 
           <q-separator class="q-my-md" />
+
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaProdutos"
+            mensagem="Nenhum produto cadastrado. Cadastre produtos antes de adicionar itens ao pedido."
+            rotulo-acao="Cadastrar produto"
+            :destino="{ name: 'produtos-novo' }"
+            @atualizar="recarregarDependencias"
+          />
 
           <div class="row items-center q-mb-md">
             <div class="text-subtitle1 text-weight-medium">Itens do pedido</div>

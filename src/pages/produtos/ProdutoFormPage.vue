@@ -27,6 +27,8 @@ const tiposDisponiveis = ref<TipoProduto[]>([]);
 const unidadesMedidaDisponiveis = ref<UnidadeMedida[]>([]);
 const unidadeMedidaSelecionada = ref<UnidadeMedida | null>(null);
 const buscandoUnidadeMedida = ref(false);
+const dadosIniciaisCarregados = ref(false);
+const semUnidadesMedida = ref(false);
 
 let sequenciaBuscaUnidade = 0;
 
@@ -53,6 +55,17 @@ const opcoesUnidadesMedida = computed(() =>
     value: unidade.id,
   })),
 );
+
+const mostrarAlertaTipos = computed(
+  () => dadosIniciaisCarregados.value && isAdmin.value && opcoesTipos.value.length === 0,
+);
+
+const mostrarAlertaUnidadesMedida = computed(
+  () => dadosIniciaisCarregados.value && isAdmin.value && semUnidadesMedida.value,
+);
+
+const ajudaEstoqueMinimo =
+  'Valor de referência para o controle de estoque. Quando o saldo do produto ficar abaixo deste mínimo, a clínica receberá um aviso.';
 
 function validarTipo(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o tipo do produto';
@@ -179,6 +192,33 @@ async function carregarTipos(): Promise<void> {
   }
 }
 
+async function verificarUnidadesMedida(): Promise<void> {
+  try {
+    const unidades = await unidadeMedidaService.listar({ limit: 1 });
+    semUnidadesMedida.value = unidades.length === 0;
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function carregarDependenciasIniciais(): Promise<void> {
+  try {
+    await Promise.all([carregarTipos(), verificarUnidadesMedida()]);
+  } finally {
+    dadosIniciaisCarregados.value = true;
+  }
+}
+
+async function recarregarDependencias(): Promise<void> {
+  dadosIniciaisCarregados.value = false;
+
+  try {
+    await Promise.all([carregarTipos(), verificarUnidadesMedida()]);
+  } finally {
+    dadosIniciaisCarregados.value = true;
+  }
+}
+
 async function garantirUnidadeMedidaNaLista(unidadeMedidaId: string): Promise<void> {
   if (unidadesMedidaDisponiveis.value.some((unidade) => unidade.id === unidadeMedidaId)) {
     return;
@@ -247,7 +287,7 @@ function cancelar(): void {
 }
 
 onMounted(async () => {
-  await carregarTipos();
+  await carregarDependenciasIniciais();
   await carregarProduto();
 });
 </script>
@@ -268,6 +308,14 @@ onMounted(async () => {
         <q-inner-loading :showing="carregando" />
 
         <q-form class="form-stack" @submit.prevent="salvar">
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaTipos"
+            mensagem="Nenhum tipo de produto cadastrado. Cadastre um tipo antes de registrar o produto."
+            rotulo-acao="Cadastrar tipo"
+            :destino="{ name: 'tipos-produto-novo' }"
+            @atualizar="recarregarDependencias"
+          />
+
           <q-select
             v-model="form.tipoProdutoId"
             class="form-field--required"
@@ -278,11 +326,7 @@ onMounted(async () => {
             map-options
             :rules="[validarTipo]"
             :disable="!isAdmin || opcoesTipos.length === 0"
-            :hint="
-              opcoesTipos.length === 0
-                ? 'Cadastre tipos de produto antes de registrar itens.'
-                : 'Classificação do produto no estoque.'
-            "
+            hint="Classificação do produto no estoque."
           />
 
           <q-input
@@ -327,6 +371,13 @@ onMounted(async () => {
                   </q-item>
                 </template>
               </q-select>
+              <app-form-dependencia-alerta
+                v-if="mostrarAlertaUnidadesMedida"
+                mensagem="Nenhuma unidade de medida cadastrada. Cadastre unidades como mg, ml ou un."
+                rotulo-acao="Cadastrar unidade de medida"
+                :destino="{ name: 'unidades-medida-nova' }"
+                @atualizar="recarregarDependencias"
+              />
             </div>
             <div class="col-12 col-md-6">
               <q-input
@@ -339,7 +390,20 @@ onMounted(async () => {
                 step="1"
                 :readonly="!isAdmin"
                 :rules="[validarEstoqueMinimo]"
-              />
+              >
+                <template #append>
+                  <q-icon name="info_outline" size="20px" class="form-field-input-hint">
+                    <q-tooltip
+                      anchor="top middle"
+                      self="bottom middle"
+                      :offset="[0, 8]"
+                      max-width="280px"
+                    >
+                      {{ ajudaEstoqueMinimo }}
+                    </q-tooltip>
+                  </q-icon>
+                </template>
+              </q-input>
             </div>
           </div>
 
