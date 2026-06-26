@@ -72,6 +72,8 @@ export function formatarOrigemMovimentacao(origem: string): string {
       return 'Pedido ao fornecedor';
     case 'APLICACAO_PACIENTE':
       return 'Aplicação ao paciente';
+    case 'APLICACAO_PACIENTE_CANCELAMENTO':
+      return 'Estorno de aplicação';
     case 'MANUAL':
       return 'Manual';
     default:

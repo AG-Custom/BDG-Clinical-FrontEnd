@@ -133,6 +133,10 @@ function verPedido(pedidoFornecedorId: string): void {
   router.push({ name: 'pedidos-fornecedor-editar', params: { id: pedidoFornecedorId } });
 }
 
+function verAplicacao(aplicacaoPacienteId: string): void {
+  router.push({ name: 'aplicacoes-paciente-editar', params: { id: aplicacaoPacienteId } });
+}
+
 watch(
   () => route.query,
   () => {
@@ -284,6 +288,16 @@ onMounted(async () => {
               color="primary"
               aria-label="Ver pedido ao fornecedor"
               @click="verPedido(props.row.pedidoFornecedorId)"
+            />
+            <q-btn
+              v-if="props.row.aplicacaoPacienteId"
+              flat
+              round
+              dense
+              icon="vaccines"
+              color="primary"
+              aria-label="Ver aplicação em paciente"
+              @click="verAplicacao(props.row.aplicacaoPacienteId)"
             />
           </q-td>
         </template>

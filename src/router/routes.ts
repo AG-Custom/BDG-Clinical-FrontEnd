@@ -77,6 +77,36 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/pacientes/PacienteFormPage.vue'),
       },
       {
+        path: 'aplicacoes-paciente',
+        name: 'aplicacoes-paciente',
+        component: () => import('@/pages/aplicacoes-paciente/AplicacoesPacienteListPage.vue'),
+      },
+      {
+        path: 'aplicacoes-paciente/nova',
+        name: 'aplicacoes-paciente-nova',
+        component: () => import('@/pages/aplicacoes-paciente/AplicacaoPacienteFormPage.vue'),
+      },
+      {
+        path: 'aplicacoes-paciente/:id/editar',
+        name: 'aplicacoes-paciente-editar',
+        component: () => import('@/pages/aplicacoes-paciente/AplicacaoPacienteFormPage.vue'),
+      },
+      {
+        path: 'sintomas',
+        name: 'sintomas',
+        component: () => import('@/pages/sintomas/SintomasListPage.vue'),
+      },
+      {
+        path: 'sintomas/novo',
+        name: 'sintomas-novo',
+        component: () => import('@/pages/sintomas/SintomaFormPage.vue'),
+      },
+      {
+        path: 'sintomas/:id/editar',
+        name: 'sintomas-editar',
+        component: () => import('@/pages/sintomas/SintomaFormPage.vue'),
+      },
+      {
         path: 'funcionarios',
         name: 'funcionarios',
         component: () => import('@/pages/funcionarios/FuncionariosListPage.vue'),

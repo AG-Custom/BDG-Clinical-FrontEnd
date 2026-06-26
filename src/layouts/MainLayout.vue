@@ -6,6 +6,18 @@ import { useAuth } from '@/composables/useAuth';
 import { DesignSystemLayout } from '@/constants/design-system';
 import { useEmpresaStore } from '@/stores/empresa.store';
 
+const ROTAS_SECAO_ATENDIMENTO = new Set([
+  'pacientes',
+  'pacientes-novo',
+  'pacientes-editar',
+  'aplicacoes-paciente',
+  'aplicacoes-paciente-nova',
+  'aplicacoes-paciente-editar',
+  'sintomas',
+  'sintomas-novo',
+  'sintomas-editar',
+]);
+
 const ROTAS_SECAO_FUNCIONARIOS = new Set([
   'funcionarios',
   'funcionarios-novo',
@@ -39,6 +51,7 @@ const ROTAS_SECAO_COMPRAS = new Set([
 ]);
 
 const drawer = ref(true);
+const atendimentoMenuAberto = ref(false);
 const funcionariosMenuAberto = ref(false);
 const produtosMenuAberto = ref(false);
 const estoqueMenuAberto = ref(false);
@@ -47,6 +60,10 @@ const route = useRoute();
 const auth = useAuth();
 const { usuario, logout } = auth;
 const empresaStore = useEmpresaStore();
+
+const isSecaoAtendimento = computed(() =>
+  ROTAS_SECAO_ATENDIMENTO.has(route.name as string),
+);
 
 const isSecaoFuncionarios = computed(() =>
   ROTAS_SECAO_FUNCIONARIOS.has(route.name as string),
@@ -61,6 +78,10 @@ const isSecaoCompras = computed(() => ROTAS_SECAO_COMPRAS.has(route.name as stri
 watch(
   () => route.name,
   () => {
+    if (isSecaoAtendimento.value) {
+      atendimentoMenuAberto.value = true;
+    }
+
     if (isSecaoFuncionarios.value) {
       funcionariosMenuAberto.value = true;
     }
@@ -149,12 +170,32 @@ onMounted(() => {
           </q-item-section>
           <q-item-section>Unidades</q-item-section>
         </q-item>
-        <q-item clickable v-ripple :to="{ name: 'pacientes' }">
-          <q-item-section avatar>
-            <q-icon name="personal_injury" />
-          </q-item-section>
-          <q-item-section>Pacientes</q-item-section>
-        </q-item>
+        <q-expansion-item
+          v-model="atendimentoMenuAberto"
+          icon="personal_injury"
+          label="Atendimento"
+          expand-separator
+          :header-class="isSecaoAtendimento ? 'drawer-menu__section--active' : ''"
+        >
+          <q-item clickable v-ripple :to="{ name: 'pacientes' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="people" size="20px" />
+            </q-item-section>
+            <q-item-section>Pacientes</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'aplicacoes-paciente' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="vaccines" size="20px" />
+            </q-item-section>
+            <q-item-section>Aplicações</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple :to="{ name: 'sintomas' }" :inset-level="1">
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="healing" size="20px" />
+            </q-item-section>
+            <q-item-section>Sintomas</q-item-section>
+          </q-item>
+        </q-expansion-item>
         <q-expansion-item
           v-model="funcionariosMenuAberto"
           icon="groups"
