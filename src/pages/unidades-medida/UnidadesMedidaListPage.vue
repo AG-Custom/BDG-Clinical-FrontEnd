@@ -224,41 +224,29 @@ onMounted(() => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              round
-              dense
-              icon="edit"
-              color="primary"
-              aria-label="Editar unidade de medida"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              acao="editar"
+              rotulo="Editar unidade de medida"
               :disable="!isAdmin"
-              @click="editarUnidade(props.row.id)"
+              @click="editarUnidade(cell.row.id)"
             />
-            <q-btn
-              v-if="props.row.ativo"
-              flat
-              round
-              dense
-              icon="block"
-              color="negative"
-              aria-label="Desativar unidade de medida"
+            <app-table-action-button
+              v-if="cell.row.ativo"
+              acao="desativar"
+              rotulo="Desativar unidade de medida"
               :disable="!isAdmin"
-              @click="abrirDialogDesativar(props.row)"
+              @click="abrirDialogDesativar(cell.row)"
             />
-            <q-btn
+            <app-table-action-button
               v-else
-              flat
-              round
-              dense
-              icon="restore"
-              color="positive"
-              aria-label="Reativar unidade de medida"
+              acao="reativar"
+              rotulo="Reativar unidade de medida"
               :disable="!isAdmin"
-              @click="abrirDialogReativar(props.row)"
+              @click="abrirDialogReativar(cell.row)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

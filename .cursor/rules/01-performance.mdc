@@ -13,6 +13,7 @@ Nem toda lentidão é causada pelo backend. Muitas vezes a sensação de sistema
 
 - Animações excessivas
 - Re-renderizações desnecessárias
+- Loops de render em bibliotecas imperativas (FullCalendar, grids)
 - Overlays pesados
 - Layout instável
 - Spinners infinitos
@@ -248,7 +249,80 @@ quando apenas um item mudou.
 
 ---
 
-## Tabelas
+## FullCalendar e bibliotecas com ciclo de render
+
+Integrações com calendários, grids e widgets imperativos podem **travar o navegador** sem erro visível — loop infinito entre callback nativo → `setOption` → re-render → callback.
+
+Componente de referência: `src/components/agendamentos/AgendaCalendar.vue`.
+
+### Proibido
+
+- Chamar `setOption`, `changeView`, `addEvent`, `removeAllEvents` ou equivalentes **dentro** de `datesSet`, `eventsSet`, `viewDidMount` ou callbacks que disparam a cada render
+- `height: 'auto'` **com** `expandRows: true` no time grid (recálculo de layout em cascata)
+- Recriar o objeto `:options` do calendário a cada mudança de evento/filtro (força remount completo)
+- Slot Vue por evento (`eventContent` com componente reativo por item)
+- Emitir mudança de período para o pai **sem** deduplicar início/fim quando o callback nativo repetir o mesmo intervalo
+- Disparar request no pai a cada `datesSet`, mesmo quando o período não mudou
+
+### Obrigatório
+
+- `datesSet` (ou equivalente) deve **apenas notificar** mudança de período — nada de mutar o calendário dentro dele
+- Opções dinâmicas (horário comercial, `hiddenDays`, eventos) via `watch`, **depois** que o calendário estiver pronto
+- **Deduplicar** antes de `setOption` (serializar config/eventos e ignorar se não mudou)
+- **Deduplicar** período no pai antes de buscar dados na API
+- Opções estáticas em `shallowRef`; conteúdo de evento preferencialmente em HTML (`eventContent` retornando `{ html }`), sem re-render Vue por card
+- Altura previsível: `height` numérico fixo (ex.: `680`) com `expandRows: true`, ou altura fixa sem `expandRows` — nunca `height: 'auto'` + `expandRows`
+- `contain: layout style` no wrapper do calendário quando possível
+
+### Padrão seguro
+
+```ts
+// Callback nativo: só emite período (com dedupe)
+function aoAlterarPeriodo(info: DatesSetArg): void {
+  calendarioPronto.value = true;
+
+  const chave = `${info.start.getTime()}:${info.end.getTime()}`;
+  if (chave === ultimoPeriodoEmitido) return;
+
+  ultimoPeriodoEmitido = chave;
+  emit('periodoAlterado', info.start, info.end);
+}
+
+// Config e eventos: fora do datesSet, com cache
+watch(calendarioPronto, (pronto) => {
+  if (!pronto) return;
+  aplicarConfigHorario(); // ignora se serialização igual à última aplicada
+  sincronizarEventos();   // ignora se lista de eventos não mudou
+});
+
+watch(eventos, () => {
+  if (calendarioPronto.value) sincronizarEventos();
+});
+```
+
+```ts
+// Pai: não refetch se o período for o mesmo
+function aoAlterarPeriodo(inicio: Date, fim: Date): void {
+  if (
+    periodoAtual.value?.inicio.getTime() === inicio.getTime() &&
+    periodoAtual.value?.fim.getTime() === fim.getTime()
+  ) {
+    return;
+  }
+
+  periodoAtual.value = { inicio, fim };
+  void carregarAgendamentos();
+}
+```
+
+### Sintoma de loop (revisar imediatamente)
+
+- Aba do Chrome congela ao abrir a tela
+- CPU do navegador dispara sem interação do usuário
+- Rede com dezenas de requests idênticas em sequência
+- DevTools mostra centenas de renders Vue por segundo
+
+---
 
 Tabelas são uma das maiores fontes de lentidão.
 
@@ -474,6 +548,14 @@ Aparecimento: instantâneo
 - [ ] Sem `watch` desnecessário?
 - [ ] Sem `deep` watch?
 - [ ] Sem re-render completo?
+
+### FullCalendar / widgets imperativos
+
+- [ ] `datesSet` não chama `setOption` nem altera o calendário?
+- [ ] Config/eventos aplicados via `watch` com dedupe?
+- [ ] Período deduplicado antes de buscar na API?
+- [ ] Sem `height: 'auto'` + `expandRows` juntos?
+- [ ] Opções estáticas em `shallowRef`?
 
 ### Dados
 

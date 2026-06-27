@@ -18,7 +18,7 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
 } from '@/types/entidades/aplicacao-paciente';
-import { isAplicadorHabilitadoNaUnidade, extrairDadosVinculo } from '@/types/entidades/funcionario';
+import { extrairDadosVinculo } from '@/types/entidades/funcionario';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import { formatarSaldoComUnidade } from '@/types/entidades/saldo-estoque';
 import type { Paciente } from '@/types/entidades/paciente';
@@ -54,7 +54,8 @@ const produtosDisponiveis = ref<Produto[]>([]);
 const procedimentosDisponiveis = ref<Procedimento[]>([]);
 const procedimentoSelecionado = ref<Procedimento | null>(null);
 const saldosKit = ref<SaldoKitItem[]>([]);
-const funcionariosDisponiveis = ref<Funcionario[]>([]);
+const aplicadoresDisponiveis = ref<Funcionario[]>([]);
+const existemAplicadoresNaEmpresa = ref(false);
 const sintomasDisponiveis = ref<Sintoma[]>([]);
 const dadosIniciaisCarregados = ref(false);
 
@@ -114,23 +115,11 @@ const produtosPorId = computed(
   () => new Map(produtosDisponiveis.value.map((produto) => [produto.id, produto])),
 );
 
-const aplicadoresFiltrados = computed(() => {
-  if (!unidadeIdSelecionada.value) {
-    return [];
-  }
-
-  return funcionariosDisponiveis.value.filter((funcionario) =>
-    isAplicadorHabilitadoNaUnidade(funcionario, unidadeIdSelecionada.value!),
-  );
-});
-
 const opcoesAplicadores = computed(() =>
-  aplicadoresFiltrados.value
-    .filter((funcionario) => funcionario.ativo)
-    .map((funcionario) => ({
-      label: funcionario.nome,
-      value: funcionario.id,
-    })),
+  aplicadoresDisponiveis.value.map((funcionario) => ({
+    label: funcionario.nome,
+    value: funcionario.id,
+  })),
 );
 
 const opcoesSintomas = computed(() =>
@@ -219,11 +208,7 @@ const hintQuantidade = computed(() => {
   return sigla ? `Unidade de medida: ${sigla}` : undefined;
 });
 
-const temAplicadoresNaEmpresa = computed(() =>
-  funcionariosDisponiveis.value.some(
-    (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
-  ),
-);
+const temAplicadoresNaEmpresa = computed(() => existemAplicadoresNaEmpresa.value);
 
 const mensagemAlertaAplicador = computed(() =>
   temAplicadoresNaEmpresa.value
@@ -392,16 +377,34 @@ async function carregarSaldosKit(): Promise<void> {
   }
 }
 
+async function carregarAplicadoresDaUnidade(): Promise<void> {
+  if (!form.unidadeId) {
+    aplicadoresDisponiveis.value = [];
+    return;
+  }
+
+  try {
+    const funcionarios = await funcionarioService.listar({ unidadeId: form.unidadeId });
+    aplicadoresDisponiveis.value = normalizarLista(funcionarios).filter(
+      (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
+    );
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
 async function onUnidadeChange(): Promise<void> {
+  await carregarPacientesDaUnidade();
+  await carregarAplicadoresDaUnidade();
+
   if (!camposImutaveis.value) {
     form.pacienteId = null;
 
-    if (!aplicadoresFiltrados.value.some((f) => f.id === form.aplicadorId)) {
+    if (!aplicadoresDisponiveis.value.some((funcionario) => funcionario.id === form.aplicadorId)) {
       form.aplicadorId = null;
     }
   }
 
-  await carregarPacientesDaUnidade();
   await carregarSaldosKit();
 }
 
@@ -424,17 +427,17 @@ async function garantirProcedimentoNaLista(procedimentoId: string): Promise<void
 }
 
 async function garantirAplicadorNaLista(aplicadorId: string): Promise<void> {
-  if (funcionariosDisponiveis.value.some((f) => f.id === aplicadorId)) {
+  if (aplicadoresDisponiveis.value.some((funcionario) => funcionario.id === aplicadorId)) {
     return;
   }
 
   const funcionario = await funcionarioService.obter(aplicadorId);
-  funcionariosDisponiveis.value = [funcionario, ...funcionariosDisponiveis.value];
+  aplicadoresDisponiveis.value = [funcionario, ...aplicadoresDisponiveis.value];
 }
 
 async function carregarDadosIniciais(): Promise<void> {
   try {
-    const [listaUnidades, listaProdutos, listaProcedimentos, listaFuncionarios, listaSintomas] =
+    const [listaUnidades, listaProdutos, listaProcedimentos, listaFuncionariosEmpresa, listaSintomas] =
       await Promise.all([
         unidadeService.listar(),
         produtoService.listar(),
@@ -446,8 +449,10 @@ async function carregarDadosIniciais(): Promise<void> {
     unidadesDisponiveis.value = normalizarLista(listaUnidades);
     produtosDisponiveis.value = normalizarLista(listaProdutos);
     procedimentosDisponiveis.value = normalizarLista(listaProcedimentos);
-    funcionariosDisponiveis.value = normalizarLista(listaFuncionarios);
     sintomasDisponiveis.value = normalizarLista(listaSintomas);
+    existemAplicadoresNaEmpresa.value = normalizarLista(listaFuncionariosEmpresa).some(
+      (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
+    );
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -459,7 +464,7 @@ async function recarregarDependencias(): Promise<void> {
   await carregarDadosIniciais();
 
   if (form.unidadeId) {
-    await carregarPacientesDaUnidade();
+    await Promise.all([carregarPacientesDaUnidade(), carregarAplicadoresDaUnidade()]);
   }
 
   await carregarProcedimentoDetalhe();
@@ -511,7 +516,7 @@ async function carregarAplicacao(): Promise<void> {
       await carregarProcedimentoDetalhe();
     }
 
-    await carregarPacientesDaUnidade();
+    await Promise.all([carregarPacientesDaUnidade(), carregarAplicadoresDaUnidade()]);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
     await router.push({ name: 'aplicacoes-paciente' });

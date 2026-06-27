@@ -34,8 +34,9 @@
 }
 
 .shell-premium .drawer-brand--logo {
+  align-items: center;
   justify-content: center;
-  padding: var(--ds-space-4) var(--ds-space-4) var(--ds-space-3);
+  padding: var(--ds-space-4) var(--ds-space-3) var(--ds-space-3);
 }
 
 .shell-premium .drawer-brand strong {

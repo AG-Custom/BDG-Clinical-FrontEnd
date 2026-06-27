@@ -41,6 +41,11 @@ export interface AtualizarFuncionarioRequest {
   flagAplicador: boolean;
 }
 
+export interface ListarFuncionariosParams {
+  unidadeId?: string;
+  includeInactive?: boolean;
+}
+
 export function obterUnidadeIdsVinculo(funcionario: Funcionario): string[] {
   return extrairDadosVinculo(funcionario).unidadeIds;
 }
@@ -142,5 +147,18 @@ export function isAplicadorHabilitadoNaUnidade(
 
   return obterLinksAtivos(funcionario).some(
     (link) => link.flagAplicador && (Boolean(link.empresaId) || link.unidadeId === unidadeId),
+  );
+}
+
+export function isFuncionarioVinculadoNaUnidade(
+  funcionario: Funcionario,
+  unidadeId: string,
+): boolean {
+  if (!funcionario.ativo) {
+    return false;
+  }
+
+  return obterLinksAtivos(funcionario).some(
+    (link) => Boolean(link.empresaId) || link.unidadeId === unidadeId,
   );
 }

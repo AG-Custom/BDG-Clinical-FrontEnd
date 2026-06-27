@@ -8,6 +8,9 @@ defineProps<{
 <template>
   <header class="page-header">
     <div>
+      <div v-if="$slots.contexto" class="page-header__contexto">
+        <slot name="contexto" />
+      </div>
       <h1>{{ titulo }}</h1>
       <p v-if="subtitulo">{{ subtitulo }}</p>
     </div>

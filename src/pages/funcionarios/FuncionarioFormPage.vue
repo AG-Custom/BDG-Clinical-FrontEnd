@@ -31,7 +31,6 @@ const emailLoginEdicao = ref('');
 const form = reactive({
   nome: '',
   telefone: '',
-  email: '',
   emailLogin: '',
   linkToEmpresa: false,
   unidadeIds: [] as string[],
@@ -76,7 +75,7 @@ watch(
 
 function validarEmail(value: string): boolean | string {
   if (!value) {
-    return 'Informe o e-mail de login';
+    return 'Informe o e-mail';
   }
 
   const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -152,7 +151,6 @@ async function carregarFuncionario(): Promise<void> {
 
     form.nome = funcionario.nome;
     form.telefone = funcionario.telefone ?? '';
-    form.email = funcionario.email ?? '';
     form.unidadeIds = vinculo.unidadeIds;
     form.cargoId = vinculo.cargoId;
     form.flagAplicador = vinculo.flagAplicador;
@@ -184,23 +182,24 @@ async function salvar(): Promise<void> {
 
   try {
     const telefone = form.telefone.trim() || null;
-    const email = form.email.trim() || null;
     const vinculo = montarPayloadVinculo();
 
     if (isEdicao.value && funcionarioId.value) {
       await funcionarioService.atualizar(funcionarioId.value, {
         nome: form.nome,
         telefone,
-        email,
+        email: emailLoginEdicao.value,
         ...vinculo,
       });
       notificacao.sucesso('Funcionário atualizado com sucesso.');
     } else {
+      const emailLogin = form.emailLogin.trim();
+
       await funcionarioService.criar({
         nome: form.nome,
         telefone,
-        email,
-        emailLogin: form.emailLogin,
+        email: emailLogin,
+        emailLogin,
         ...vinculo,
       });
       notificacao.sucesso(
@@ -265,15 +264,6 @@ onMounted(async () => {
                 :readonly="!isAdmin"
               />
             </div>
-            <div class="col-12 col-md-6">
-              <q-input
-                v-model="form.email"
-                label="E-mail de contato"
-                type="email"
-                outlined
-                :readonly="!isAdmin"
-              />
-            </div>
           </div>
 
           <q-separator class="q-my-sm" />
@@ -284,10 +274,10 @@ onMounted(async () => {
             v-if="!isEdicao"
             v-model="form.emailLogin"
             class="form-field--required"
-            label="E-mail de login"
+            label="E-mail"
             type="email"
             outlined
-            hint="Será usado para entrar na plataforma. Não pode ser alterado depois."
+            hint="Usado para login na plataforma e contato. Não pode ser alterado depois."
             :readonly="!isAdmin"
             :rules="[validarEmail]"
           />
@@ -295,10 +285,10 @@ onMounted(async () => {
           <q-input
             v-else
             :model-value="emailLoginEdicao"
-            label="E-mail de login"
+            label="E-mail"
             outlined
             readonly
-            hint="O e-mail de login não pode ser alterado."
+            hint="O e-mail não pode ser alterado."
           />
 
           <q-banner v-if="!isEdicao" dense rounded class="funcionario-form__info-banner">
