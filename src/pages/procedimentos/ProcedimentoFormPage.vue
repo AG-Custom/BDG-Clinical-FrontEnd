@@ -366,13 +366,9 @@ onMounted(async () => {
               </div>
 
               <div class="col-6 col-md-2 flex flex-center">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="delete"
-                  color="negative"
-                  aria-label="Remover insumo"
+                <app-table-action-button
+                  acao="excluir"
+                  rotulo="Remover insumo"
                   :disable="!isAdmin"
                   @click="removerItem(indice)"
                 />

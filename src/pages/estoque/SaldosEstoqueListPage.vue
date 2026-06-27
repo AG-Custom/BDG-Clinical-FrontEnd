@@ -150,7 +150,6 @@ onMounted(async () => {
               dense
               clearable
               :loading="carregando"
-              hint="Mínimo de 2 caracteres"
             >
               <template #prepend>
                 <q-icon name="search" />
@@ -237,18 +236,13 @@ onMounted(async () => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              round
-              dense
-              icon="history"
-              color="primary"
-              aria-label="Ver movimentações"
-              @click="verMovimentacoes(props.row)"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              acao="movimentacoes"
+              @click="verMovimentacoes(cell.row)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

@@ -227,7 +227,7 @@ onMounted(() => {
     >
       <div class="drawer-shell">
         <div class="drawer-brand drawer-brand--logo">
-          <app-empresa-marca compact />
+          <app-empresa-marca variant="drawer" />
         </div>
 
         <q-scroll-area class="drawer-nav">

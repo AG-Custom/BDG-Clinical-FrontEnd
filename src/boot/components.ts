@@ -8,6 +8,8 @@ import AppEmpresaSwitcher from '@/components/shared/AppEmpresaSwitcher.vue';
 import AppEmptyState from '@/components/shared/AppEmptyState.vue';
 import AppFormDependenciaAlert from '@/components/shared/AppFormDependenciaAlert.vue';
 import AppPageHeader from '@/components/shared/AppPageHeader.vue';
+import AppTableActionButton from '@/components/shared/AppTableActionButton.vue';
+import AppTableActionsCell from '@/components/shared/AppTableActionsCell.vue';
 import AppTableSkeleton from '@/components/shared/AppTableSkeleton.vue';
 import AppTrocaEmpresaOverlay from '@/components/shared/AppTrocaEmpresaOverlay.vue';
 
@@ -20,6 +22,8 @@ export function registerGlobalComponents(app: App): void {
   app.component('AppEmptyState', AppEmptyState);
   app.component('AppFormDependenciaAlerta', AppFormDependenciaAlert);
   app.component('AppPageHeader', AppPageHeader);
+  app.component('AppTableActionButton', AppTableActionButton);
+  app.component('AppTableActionsCell', AppTableActionsCell);
   app.component('AppTableSkeleton', AppTableSkeleton);
   app.component('AppTrocaEmpresaOverlay', AppTrocaEmpresaOverlay);
 }

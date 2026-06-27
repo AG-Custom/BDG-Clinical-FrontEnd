@@ -62,6 +62,11 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/unidades/UnidadeFormPage.vue'),
       },
       {
+        path: 'unidades/:id/horario-funcionamento',
+        name: 'unidades-horario-funcionamento',
+        component: () => import('@/pages/unidades/UnidadeHorarioFuncionamentoPage.vue'),
+      },
+      {
         path: 'pacientes',
         name: 'pacientes',
         component: () => import('@/pages/pacientes/PacientesListPage.vue'),

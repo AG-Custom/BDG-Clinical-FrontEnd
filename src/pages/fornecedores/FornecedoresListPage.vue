@@ -230,41 +230,29 @@ onMounted(() => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              round
-              dense
-              icon="edit"
-              color="primary"
-              aria-label="Editar fornecedor"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              acao="editar"
+              rotulo="Editar fornecedor"
               :disable="!isAdmin"
-              @click="editarFornecedor(props.row.id)"
+              @click="editarFornecedor(cell.row.id)"
             />
-            <q-btn
-              v-if="props.row.ativo"
-              flat
-              round
-              dense
-              icon="block"
-              color="negative"
-              aria-label="Desativar fornecedor"
+            <app-table-action-button
+              v-if="cell.row.ativo"
+              acao="desativar"
+              rotulo="Desativar fornecedor"
               :disable="!isAdmin"
-              @click="abrirDialogDesativar(props.row)"
+              @click="abrirDialogDesativar(cell.row)"
             />
-            <q-btn
+            <app-table-action-button
               v-else
-              flat
-              round
-              dense
-              icon="restore"
-              color="positive"
-              aria-label="Reativar fornecedor"
+              acao="reativar"
+              rotulo="Reativar fornecedor"
               :disable="!isAdmin"
-              @click="abrirDialogReativar(props.row)"
+              @click="abrirDialogReativar(cell.row)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

@@ -787,14 +787,10 @@ onMounted(async () => {
               </div>
 
               <div class="col-6 col-md-1 flex items-center justify-end">
-                <q-btn
+                <app-table-action-button
                   v-if="!somenteLeitura && itens.length > 1"
-                  flat
-                  round
-                  dense
-                  icon="delete"
-                  color="negative"
-                  aria-label="Remover item"
+                  acao="excluir"
+                  rotulo="Remover item"
                   :disable="!isAdmin"
                   @click="removerItem(indice)"
                 />

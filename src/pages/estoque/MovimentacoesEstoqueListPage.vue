@@ -277,29 +277,21 @@ onMounted(async () => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              v-if="props.row.pedidoFornecedorId"
-              flat
-              round
-              dense
-              icon="shopping_cart"
-              color="primary"
-              aria-label="Ver pedido ao fornecedor"
-              @click="verPedido(props.row.pedidoFornecedorId)"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              v-if="cell.row.pedidoFornecedorId"
+              acao="pedido"
+              rotulo="Ver pedido ao fornecedor"
+              @click="verPedido(cell.row.pedidoFornecedorId)"
             />
-            <q-btn
-              v-if="props.row.aplicacaoPacienteId"
-              flat
-              round
-              dense
-              icon="vaccines"
-              color="primary"
-              aria-label="Ver aplicação em paciente"
-              @click="verAplicacao(props.row.aplicacaoPacienteId)"
+            <app-table-action-button
+              v-if="cell.row.aplicacaoPacienteId"
+              acao="aplicacao"
+              rotulo="Ver aplicação em paciente"
+              @click="verAplicacao(cell.row.aplicacaoPacienteId)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

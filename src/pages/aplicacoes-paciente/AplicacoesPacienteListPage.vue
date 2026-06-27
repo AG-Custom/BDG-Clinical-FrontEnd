@@ -133,9 +133,29 @@ const opcoesAplicadoresFiltro = computed(() => [
 ]);
 
 async function carregarPacientesFiltro(): Promise<void> {
+  if (!filtroUnidadeId.value) {
+    pacientes.value = [];
+    return;
+  }
+
   try {
     pacientes.value = await pacienteService.listar({
-      unidadeId: filtroUnidadeId.value ?? undefined,
+      unidadeId: filtroUnidadeId.value,
+    });
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function carregarAplicadoresFiltro(): Promise<void> {
+  if (!filtroUnidadeId.value) {
+    funcionarios.value = [];
+    return;
+  }
+
+  try {
+    funcionarios.value = await funcionarioService.listar({
+      unidadeId: filtroUnidadeId.value,
     });
   } catch (error) {
     notificacao.erro(obterMensagem(error));
@@ -144,20 +164,17 @@ async function carregarPacientesFiltro(): Promise<void> {
 
 async function carregarFiltros(): Promise<void> {
   try {
-    const [listaUnidades, listaProdutos, listaProcedimentos, listaFuncionarios] =
-      await Promise.all([
+    const [listaUnidades, listaProdutos, listaProcedimentos] = await Promise.all([
       unidadeService.listar(true),
       produtoService.listar(),
       procedimentoService.listar({ includeInactive: true }),
-      funcionarioService.listar(),
     ]);
 
     unidades.value = listaUnidades;
     produtos.value = listaProdutos;
     procedimentos.value = listaProcedimentos;
-    funcionarios.value = listaFuncionarios;
 
-    await carregarPacientesFiltro();
+    await Promise.all([carregarPacientesFiltro(), carregarAplicadoresFiltro()]);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   }
@@ -188,7 +205,8 @@ async function carregarAplicacoes(): Promise<void> {
 
 async function onFiltroUnidadeChange(): Promise<void> {
   filtroPacienteId.value = null;
-  await carregarPacientesFiltro();
+  filtroAplicadorId.value = null;
+  await Promise.all([carregarPacientesFiltro(), carregarAplicadoresFiltro()]);
   await carregarAplicacoes();
 }
 
@@ -268,6 +286,7 @@ onMounted(async () => {
               dense
               emit-value
               map-options
+              :disable="!filtroUnidadeId"
               @update:model-value="carregarAplicacoes"
             />
           </div>
@@ -304,6 +323,7 @@ onMounted(async () => {
               dense
               emit-value
               map-options
+              :disable="!filtroUnidadeId"
               @update:model-value="carregarAplicacoes"
             />
           </div>
@@ -392,29 +412,21 @@ onMounted(async () => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              round
-              dense
-              icon="visibility"
-              color="primary"
-              aria-label="Ver ou editar aplicação"
-              @click="editarAplicacao(props.row.id)"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              acao="visualizar"
+              rotulo="Ver ou editar aplicação"
+              @click="editarAplicacao(cell.row.id)"
             />
-            <q-btn
-              v-if="!props.row.cancelada"
-              flat
-              round
-              dense
-              icon="cancel"
-              color="negative"
-              aria-label="Cancelar aplicação"
+            <app-table-action-button
+              v-if="!cell.row.cancelada"
+              acao="cancelar"
+              rotulo="Cancelar aplicação"
               :disable="!podeGerenciarAplicacoes"
-              @click="abrirDialogCancelar(props.row)"
+              @click="abrirDialogCancelar(cell.row)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

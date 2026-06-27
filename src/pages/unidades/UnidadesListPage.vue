@@ -147,41 +147,33 @@ onMounted(() => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              round
-              dense
-              icon="edit"
-              color="primary"
-              aria-label="Editar unidade"
-              :disable="!isAdmin"
-              @click="editarUnidade(props.row.id)"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              acao="horario"
+              @click="router.push({ name: 'unidades-horario-funcionamento', params: { id: cell.row.id } })"
             />
-            <q-btn
-              v-if="props.row.ativo"
-              flat
-              round
-              dense
-              icon="block"
-              color="negative"
-              aria-label="Desativar unidade"
+            <app-table-action-button
+              acao="editar"
+              rotulo="Editar unidade"
               :disable="!isAdmin"
-              @click="abrirDialogDesativar(props.row)"
+              @click="editarUnidade(cell.row.id)"
             />
-            <q-btn
+            <app-table-action-button
+              v-if="cell.row.ativo"
+              acao="desativar"
+              rotulo="Desativar unidade"
+              :disable="!isAdmin"
+              @click="abrirDialogDesativar(cell.row)"
+            />
+            <app-table-action-button
               v-else
-              flat
-              round
-              dense
-              icon="restore"
-              color="positive"
-              aria-label="Reativar unidade"
+              acao="reativar"
+              rotulo="Reativar unidade"
               :disable="!isAdmin"
-              @click="abrirDialogReativar(props.row)"
+              @click="abrirDialogReativar(cell.row)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

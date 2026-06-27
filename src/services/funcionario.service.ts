@@ -4,12 +4,23 @@ import type {
   AtualizarFuncionarioRequest,
   CriarFuncionarioRequest,
   Funcionario,
+  ListarFuncionariosParams,
 } from '@/types/entidades/funcionario';
 
 export const funcionarioService = {
-  async listar(includeInactive = false): Promise<Funcionario[]> {
+  async listar(params: ListarFuncionariosParams = {}): Promise<Funcionario[]> {
+    const query: Record<string, string | boolean> = {};
+
+    if (params.unidadeId) {
+      query.unidadeId = params.unidadeId;
+    }
+
+    if (params.includeInactive) {
+      query.includeInactive = true;
+    }
+
     const { data } = await api.get<ApiResponse<Funcionario[]>>('/api/employees', {
-      params: includeInactive ? { includeInactive: true } : undefined,
+      params: Object.keys(query).length > 0 ? query : undefined,
     });
 
     return data.data ?? [];

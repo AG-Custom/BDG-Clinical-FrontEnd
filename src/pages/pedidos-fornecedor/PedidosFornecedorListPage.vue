@@ -282,40 +282,28 @@ onMounted(async () => {
           </q-td>
         </template>
 
-        <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              round
-              dense
-              icon="visibility"
-              color="primary"
-              aria-label="Ver ou editar pedido"
-              @click="editarPedido(props.row.id)"
+        <template #body-cell-acoes="cell">
+          <app-table-actions-cell :cell="cell">
+            <app-table-action-button
+              acao="visualizar"
+              rotulo="Ver ou editar pedido"
+              @click="editarPedido(cell.row.id)"
             />
-            <q-btn
-              v-if="podeEditarPedido(props.row)"
-              flat
-              round
-              dense
-              icon="inventory"
-              color="positive"
-              aria-label="Receber pedido"
+            <app-table-action-button
+              v-if="podeEditarPedido(cell.row)"
+              acao="receber"
+              rotulo="Receber pedido"
               :disable="!isAdmin"
-              @click="abrirDialogReceber(props.row)"
+              @click="abrirDialogReceber(cell.row)"
             />
-            <q-btn
-              v-if="podeEditarPedido(props.row)"
-              flat
-              round
-              dense
-              icon="cancel"
-              color="negative"
-              aria-label="Cancelar pedido"
+            <app-table-action-button
+              v-if="podeEditarPedido(cell.row)"
+              acao="cancelar"
+              rotulo="Cancelar pedido"
               :disable="!isAdmin"
-              @click="abrirDialogCancelar(props.row)"
+              @click="abrirDialogCancelar(cell.row)"
             />
-          </q-td>
+          </app-table-actions-cell>
         </template>
       </q-table>
 
