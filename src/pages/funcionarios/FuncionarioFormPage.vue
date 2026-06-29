@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { funcionarioService } from '@/services/funcionario.service';
@@ -16,7 +17,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.funcionarios.criar);
+const podeEditar = usePermissao(permissoes.funcionarios.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -35,7 +38,7 @@ const form = reactive({
   linkToEmpresa: false,
   unidadeIds: [] as string[],
   cargoId: null as string | null,
-  flagAplicador: false,
+  isAdmin: false,
 });
 
 const opcoesUnidades = computed(() =>
@@ -52,16 +55,20 @@ const opcoesCargos = computed(() =>
   })),
 );
 
+const mostrarAlertaCargos = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    podeSalvar.value &&
+    !form.isAdmin &&
+    opcoesCargos.value.length === 0,
+);
+
 const mostrarAlertaUnidades = computed(
   () =>
     dadosIniciaisCarregados.value &&
-    isAdmin.value &&
+    podeSalvar.value &&
     !form.linkToEmpresa &&
     opcoesUnidades.value.length === 0,
-);
-
-const mostrarAlertaCargos = computed(
-  () => dadosIniciaisCarregados.value && isAdmin.value && opcoesCargos.value.length === 0,
 );
 
 watch(
@@ -89,6 +96,14 @@ function validarUnidades(): boolean | string {
   }
 
   return form.unidadeIds.length > 0 || 'Selecione ao menos uma unidade';
+}
+
+function validarCargo(): boolean | string {
+  if (form.isAdmin) {
+    return true;
+  }
+
+  return Boolean(form.cargoId) || 'Selecione o cargo do colaborador';
 }
 
 async function carregarUnidades(): Promise<void> {
@@ -153,8 +168,8 @@ async function carregarFuncionario(): Promise<void> {
     form.telefone = funcionario.telefone ?? '';
     form.unidadeIds = vinculo.unidadeIds;
     form.cargoId = vinculo.cargoId;
-    form.flagAplicador = vinculo.flagAplicador;
     form.linkToEmpresa = vinculo.linkToEmpresa;
+    form.isAdmin = funcionario.isAdmin ?? false;
     emailLoginEdicao.value = funcionario.emailLogin;
 
     if (vinculo.cargoId) {
@@ -173,7 +188,7 @@ function montarPayloadVinculo() {
     linkToEmpresa: form.linkToEmpresa,
     unidadeIds: form.linkToEmpresa ? null : form.unidadeIds,
     cargoId: form.cargoId,
-    flagAplicador: form.flagAplicador,
+    isAdmin: form.isAdmin,
   };
 }
 
@@ -215,6 +230,14 @@ async function salvar(): Promise<void> {
   }
 }
 
+function irParaPermissoesAvancadas(): void {
+  if (!funcionarioId.value) {
+    return;
+  }
+
+  router.push({ name: 'funcionarios-permissoes', params: { id: funcionarioId.value } });
+}
+
 function cancelar(): void {
   router.push({ name: 'funcionarios' });
 }
@@ -248,7 +271,7 @@ onMounted(async () => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value) || 'Informe o nome']"
           />
 
@@ -261,7 +284,7 @@ onMounted(async () => {
                 mask="(##) #####-####"
                 unmasked-value
                 fill-mask
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
               />
             </div>
           </div>
@@ -278,7 +301,7 @@ onMounted(async () => {
             type="email"
             outlined
             hint="Usado para login na plataforma e contato. Não pode ser alterado depois."
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[validarEmail]"
           />
 
@@ -300,13 +323,64 @@ onMounted(async () => {
 
           <q-separator class="q-my-sm" />
 
+          <div class="text-subtitle2 text-weight-medium">Perfil de acesso</div>
+
+          <q-toggle
+            v-model="form.isAdmin"
+            label="Administrador da empresa"
+            color="primary"
+            :disable="!podeSalvar"
+          />
+
+          <q-banner v-if="!isEdicao && form.isAdmin" dense rounded class="funcionario-form__info-banner">
+            <template #avatar>
+              <q-icon name="admin_panel_settings" color="primary" />
+            </template>
+            Como administrador da empresa, o colaborador terá permissão de acesso a todas as
+            funcionalidades do sistema, independentemente do cargo.
+          </q-banner>
+
+          <q-select
+            v-if="!form.isAdmin"
+            v-model="form.cargoId"
+            class="form-field--required"
+            :options="opcoesCargos"
+            label="Cargo"
+            outlined
+            emit-value
+            map-options
+            :rules="[validarCargo]"
+            :disable="!podeSalvar || opcoesCargos.length === 0"
+            hint="As permissões base são herdadas do cargo selecionado."
+          />
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaCargos"
+            mensagem="Nenhum cargo cadastrado. Cadastre um cargo para vincular ao colaborador."
+            rotulo-acao="Cadastrar cargo"
+            :destino="{ name: 'cargos-novo' }"
+            @atualizar="recarregarDependencias"
+          />
+
+          <div v-if="isEdicao && podeEditar && !form.isAdmin" class="q-mt-sm">
+            <q-btn
+              flat
+              color="primary"
+              label="Permissões avançadas"
+              icon="tune"
+              no-caps
+              @click="irParaPermissoesAvancadas"
+            />
+          </div>
+
+          <q-separator class="q-my-sm" />
+
           <div class="text-subtitle2 text-weight-medium">Vínculo</div>
 
           <q-toggle
             v-model="form.linkToEmpresa"
             label="Atua em todas as unidades da empresa"
             color="primary"
-            :disable="!isAdmin"
+            :disable="!podeSalvar"
           />
 
           <q-select
@@ -321,7 +395,7 @@ onMounted(async () => {
             emit-value
             map-options
             :rules="[validarUnidades]"
-            :disable="!isAdmin || opcoesUnidades.length === 0"
+            :disable="!podeSalvar || opcoesUnidades.length === 0"
             hint="Selecione as unidades em que o colaborador atuará."
           />
           <app-form-dependencia-alerta
@@ -332,36 +406,6 @@ onMounted(async () => {
             @atualizar="recarregarDependencias"
           />
 
-          <q-select
-            v-model="form.cargoId"
-            :options="opcoesCargos"
-            label="Cargo"
-            outlined
-            clearable
-            emit-value
-            map-options
-            :disable="!isAdmin || opcoesCargos.length === 0"
-            hint="Selecione o cargo do colaborador na clínica."
-          />
-          <app-form-dependencia-alerta
-            v-if="mostrarAlertaCargos"
-            mensagem="Nenhum cargo cadastrado. Cadastre um cargo para vincular ao colaborador."
-            rotulo-acao="Cadastrar cargo"
-            :destino="{ name: 'cargos-novo' }"
-            @atualizar="recarregarDependencias"
-          />
-
-          <q-separator class="q-my-sm" />
-
-          <div class="text-subtitle2 text-weight-medium">Permissões</div>
-
-          <q-toggle
-            v-model="form.flagAplicador"
-            label="Pode realizar aplicações"
-            color="primary"
-            :disable="!isAdmin"
-          />
-
           <div class="row q-gutter-sm q-mt-md">
             <q-btn
               color="primary"
@@ -370,7 +414,7 @@ onMounted(async () => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin || (!form.linkToEmpresa && opcoesUnidades.length === 0)"
+              :disable="!podeSalvar || (!form.linkToEmpresa && opcoesUnidades.length === 0)"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

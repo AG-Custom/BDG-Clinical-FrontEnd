@@ -34,6 +34,20 @@ export interface PedidoFornecedorItem {
   valorTotal: number;
 }
 
+export interface AnexoPedidoFornecedor {
+  id: string;
+  nomeArquivo: string;
+  contentType: string;
+  url: string;
+  tamanhoBytes: number;
+  criadoEm: string;
+}
+
+export const TAMANHO_MAX_ANEXO_PEDIDO = 10 * 1024 * 1024;
+
+export const EXTENSOES_ANEXO_PEDIDO =
+  '.pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,application/pdf,image/png,image/jpeg,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 export interface PedidoFornecedor {
   id: string;
   fornecedorId: string;
@@ -46,6 +60,7 @@ export interface PedidoFornecedor {
   observacao: string | null;
   valorTotal: number;
   itens: PedidoFornecedorItem[];
+  anexos: AnexoPedidoFornecedor[];
   criadoEm?: string;
   atualizadoEm?: string | null;
 }
@@ -234,6 +249,18 @@ export function obterResumoItensPedido(pedido: PedidoFornecedor): string {
   const quantidadeTotal = itens.reduce((total, item) => total + item.quantidade, 0);
 
   return `${itens.length} produtos (${quantidadeTotal.toLocaleString('pt-BR')} un)`;
+}
+
+export function formatarTamanhoArquivo(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function possuiTooltipItensPedido(pedido: PedidoFornecedor): boolean {

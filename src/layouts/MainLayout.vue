@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { useAuth } from '@/composables/useAuth';
+import { usePermissoes } from '@/composables/usePermissao';
+import { modulosMenu, permissoes, permissoesMenu, permissoesMenuEmpresa } from '@/constants/permissoes';
 import { DesignSystemLayout } from '@/constants/design-system';
 import { useEmpresaStore } from '@/stores/empresa.store';
 
@@ -25,6 +27,7 @@ const ROTAS_SECAO_FUNCIONARIOS = new Set([
   'funcionarios',
   'funcionarios-novo',
   'funcionarios-editar',
+  'funcionarios-permissoes',
   'cargos',
   'cargos-novo',
   'cargos-editar',
@@ -67,7 +70,19 @@ const comprasMenuAberto = ref(false);
 const route = useRoute();
 const auth = useAuth();
 const { usuario, logout } = auth;
+const { possuiPermissao, possuiAlguma } = usePermissoes();
 const empresaStore = useEmpresaStore();
+
+const menu = permissoesMenu;
+
+const mostrarInicio = computed(() => possuiPermissao(menu.agenda));
+const mostrarUnidades = computed(() => possuiPermissao(menu.unidades));
+const mostrarAtendimento = computed(() => possuiAlguma([...modulosMenu.atendimento]));
+const mostrarFuncionarios = computed(() => possuiAlguma([...modulosMenu.funcionarios]));
+const mostrarProdutos = computed(() => possuiAlguma([...modulosMenu.produtos]));
+const mostrarEstoque = computed(() => possuiAlguma([...modulosMenu.estoque]));
+const mostrarCompras = computed(() => possuiAlguma([...modulosMenu.compras]));
+const mostrarEmpresas = computed(() => possuiAlguma([...permissoesMenuEmpresa]));
 
 type MenuSecao = 'atendimento' | 'funcionarios' | 'produtos' | 'estoque' | 'compras';
 
@@ -232,43 +247,68 @@ onMounted(() => {
 
         <q-scroll-area class="drawer-nav">
           <q-list padding>
-        <q-item clickable v-ripple to="/" exact>
+        <q-item v-if="mostrarInicio" clickable v-ripple to="/" exact>
           <q-item-section avatar>
             <q-icon name="space_dashboard" />
           </q-item-section>
           <q-item-section>Início</q-item-section>
         </q-item>
-        <q-item clickable v-ripple :to="{ name: 'unidades' }">
+        <q-item v-if="mostrarUnidades" clickable v-ripple :to="{ name: 'unidades' }">
           <q-item-section avatar>
             <q-icon name="apartment" />
           </q-item-section>
           <q-item-section>Unidades</q-item-section>
         </q-item>
         <q-expansion-item
+          v-if="mostrarAtendimento"
           v-model="atendimentoMenuAberto"
           icon="personal_injury"
           label="Atendimento"
           :header-class="isSecaoAtendimento ? 'drawer-menu__section--active' : ''"
         >
-          <q-item clickable v-ripple :to="{ name: 'pacientes' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.pacientes)"
+            clickable
+            v-ripple
+            :to="{ name: 'pacientes' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="people" size="20px" />
             </q-item-section>
             <q-item-section>Pacientes</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'aplicacoes-paciente' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.aplicacoes)"
+            clickable
+            v-ripple
+            :to="{ name: 'aplicacoes-paciente' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="vaccines" size="20px" />
             </q-item-section>
             <q-item-section>Aplicações</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'procedimentos' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.procedimentos)"
+            clickable
+            v-ripple
+            :to="{ name: 'procedimentos' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="medical_services" size="20px" />
             </q-item-section>
             <q-item-section>Procedimentos</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'sintomas' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.sintomas)"
+            clickable
+            v-ripple
+            :to="{ name: 'sintomas' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="healing" size="20px" />
             </q-item-section>
@@ -276,18 +316,31 @@ onMounted(() => {
           </q-item>
         </q-expansion-item>
         <q-expansion-item
+          v-if="mostrarFuncionarios"
           v-model="funcionariosMenuAberto"
           icon="groups"
           label="Funcionários"
           :header-class="isSecaoFuncionarios ? 'drawer-menu__section--active' : ''"
         >
-          <q-item clickable v-ripple :to="{ name: 'funcionarios' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.funcionarios)"
+            clickable
+            v-ripple
+            :to="{ name: 'funcionarios' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="people" size="20px" />
             </q-item-section>
             <q-item-section>Colaboradores</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'cargos' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.cargos)"
+            clickable
+            v-ripple
+            :to="{ name: 'cargos' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="badge" size="20px" />
             </q-item-section>
@@ -295,24 +348,43 @@ onMounted(() => {
           </q-item>
         </q-expansion-item>
         <q-expansion-item
+          v-if="mostrarProdutos"
           v-model="produtosMenuAberto"
           icon="category"
           label="Produtos"
           :header-class="isSecaoProdutos ? 'drawer-menu__section--active' : ''"
         >
-          <q-item clickable v-ripple :to="{ name: 'produtos' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.produtos)"
+            clickable
+            v-ripple
+            :to="{ name: 'produtos' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="list_alt" size="20px" />
             </q-item-section>
             <q-item-section>Catálogo</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'tipos-produto' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.tiposProduto)"
+            clickable
+            v-ripple
+            :to="{ name: 'tipos-produto' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="label" size="20px" />
             </q-item-section>
             <q-item-section>Tipos de produto</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'unidades-medida' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.unidadesMedida)"
+            clickable
+            v-ripple
+            :to="{ name: 'unidades-medida' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="straighten" size="20px" />
             </q-item-section>
@@ -320,12 +392,19 @@ onMounted(() => {
           </q-item>
         </q-expansion-item>
         <q-expansion-item
+          v-if="mostrarEstoque"
           v-model="estoqueMenuAberto"
           icon="inventory_2"
           label="Estoque"
           :header-class="isSecaoEstoque ? 'drawer-menu__section--active' : ''"
         >
-          <q-item clickable v-ripple :to="{ name: 'saldos-estoque' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.estoque)"
+            clickable
+            v-ripple
+            :to="{ name: 'saldos-estoque' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="widgets" size="20px" />
             </q-item-section>
@@ -340,6 +419,7 @@ onMounted(() => {
             Movimentações
           </q-item-label>
           <q-item
+            v-if="possuiPermissao(menu.movimentacoesEstoque)"
             clickable
             v-ripple
             :to="{ name: 'movimentacoes-estoque' }"
@@ -351,6 +431,7 @@ onMounted(() => {
             <q-item-section class="drawer-menu__label">Histórico</q-item-section>
           </q-item>
           <q-item
+            v-if="possuiPermissao(permissoes.estoque.movimentar)"
             clickable
             v-ripple
             :to="{ name: 'movimentacoes-estoque-entrada' }"
@@ -362,6 +443,7 @@ onMounted(() => {
             <q-item-section class="drawer-menu__label">Registrar entrada</q-item-section>
           </q-item>
           <q-item
+            v-if="possuiPermissao(permissoes.estoque.movimentar)"
             clickable
             v-ripple
             :to="{ name: 'movimentacoes-estoque-saida' }"
@@ -374,25 +456,38 @@ onMounted(() => {
           </q-item>
         </q-expansion-item>
         <q-expansion-item
+          v-if="mostrarCompras"
           v-model="comprasMenuAberto"
           icon="shopping_cart"
           label="Compras"
           :header-class="isSecaoCompras ? 'drawer-menu__section--active' : ''"
         >
-          <q-item clickable v-ripple :to="{ name: 'fornecedores' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.fornecedores)"
+            clickable
+            v-ripple
+            :to="{ name: 'fornecedores' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="store" size="20px" />
             </q-item-section>
             <q-item-section>Fornecedores</q-item-section>
           </q-item>
-          <q-item clickable v-ripple :to="{ name: 'pedidos-fornecedor' }" :inset-level="1">
+          <q-item
+            v-if="possuiPermissao(menu.pedidosFornecedor)"
+            clickable
+            v-ripple
+            :to="{ name: 'pedidos-fornecedor' }"
+            :inset-level="1"
+          >
             <q-item-section avatar class="drawer-menu__sub-icon">
               <q-icon name="receipt_long" size="20px" />
             </q-item-section>
             <q-item-section>Pedidos ao fornecedor</q-item-section>
           </q-item>
         </q-expansion-item>
-        <q-item clickable v-ripple :to="{ name: 'empresas' }">
+        <q-item v-if="mostrarEmpresas" clickable v-ripple :to="{ name: 'empresas' }">
           <q-item-section avatar>
             <q-icon name="business" />
           </q-item-section>

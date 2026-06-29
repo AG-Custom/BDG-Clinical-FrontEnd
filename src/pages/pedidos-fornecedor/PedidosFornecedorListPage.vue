@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { fornecedorService } from '@/services/fornecedor.service';
@@ -25,7 +26,9 @@ import type { Unidade } from '@/types/entidades/unidade';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.pedidosFornecedor.criar);
+const podeEditar = usePermissao(permissoes.pedidosFornecedor.editar);
+const podeReceber = usePermissao(permissoes.pedidosFornecedor.receber);
 
 const pedidos = ref<PedidoFornecedor[]>([]);
 const fornecedores = ref<Fornecedor[]>([]);
@@ -186,8 +189,8 @@ onMounted(async () => {
         icon="add"
         unelevated
         no-caps
-        :disable="!isAdmin"
-        :to="isAdmin ? { name: 'pedidos-fornecedor-novo' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'pedidos-fornecedor-novo' } : undefined"
       />
     </app-page-header>
 
@@ -293,14 +296,14 @@ onMounted(async () => {
               v-if="podeEditarPedido(cell.row)"
               acao="receber"
               rotulo="Receber pedido"
-              :disable="!isAdmin"
+              :disable="!podeReceber"
               @click="abrirDialogReceber(cell.row)"
             />
             <app-table-action-button
               v-if="podeEditarPedido(cell.row)"
               acao="cancelar"
               rotulo="Cancelar pedido"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="abrirDialogCancelar(cell.row)"
             />
           </app-table-actions-cell>
@@ -324,8 +327,8 @@ onMounted(async () => {
             icon="add"
             unelevated
             no-caps
-            :disable="!isAdmin"
-            :to="isAdmin ? { name: 'pedidos-fornecedor-novo' } : undefined"
+            :disable="!podeCriar"
+            :to="podeCriar ? { name: 'pedidos-fornecedor-novo' } : undefined"
           />
         </div>
       </q-card-section>

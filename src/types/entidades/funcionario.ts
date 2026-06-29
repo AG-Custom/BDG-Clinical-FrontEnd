@@ -1,9 +1,10 @@
+import { isCargoAplicador, type Cargo } from '@/types/entidades/cargo';
+
 export interface FuncionarioLink {
   id: string;
   empresaId: string | null;
   unidadeId: string | null;
   cargoId: string | null;
-  flagAplicador: boolean;
   ativo: boolean;
 }
 
@@ -14,6 +15,7 @@ export interface Funcionario {
   email: string | null;
   emailLogin: string;
   pendentePrimeiroAcesso: boolean;
+  isAdmin?: boolean;
   ativo: boolean;
   links: FuncionarioLink[];
   criadoEm: string;
@@ -28,7 +30,7 @@ export interface CriarFuncionarioRequest {
   linkToEmpresa: boolean;
   unidadeIds?: string[] | null;
   cargoId?: string | null;
-  flagAplicador: boolean;
+  isAdmin?: boolean;
 }
 
 export interface AtualizarFuncionarioRequest {
@@ -38,7 +40,7 @@ export interface AtualizarFuncionarioRequest {
   linkToEmpresa: boolean;
   unidadeIds?: string[] | null;
   cargoId?: string | null;
-  flagAplicador: boolean;
+  isAdmin?: boolean;
 }
 
 export interface ListarFuncionariosParams {
@@ -114,7 +116,6 @@ export function extrairDadosVinculo(funcionario: Funcionario): {
   linkToEmpresa: boolean;
   unidadeIds: string[];
   cargoId: string | null;
-  flagAplicador: boolean;
 } {
   const linksReferencia = obterLinksReferencia(funcionario);
   const linkToEmpresa = isVinculoTodaEmpresa(linksReferencia);
@@ -122,9 +123,25 @@ export function extrairDadosVinculo(funcionario: Funcionario): {
     .map((link) => link.unidadeId)
     .filter((id): id is string => Boolean(id));
   const cargoId = linksReferencia.find((link) => link.cargoId)?.cargoId ?? null;
-  const flagAplicador = linksReferencia.some((link) => link.flagAplicador);
 
-  return { linkToEmpresa, unidadeIds, cargoId, flagAplicador };
+  return { linkToEmpresa, unidadeIds, cargoId };
+}
+
+export function isFuncionarioAplicador(
+  funcionario: Funcionario,
+  cargosPorId: Map<string, Pick<Cargo, 'flagAplicador'>>,
+): boolean {
+  if (!funcionario.ativo) {
+    return false;
+  }
+
+  const { cargoId } = extrairDadosVinculo(funcionario);
+
+  if (!cargoId) {
+    return false;
+  }
+
+  return isCargoAplicador(cargosPorId.get(cargoId));
 }
 
 function obterLinksAtivos(funcionario: Funcionario): FuncionarioLink[] {
@@ -140,14 +157,13 @@ function obterLinksAtivos(funcionario: Funcionario): FuncionarioLink[] {
 export function isAplicadorHabilitadoNaUnidade(
   funcionario: Funcionario,
   unidadeId: string,
+  cargosPorId: Map<string, Pick<Cargo, 'flagAplicador'>>,
 ): boolean {
-  if (!funcionario.ativo) {
+  if (!isFuncionarioAplicador(funcionario, cargosPorId)) {
     return false;
   }
 
-  return obterLinksAtivos(funcionario).some(
-    (link) => link.flagAplicador && (Boolean(link.empresaId) || link.unidadeId === unidadeId),
-  );
+  return isFuncionarioVinculadoNaUnidade(funcionario, unidadeId);
 }
 
 export function isFuncionarioVinculadoNaUnidade(

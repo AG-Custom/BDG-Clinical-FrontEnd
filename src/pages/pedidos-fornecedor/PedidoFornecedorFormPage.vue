@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { fornecedorService } from '@/services/fornecedor.service';
@@ -11,13 +12,16 @@ import { produtoService } from '@/services/produto.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Fornecedor } from '@/types/entidades/fornecedor';
 import type {
+  AnexoPedidoFornecedor,
   ItemPedidoFormulario,
   PedidoFornecedor,
   StatusPedidoFornecedor,
   TipoPedidoFornecedor,
 } from '@/types/entidades/pedido-fornecedor';
 import {
+  EXTENSOES_ANEXO_PEDIDO,
   STATUS_PEDIDO_EDITAVEL,
+  TAMANHO_MAX_ANEXO_PEDIDO,
   TIPOS_PEDIDO_FORNECEDOR,
   calcularValorTotalLinhaItem,
   calcularValorUnitarioDerivado,
@@ -26,6 +30,7 @@ import {
   deIsoParaInputDatetimeLocal,
   formatarMoeda,
   formatarMoedaParaInput,
+  formatarTamanhoArquivo,
   montarItemPedidoRequest,
   obterCorStatusPedido,
   parsearMoedaDoInput,
@@ -45,7 +50,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.pedidosFornecedor.criar);
+const podeEditar = usePermissao(permissoes.pedidosFornecedor.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -57,6 +64,11 @@ const unidadesDisponiveis = ref<Unidade[]>([]);
 const produtosDisponiveis = ref<Produto[]>([]);
 const dadosIniciaisCarregados = ref(false);
 const semFornecedores = ref(false);
+const anexos = ref<AnexoPedidoFornecedor[]>([]);
+const anexosPendentes = ref<File[]>([]);
+const arquivosSelecionados = ref<File[] | null>(null);
+const enviandoAnexo = ref(false);
+const removendoAnexoId = ref<string | null>(null);
 
 let sequenciaBuscaFornecedor = 0;
 
@@ -124,7 +136,7 @@ const valorTotalPedido = computed(() =>
 const mostrarAlertaUnidades = computed(
   () =>
     dadosIniciaisCarregados.value &&
-    isAdmin.value &&
+    podeSalvar.value &&
     !somenteLeitura.value &&
     opcoesUnidades.value.length === 0,
 );
@@ -132,15 +144,21 @@ const mostrarAlertaUnidades = computed(
 const mostrarAlertaProdutos = computed(
   () =>
     dadosIniciaisCarregados.value &&
-    isAdmin.value &&
+    podeSalvar.value &&
     !somenteLeitura.value &&
     opcoesProdutos.value.length === 0,
 );
 
+const possuiAnexos = computed(
+  () => anexos.value.length > 0 || anexosPendentes.value.length > 0,
+);
+
+const podeGerenciarAnexos = computed(() => podeEditar.value);
+
 const mostrarAlertaFornecedores = computed(
   () =>
     dadosIniciaisCarregados.value &&
-    isAdmin.value &&
+    podeSalvar.value &&
     !somenteLeitura.value &&
     semFornecedores.value,
 );
@@ -458,6 +476,7 @@ async function carregarPedido(): Promise<void> {
       ? (pedido.status as 'Aberto' | 'Pedido')
       : 'Aberto';
     form.observacao = pedido.observacao ?? '';
+    anexos.value = pedido.anexos ?? [];
 
     itens.value = pedido.itens.map((item) => ({
       produtoId: item.produtoId,
@@ -495,11 +514,18 @@ async function salvar(): Promise<void> {
     if (isEdicao.value && pedidoId.value) {
       await pedidoFornecedorService.atualizar(pedidoId.value, payload);
       notificacao.sucesso('Pedido atualizado com sucesso.');
-    } else {
-      await pedidoFornecedorService.criar(payload);
-      notificacao.sucesso('Pedido cadastrado com sucesso.');
+      await router.push({ name: 'pedidos-fornecedor' });
+      return;
     }
 
+    await pedidoFornecedorService.criar(payload, anexosPendentes.value);
+    const quantidadeAnexos = anexosPendentes.value.length;
+
+    notificacao.sucesso(
+      quantidadeAnexos > 0
+        ? `Pedido cadastrado com ${quantidadeAnexos} anexo(s).`
+        : 'Pedido cadastrado com sucesso.',
+    );
     await router.push({ name: 'pedidos-fornecedor' });
   } catch (error) {
     notificacao.erro(obterMensagem(error));
@@ -515,6 +541,72 @@ function cancelar(): void {
 function definirDataAtual(): void {
   if (!form.dataPedido) {
     form.dataPedido = deIsoParaInputDatetimeLocal(new Date().toISOString());
+  }
+}
+
+function aoRejeitarAnexo(rejeitados: { failedPropValidation: string }[]): void {
+  if (rejeitados.some((item) => item.failedPropValidation === 'max-file-size')) {
+    notificacao.erro('Cada arquivo deve ter no máximo 10 MB.');
+    return;
+  }
+
+  notificacao.erro('Formato de arquivo não suportado.');
+}
+
+function removerAnexoPendente(indice: number): void {
+  anexosPendentes.value.splice(indice, 1);
+}
+
+async function aoSelecionarArquivos(arquivos: File | File[] | null): Promise<void> {
+  if (!arquivos || !podeGerenciarAnexos.value) {
+    return;
+  }
+
+  const lista = Array.isArray(arquivos) ? arquivos : [arquivos];
+
+  if (!isEdicao.value || !pedidoId.value) {
+    anexosPendentes.value = [...anexosPendentes.value, ...lista];
+    arquivosSelecionados.value = null;
+    return;
+  }
+
+  enviandoAnexo.value = true;
+
+  try {
+    const enviados = await Promise.all(
+      lista.map((arquivo) => pedidoFornecedorService.enviarAnexo(pedidoId.value!, arquivo)),
+    );
+
+    anexos.value = [...anexos.value, ...enviados];
+
+    notificacao.sucesso(
+      enviados.length === 1
+        ? 'Anexo enviado com sucesso.'
+        : `${enviados.length} anexos enviados com sucesso.`,
+    );
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    enviandoAnexo.value = false;
+    arquivosSelecionados.value = null;
+  }
+}
+
+async function removerAnexo(anexo: AnexoPedidoFornecedor): Promise<void> {
+  if (!pedidoId.value) {
+    return;
+  }
+
+  removendoAnexoId.value = anexo.id;
+
+  try {
+    await pedidoFornecedorService.removerAnexo(pedidoId.value, anexo.id);
+    anexos.value = anexos.value.filter((item) => item.id !== anexo.id);
+    notificacao.sucesso('Anexo removido com sucesso.');
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    removendoAnexoId.value = null;
   }
 }
 
@@ -538,7 +630,7 @@ onMounted(async () => {
       :subtitulo="
         isEdicao
           ? somenteLeitura
-            ? 'Pedido finalizado — somente visualização.'
+            ? 'Dados do pedido bloqueados para edição. Anexos podem ser gerenciados abaixo.'
             : 'Atualize os dados do pedido de compra.'
           : 'Registre um pedido de compra ao fornecedor.'
       "
@@ -578,7 +670,7 @@ onMounted(async () => {
                 options-dense
                 :loading="buscandoFornecedor"
                 :rules="[validarFornecedor]"
-                :disable="!isAdmin || somenteLeitura"
+                :disable="!podeSalvar || somenteLeitura"
                 hint="Abra o select ou digite para buscar (mín. 2 caracteres)"
                 @filter="filtrarFornecedores"
                 @update:model-value="atualizarFornecedorSelecionado"
@@ -606,7 +698,7 @@ onMounted(async () => {
                 emit-value
                 map-options
                 :rules="[validarUnidade]"
-                :disable="!isAdmin || somenteLeitura || opcoesUnidades.length === 0"
+                :disable="!podeSalvar || somenteLeitura || opcoesUnidades.length === 0"
               />
               <app-form-dependencia-alerta
                 v-if="mostrarAlertaUnidades"
@@ -627,7 +719,7 @@ onMounted(async () => {
                 outlined
                 emit-value
                 map-options
-                :disable="!isAdmin || somenteLeitura"
+                :disable="!podeSalvar || somenteLeitura"
               />
             </div>
             <div class="col-12 col-md-4">
@@ -637,7 +729,7 @@ onMounted(async () => {
                 label="Data do pedido"
                 outlined
                 type="datetime-local"
-                :readonly="!isAdmin || somenteLeitura"
+                :readonly="!podeSalvar || somenteLeitura"
                 :rules="[validarDataPedido]"
               />
             </div>
@@ -649,7 +741,7 @@ onMounted(async () => {
                 outlined
                 emit-value
                 map-options
-                :disable="!isAdmin || somenteLeitura"
+                :disable="!podeSalvar || somenteLeitura"
               />
             </div>
           </div>
@@ -660,7 +752,7 @@ onMounted(async () => {
             outlined
             type="textarea"
             autogrow
-            :readonly="!isAdmin || somenteLeitura"
+            :readonly="!podeSalvar || somenteLeitura"
           />
 
           <q-separator class="q-my-md" />
@@ -683,7 +775,7 @@ onMounted(async () => {
               icon="add"
               label="Adicionar item"
               no-caps
-              :disable="!isAdmin || opcoesProdutos.length === 0"
+              :disable="!podeSalvar || opcoesProdutos.length === 0"
               @click="adicionarItem"
             />
           </div>
@@ -705,7 +797,7 @@ onMounted(async () => {
                   emit-value
                   map-options
                   :rules="[validarProduto]"
-                  :disable="!isAdmin || somenteLeitura || opcoesProdutos.length === 0"
+                  :disable="!podeSalvar || somenteLeitura || opcoesProdutos.length === 0"
                 />
               </div>
 
@@ -719,7 +811,7 @@ onMounted(async () => {
                   type="number"
                   min="1"
                   step="1"
-                  :readonly="!isAdmin || somenteLeitura"
+                  :readonly="!podeSalvar || somenteLeitura"
                   :rules="[validarQuantidade]"
                 >
                   <template v-if="item.produtoId" #append>
@@ -749,7 +841,7 @@ onMounted(async () => {
                     dense
                     inline
                     class="pedido-item__modo-opcoes"
-                    :disable="!isAdmin"
+                    :disable="!podeSalvar"
                     @update:model-value="alternarModoValor(item, $event as 'unitario' | 'total')"
                   />
 
@@ -762,7 +854,7 @@ onMounted(async () => {
                     dense
                     inputmode="numeric"
                     prefix="R$"
-                    :readonly="!isAdmin"
+                    :readonly="!podeSalvar"
                     :rules="[() => validarValorUnitario(item.valorUnitario)]"
                     @update:model-value="atualizarValorMoedaItem(item, 'unitario', String($event ?? ''))"
                   />
@@ -775,7 +867,7 @@ onMounted(async () => {
                     dense
                     inputmode="numeric"
                     prefix="R$"
-                    :readonly="!isAdmin"
+                    :readonly="!podeSalvar"
                     :rules="[() => validarValorTotal(item.valorTotal)]"
                     @update:model-value="atualizarValorMoedaItem(item, 'total', String($event ?? ''))"
                   />
@@ -791,7 +883,7 @@ onMounted(async () => {
                   v-if="!somenteLeitura && itens.length > 1"
                   acao="excluir"
                   rotulo="Remover item"
-                  :disable="!isAdmin"
+                  :disable="!podeSalvar"
                   @click="removerItem(indice)"
                 />
               </div>
@@ -804,6 +896,117 @@ onMounted(async () => {
             </div>
           </div>
 
+          <q-separator class="q-my-md" />
+
+          <div class="text-subtitle1 text-weight-medium q-mb-md">Anexos</div>
+
+          <q-list
+            v-if="anexos.length > 0"
+            bordered
+            separator
+            class="q-mb-md rounded-borders"
+          >
+            <q-item v-for="anexo in anexos" :key="anexo.id">
+              <q-item-section avatar>
+                <q-icon name="attach_file" color="primary" />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label>{{ anexo.nomeArquivo }}</q-item-label>
+                <q-item-label caption>
+                  {{ formatarTamanhoArquivo(anexo.tamanhoBytes) }}
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    flat
+                    color="primary"
+                    icon="open_in_new"
+                    label="Abrir"
+                    no-caps
+                    :href="anexo.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                  <app-table-action-button
+                    v-if="podeGerenciarAnexos"
+                    acao="excluir"
+                    rotulo="Remover anexo"
+                    :disable="removendoAnexoId === anexo.id"
+                    :loading="removendoAnexoId === anexo.id"
+                    @click="removerAnexo(anexo)"
+                  />
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <q-list
+            v-if="anexosPendentes.length > 0"
+            bordered
+            separator
+            class="q-mb-md rounded-borders"
+          >
+            <q-item
+              v-for="(arquivo, indice) in anexosPendentes"
+              :key="`${arquivo.name}-${arquivo.size}-${indice}`"
+            >
+              <q-item-section avatar>
+                <q-icon name="schedule" color="primary" />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label>{{ arquivo.name }}</q-item-label>
+                <q-item-label caption>
+                  {{ formatarTamanhoArquivo(arquivo.size) }} · será enviado ao salvar
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <app-table-action-button
+                  v-if="podeGerenciarAnexos"
+                  acao="excluir"
+                  rotulo="Remover da lista"
+                  @click="removerAnexoPendente(indice)"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <p v-if="!possuiAnexos" class="pedido-anexos__vazio text-body2 q-mb-md">
+            Nenhum anexo vinculado a este pedido.
+          </p>
+
+          <div v-if="podeGerenciarAnexos" class="pedido-anexos__upload">
+            <q-file
+              v-model="arquivosSelecionados"
+              label="Selecionar arquivo(s)"
+              outlined
+              multiple
+              clearable
+              :accept="EXTENSOES_ANEXO_PEDIDO"
+              :max-file-size="TAMANHO_MAX_ANEXO_PEDIDO"
+              :disable="enviandoAnexo"
+              @update:model-value="aoSelecionarArquivos"
+              @rejected="aoRejeitarAnexo"
+            >
+              <template #prepend>
+                <q-icon name="attach_file" />
+              </template>
+            </q-file>
+
+            <p class="pedido-anexos__hint">
+              PDF, PNG, JPEG, WebP, DOC, DOCX, XLS ou XLSX. Máximo 10 MB por arquivo.
+              {{
+                isEdicao
+                  ? 'Os arquivos são enviados imediatamente.'
+                  : 'Os arquivos serão enviados junto com o pedido ao salvar.'
+              }}
+            </p>
+          </div>
+
           <div class="row q-gutter-sm">
             <q-btn
               v-if="!somenteLeitura"
@@ -813,7 +1016,7 @@ onMounted(async () => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin || opcoesProdutos.length === 0"
+              :disable="!podeSalvar || opcoesProdutos.length === 0"
             />
             <q-btn flat label="Voltar" color="primary" no-caps @click="cancelar" />
           </div>
@@ -855,5 +1058,15 @@ onMounted(async () => {
   font-weight: var(--ds-font-weight-semibold);
   line-height: 1;
   user-select: none;
+}
+
+.pedido-anexos__vazio {
+  color: var(--ds-text-secondary);
+}
+
+.pedido-anexos__hint {
+  margin: var(--ds-space-2) 0 0;
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-font-size-sm, 0.8125rem);
 }
 </style>

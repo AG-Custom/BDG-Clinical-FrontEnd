@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
@@ -20,7 +21,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.produtos.criar);
+const podeEditar = usePermissao(permissoes.produtos.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -60,11 +63,11 @@ const opcoesUnidadesMedida = computed(() =>
 );
 
 const mostrarAlertaTipos = computed(
-  () => dadosIniciaisCarregados.value && isAdmin.value && opcoesTipos.value.length === 0,
+  () => dadosIniciaisCarregados.value && podeSalvar.value && opcoesTipos.value.length === 0,
 );
 
 const mostrarAlertaUnidadesMedida = computed(
-  () => dadosIniciaisCarregados.value && isAdmin.value && semUnidadesMedida.value,
+  () => dadosIniciaisCarregados.value && podeSalvar.value && semUnidadesMedida.value,
 );
 
 const ajudaEstoqueMinimo =
@@ -345,7 +348,7 @@ onMounted(async () => {
             emit-value
             map-options
             :rules="[validarTipo]"
-            :disable="!isAdmin || opcoesTipos.length === 0"
+            :disable="!podeSalvar || opcoesTipos.length === 0"
             hint="Classificação do produto no estoque."
           />
 
@@ -354,7 +357,7 @@ onMounted(async () => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value?.trim()) || 'Informe o nome do produto']"
           />
 
@@ -374,7 +377,7 @@ onMounted(async () => {
                 options-dense
                 :loading="buscandoUnidadeMedida"
                 :rules="[validarUnidadeMedida]"
-                :disable="!isAdmin"
+                :disable="!podeSalvar"
                 hint="Abra o select ou digite para buscar (mín. 2 caracteres)"
                 @filter="filtrarUnidadesMedida"
                 @update:model-value="atualizarUnidadeMedidaSelecionada"
@@ -408,7 +411,7 @@ onMounted(async () => {
                 type="number"
                 min="0"
                 step="1"
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
                 :rules="[validarEstoqueMinimo]"
               >
                 <template #append>
@@ -433,7 +436,7 @@ onMounted(async () => {
                 v-model="form.controlaEstoque"
                 label="Controla estoque"
                 color="primary"
-                :disable="!isAdmin"
+                :disable="!podeSalvar"
               />
               <q-icon name="info_outline" size="20px" class="form-field-input-hint q-ml-xs">
                 <q-tooltip
@@ -459,7 +462,7 @@ onMounted(async () => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin || opcoesTipos.length === 0"
+              :disable="!podeSalvar || opcoesTipos.length === 0"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

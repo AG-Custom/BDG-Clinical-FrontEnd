@@ -3,7 +3,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { QForm } from 'quasar';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { movimentacaoEstoqueService } from '@/services/movimentacao-estoque.service';
@@ -31,7 +32,7 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeMovimentar = usePermissao(permissoes.estoque.movimentar);
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -326,8 +327,8 @@ onMounted(async () => {
                       emit-value
                       map-options
                       :rules="[validarUnidade]"
-                      :readonly="!isAdmin"
-                      :disable="!isAdmin"
+                      :readonly="!podeMovimentar"
+                      :disable="!podeMovimentar"
                     />
                     <app-form-dependencia-alerta
                       v-if="mostrarAlertaUnidades"
@@ -350,8 +351,8 @@ onMounted(async () => {
                       emit-value
                       map-options
                       :rules="[validarProduto]"
-                      :readonly="!isAdmin"
-                      :disable="!isAdmin"
+                      :readonly="!podeMovimentar"
+                      :disable="!podeMovimentar"
                     />
                     <app-form-dependencia-alerta
                       v-if="mostrarAlertaProdutos"
@@ -374,7 +375,7 @@ onMounted(async () => {
                 step="any"
                 min="0"
                 :caption="captionSaldo"
-                :readonly="!isAdmin"
+                :readonly="!podeMovimentar"
                 :rules="[validarQuantidade]"
               />
 
@@ -384,7 +385,7 @@ onMounted(async () => {
                 label="Data da movimentação"
                 outlined
                 type="datetime-local"
-                :readonly="!isAdmin"
+                :readonly="!podeMovimentar"
                 :rules="[validarData]"
               />
 
@@ -396,7 +397,7 @@ onMounted(async () => {
                 autogrow
                 maxlength="2000"
                 counter
-                :readonly="!isAdmin"
+                :readonly="!podeMovimentar"
                 :hint="
                   isEntrada
                     ? 'Ex.: inventário físico, correção de saldo.'
@@ -412,7 +413,7 @@ onMounted(async () => {
                   unelevated
                   no-caps
                   :loading="salvando"
-                  :disable="!isAdmin || opcoesUnidades.length === 0 || opcoesProdutos.length === 0"
+                  :disable="!podeMovimentar || opcoesUnidades.length === 0 || opcoesProdutos.length === 0"
                 />
                 <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
               </div>

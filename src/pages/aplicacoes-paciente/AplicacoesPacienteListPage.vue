@@ -6,6 +6,7 @@ import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
+import { cargoService } from '@/services/cargo.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
 import { produtoService } from '@/services/produto.service';
@@ -17,8 +18,9 @@ import {
   formatarItemAplicado,
   formatarResumoSintomas,
 } from '@/types/entidades/aplicacao-paciente';
-import { extrairDadosVinculo } from '@/types/entidades/funcionario';
+import { isFuncionarioAplicador } from '@/types/entidades/funcionario';
 import type { Funcionario } from '@/types/entidades/funcionario';
+import type { Cargo } from '@/types/entidades/cargo';
 import {
   deDataParaFimDiaIso,
   deDataParaInicioDiaIso,
@@ -39,6 +41,7 @@ const pacientes = ref<Paciente[]>([]);
 const produtos = ref<Produto[]>([]);
 const procedimentos = ref<Procedimento[]>([]);
 const funcionarios = ref<Funcionario[]>([]);
+const cargos = ref<Cargo[]>([]);
 const carregando = ref(true);
 const filtroUnidadeId = ref<string | null>(null);
 const filtroPacienteId = ref<string | null>(null);
@@ -118,9 +121,13 @@ const opcoesProcedimentosFiltro = computed(() => [
   })),
 ]);
 
+const cargosPorId = computed(
+  () => new Map(cargos.value.map((cargo) => [cargo.id, cargo])),
+);
+
 const aplicadoresDisponiveis = computed(() =>
-  funcionarios.value.filter(
-    (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
+  funcionarios.value.filter((funcionario) =>
+    isFuncionarioAplicador(funcionario, cargosPorId.value),
   ),
 );
 
@@ -164,15 +171,17 @@ async function carregarAplicadoresFiltro(): Promise<void> {
 
 async function carregarFiltros(): Promise<void> {
   try {
-    const [listaUnidades, listaProdutos, listaProcedimentos] = await Promise.all([
+    const [listaUnidades, listaProdutos, listaProcedimentos, listaCargos] = await Promise.all([
       unidadeService.listar(true),
       produtoService.listar(),
       procedimentoService.listar({ includeInactive: true }),
+      cargoService.listar(true),
     ]);
 
     unidades.value = listaUnidades;
     produtos.value = listaProdutos;
     procedimentos.value = listaProcedimentos;
+    cargos.value = listaCargos;
 
     await Promise.all([carregarPacientesFiltro(), carregarAplicadoresFiltro()]);
   } catch (error) {

@@ -378,7 +378,8 @@ Retorna o usuário autenticado a partir do token. **Requer Bearer token.**
 | Campo | Descrição |
 |-------|-----------|
 | `isAdmin` | `true` = perfil Admin; `false` = perfil Funcionario |
-| `flagAplicador` | `true` se Admin; se Funcionario, `true` quando houver vínculo ativo com `flagAplicador` em `funcionario_vinculo` na empresa do token |
+| `flagAplicador` | `true` se Admin; se Funcionario, `true` quando houver vínculo ativo na empresa do token cujo **cargo** tem `flagAplicador = true` |
+| `permissions` | Lista de chaves efetivas resolvidas no servidor (ex.: `agendamento.criar`). Admin recebe todas as chaves do catálogo. **Não** vai no JWT. |
 
 **Response 200**
 
@@ -389,7 +390,8 @@ Retorna o usuário autenticado a partir do token. **Requer Bearer token.**
     "nome": "João Admin",
     "email": "admin@clinica.com",
     "isAdmin": true,
-    "flagAplicador": true
+    "flagAplicador": true,
+    "permissions": ["agenda.visualizar", "agendamento.criar"]
   },
   "success": true,
   "message": null
@@ -827,7 +829,7 @@ Reativa uma unidade inativa. Sem body.
 
 ## 7. Cargos — `/api/positions`
 
-Cadastro de cargos vinculados aos funcionários (ex.: Médico, Enfermeiro, Recepcionista). Todas as rotas exigem **Bearer token**. Os dados são filtrados pela empresa do token.
+Cadastro de cargos vinculados aos funcionários (ex.: Médico, Enfermeiro, Recepcionista). A flag `flagAplicador` no cargo define se funcionários com aquele cargo podem realizar aplicações. Todas as rotas exigem **Bearer token**. Os dados são filtrados pela empresa do token.
 
 ### GET `/api/positions`
 
@@ -849,6 +851,7 @@ Lista cargos da empresa logada.
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "nome": "Médico",
+      "flagAplicador": true,
       "ativo": true,
       "criadoEm": "2026-06-25T12:00:00Z",
       "atualizadoEm": null
@@ -883,13 +886,15 @@ Lista cargos da empresa logada.
 
 ```json
 {
-  "nome": "Enfermeiro"
+  "nome": "Enfermeiro",
+  "flagAplicador": true
 }
 ```
 
 | Campo | Obrigatório |
 |-------|-------------|
 | `nome` | Sim |
+| `flagAplicador` | Não | Default `false`. Indica se funcionários com este cargo podem realizar aplicações |
 
 **Response 201** — `Location: /api/positions/{id}`
 
@@ -946,7 +951,9 @@ Cadastro de colaboradores com acesso à plataforma. Todas as rotas exigem **Bear
 | `emailLogin` | E-mail usado para login na plataforma |
 | `isAdmin` | `true` = usuário da plataforma com perfil **Admin**; `false` = **Funcionario** |
 | `pendentePrimeiroAcesso` | `true` = usuário criado sem senha; deve passar pelo fluxo de primeiro acesso |
-| `links` | Vínculos do funcionário com empresa/unidade na resposta |
+| `links` | Vínculos do funcionário com empresa/unidade e cargo na resposta |
+
+> Para saber se um funcionário é aplicador, consulte o cargo vinculado em `links[].cargoId` via `GET /api/positions` (`flagAplicador` no cargo).
 
 **Não enviar senha no cadastro** — a senha é definida no primeiro acesso via link enviado por e-mail para `emailLogin`.
 
@@ -963,9 +970,14 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
 
 **Query params**
 
-| Param | Tipo | Default |
-|-------|------|---------|
-| `includeInactive` | `boolean` | `false` |
+| Param | Tipo | Default | Descrição |
+|-------|------|---------|-----------|
+| `unidadeId` | `uuid` | — | Filtrar por unidade (inclui vínculo `linkToEmpresa` / empresa inteira) |
+| `includeInactive` | `boolean` | `false` | Incluir funcionários desativados |
+
+**Exemplo:** `GET /api/employees?unidadeId=a1b2c3d4-e5f6-7890-abcd-ef1234567890&includeInactive=false`
+
+> Com `unidadeId`, retorna funcionários com vínculo **ativo** na unidade informada **ou** vínculo ativo em toda a empresa (`links[].empresaId` preenchido). Sem `unidadeId`, lista todos os funcionários da empresa.
 
 **Response 200**
 
@@ -987,7 +999,6 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
           "empresaId": null,
           "unidadeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
           "cargoId": null,
-          "flagAplicador": true,
           "ativo": true
         }
       ],
@@ -1035,8 +1046,8 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
     "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
   ],
   "cargoId": null,
-  "flagAplicador": true,
-  "isAdmin": false
+  "isAdmin": false,
+  "perfilId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -1051,7 +1062,6 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
   "linkToEmpresa": true,
   "unidadeIds": null,
   "cargoId": null,
-  "flagAplicador": false,
   "isAdmin": true
 }
 ```
@@ -1064,8 +1074,7 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
 | `emailLogin` | Sim | E-mail válido; único por empresa |
 | `linkToEmpresa` | Sim | `true` ou `false` |
 | `unidadeIds` | Condicional | Obrigatório (≥1) quando `linkToEmpresa = false` |
-| `cargoId` | Não | Deve existir na empresa, se informado |
-| `flagAplicador` | Sim | Indica se pode realizar aplicações |
+| `cargoId` | Não | Deve existir na empresa, se informado. Permissão de aplicador vem do cargo (`GET /api/positions`) |
 | `isAdmin` | Não | Default `false`. `true` cria usuário com `tipo_usuario = Admin` |
 
 **Response 201**
@@ -1087,7 +1096,6 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
         "empresaId": null,
         "unidadeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "cargoId": null,
-        "flagAplicador": true,
         "ativo": true
       }
     ],
@@ -1136,7 +1144,6 @@ Atualiza dados pessoais, perfil de acesso (`isAdmin`) e **substitui** os víncul
     "d4e5f6a7-b8c9-0123-defa-234567890123"
   ],
   "cargoId": null,
-  "flagAplicador": true,
   "isAdmin": false
 }
 ```
@@ -1169,9 +1176,8 @@ Desativa funcionário, vínculos na empresa e usuário de acesso.
         "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
         "empresaId": null,
         "unidadeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        "cargoId": null,
-        "flagAplicador": true,
-        "ativo": false
+          "cargoId": null,
+          "ativo": false
       }
     ],
     "criadoEm": "2026-06-24T12:00:00Z",
@@ -1206,7 +1212,6 @@ Reativa funcionário inativo, os vínculos inativos na empresa logada e o usuár
         "empresaId": null,
         "unidadeId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "cargoId": null,
-        "flagAplicador": true,
         "ativo": true
       }
     ],
@@ -1230,7 +1235,80 @@ Reativa funcionário inativo, os vínculos inativos na empresa logada e o usuár
 { "data": null, "success": false, "message": "Não há vínculos inativos para reativar nesta empresa." }
 ```
 
-> Para listar inativos antes de reativar: `GET /api/employees?includeInactive=true`
+> Para listar inativos antes de reativar: `GET /api/employees?includeInactive=true`  
+> Para listar por unidade: `GET /api/employees?unidadeId={uuid}`
+
+---
+
+### GET `/api/employees/{id}/permissions`
+
+**Requer perfil Admin.** Retorna perfil atribuído, overrides e permissões efetivas.
+
+**Response 200**
+
+```json
+{
+  "data": {
+    "employeeId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "usuarioId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "perfilId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "perfilNome": "Recepcionista",
+    "allows": [],
+    "denies": ["agendamento.cancelar"],
+    "effectivePermissions": ["agenda.visualizar", "agendamento.criar"]
+  },
+  "success": true,
+  "message": null
+}
+```
+
+---
+
+### PUT `/api/employees/{id}/permissions`
+
+**Requer perfil Admin.**
+
+```json
+{
+  "perfilId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "allows": ["financeiro.visualizar"],
+  "denies": ["agendamento.cancelar"]
+}
+```
+
+---
+
+## 8.1 Mapa de permissões
+
+### GET `/api/permissions/map`
+
+Árvore de permissões do catálogo, filtrada pelos módulos licenciados da empresa (+ Core).
+
+**Response 200** — array de nós com `key`, `description`, `category`, `moduleCode`, `order`, `parent`, `children`.
+
+---
+
+### GET `/api/permission-profiles`
+
+Lista perfis de permissão da empresa (Recepcionista, Médico, etc.).
+
+---
+
+### POST `/api/permission-profiles`
+
+```json
+{
+  "nome": "Recepcionista",
+  "descricao": "Atendimento",
+  "permissionKeys": ["agenda.visualizar", "agendamento.criar"]
+}
+```
+
+---
+
+### PUT `/api/permission-profiles/{id}`
+
+Atualiza perfil. Usuários vinculados ao perfil têm cache de permissões invalidado.
 
 ---
 
@@ -1737,7 +1815,8 @@ Cadastro de fornecedores vinculados à empresa. Todas as rotas exigem **Bearer t
   "nome": "Distribuidora ABC",
   "cnpj": "12.345.678/0001-90",
   "telefone": "11999998888",
-  "email": "contato@abc.com"
+  "email": "contato@abc.com",
+  "observacao": "Entrega às terças e quintas"
 }
 ```
 
@@ -1747,6 +1826,7 @@ Cadastro de fornecedores vinculados à empresa. Todas as rotas exigem **Bearer t
 | `cnpj` | Sim | 14 dígitos, único na empresa |
 | `telefone` | Não | — |
 | `email` | Não | — |
+| `observacao` | Não | Texto livre, máx. 2000 caracteres |
 
 ### PUT / DELETE / PATCH reactivate
 
@@ -1795,6 +1875,16 @@ Pedidos de compra com itens de produto. Criar pedido **não** altera estoque; us
 
 Response inclui `valorTotal` do pedido (soma dos itens) e `itens[]` com `valorUnitario` e `valorTotal` por linha.
 
+**Content-Type:** `application/json` (body acima) **ou** `multipart/form-data` (campo `data` = JSON acima; campo `files` = anexos opcionais).
+
+### Anexos — disponíveis em todo o ciclo de vida
+
+Os anexos **não** seguem as mesmas restrições de edição do pedido (`PUT`). Podem ser **listados, enviados e removidos em qualquer status**: `Pendente`, `Enviado para Fornecedor`, `Recebido pela Unidade`, `Cancelado` ou `Recusado`.
+
+Use para nota fiscal na criação, comprovante após envio ou documentação histórica após recebimento/cancelamento.
+
+Rotas dedicadas: `/api/supplier-orders/{id}/attachments` (detalhes abaixo). O campo `anexos[]` também vem em `GET /api/supplier-orders` e `GET /api/supplier-orders/{id}`.
+
 ### PUT `/api/supplier-orders/{id}`
 
 Mesmo body do POST. Bloqueado se status `Recebido pela Unidade`, `Cancelado` ou `Recusado`.
@@ -1806,6 +1896,51 @@ Cancela pedido em `Pendente` ou `Enviado para Fornecedor`.
 ### PATCH `/api/supplier-orders/{id}/receive`
 
 Marca como `Recebido pela Unidade` e gera `MovimentacaoEstoque` tipo **Entrada** para cada item.
+
+### Anexos — `/api/supplier-orders/{id}/attachments`
+
+Documentos vinculados ao pedido (nota fiscal, ordem de compra, etc.). **Sem restrição de status** — ver seção acima. Armazenamento em R2 (mesmo serviço da logo da empresa). Formatos: PDF, PNG, JPEG, WebP, DOC, DOCX, XLS, XLSX. Tamanho máximo por arquivo: **10 MB**.
+
+Os anexos também aparecem em `anexos[]` no `GET /api/supplier-orders/{id}` e na listagem.
+
+#### GET `/api/supplier-orders/{id}/attachments`
+
+Lista anexos do pedido.
+
+**Response 200**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "nomeArquivo": "nota-fiscal.pdf",
+      "contentType": "application/pdf",
+      "url": "https://...",
+      "tamanhoBytes": 102400,
+      "criadoEm": "2026-06-28T12:00:00Z"
+    }
+  ],
+  "success": true,
+  "message": null
+}
+```
+
+#### POST `/api/supplier-orders/{id}/attachments`
+
+Upload multipart. Campo do arquivo: `file`.
+
+**Response 201** — `SupplierOrderAttachmentDto` em `data`.
+
+**Response 400** — arquivo inválido, pedido não encontrado ou R2 não configurado.
+
+#### DELETE `/api/supplier-orders/{id}/attachments/{attachmentId}`
+
+Remove anexo do pedido e do armazenamento.
+
+**Response 200** — `data: null`, `success: true`.
+
+**Response 404** — anexo não encontrado.
 
 ---
 
@@ -2062,7 +2197,197 @@ Cancela aplicação realizada e estorna **todas** as saídas vinculadas (`motivo
 
 ---
 
-## 20. Tipos TypeScript (referência)
+## 20. Agendamentos — `/api/appointments`
+
+Requer apenas autenticação (`Authorization: Bearer`).
+
+### GET `/api/appointments`
+
+Lista agendamentos do tenant com filtros opcionais.
+
+| Query | Tipo | Descrição |
+|-------|------|-----------|
+| `unidadeId` | uuid | Filtrar por unidade |
+| `funcionarioId` | uuid | Filtrar por funcionário |
+| `pacienteId` | uuid | Filtrar por paciente |
+| `status` | string | `Agendado`, `Confirmado`, `Concluido`, `Cancelado`, `Faltou` |
+| `dataInicioFrom` | datetime | Início do período |
+| `dataInicioTo` | datetime | Fim do período |
+
+**Exemplo:** `GET /api/appointments?funcionarioId=...&dataInicioFrom=2026-06-27T00:00:00Z&dataInicioTo=2026-06-27T23:59:59Z`
+
+### GET `/api/appointments/{id}`
+
+Retorna um agendamento por id.
+
+### POST `/api/appointments`
+
+Cria agendamento. `criadoPorId` e `empresaId` vêm do token.
+
+```json
+{
+  "unidadeId": "uuid",
+  "pacienteId": "uuid",
+  "funcionarioId": "uuid",
+  "tipo": "Aplicacao",
+  "dataInicio": "2026-06-27T14:00:00Z",
+  "dataFim": "2026-06-27T14:30:00Z",
+  "procedimentoId": "uuid",
+  "compraPacienteId": null,
+  "observacao": "Observação opcional",
+  "excecaoHorario": 0
+}
+```
+
+**Tipos:** `Consulta`, `Retorno`, `Aplicacao`, `Avaliacao`
+
+**Regras:**
+- `procedimentoId` obrigatório quando `tipo = Aplicacao`
+- Valida conflito de horário, bloqueio de agenda e disponibilidade do funcionário (quando configurada)
+- Valida horário de funcionamento da unidade (quando configurado em `/api/units/{unitId}/operating-hours`)
+- Fora do horário da unidade: envie `excecaoHorario: 1` para confirmar o agendamento (o usuário deve aceitar a exceção no front)
+- Após criar com sucesso, envia e-mail de confirmação ao paciente se houver `email` cadastrado (requer SMTP configurado)
+
+### PUT `/api/appointments/{id}`
+
+Atualiza agendamento pendente ou confirmado. Mesmo body do POST (`UpdateAppointmentRequest`).
+
+### PATCH `/api/appointments/{id}/confirm`
+
+Confirma agendamento (`Agendado` → `Confirmado`).
+
+### PATCH `/api/appointments/{id}/complete`
+
+Conclui agendamento. Para `tipo = Aplicacao`, cria `AplicacaoPaciente` vinculada e movimentações de estoque.
+
+```json
+{
+  "quantidadeUtilizada": 1.0,
+  "peso": 72.5
+}
+```
+
+`quantidadeUtilizada` obrigatória quando o procedimento possui produto aplicado.
+
+### PATCH `/api/appointments/{id}/cancel`
+
+```json
+{
+  "motivo": "Paciente solicitou cancelamento"
+}
+```
+
+### PATCH `/api/appointments/{id}/no-show`
+
+Marca falta do paciente (`Faltou`).
+
+**Resposta (`AppointmentDto`):**
+
+```json
+{
+  "id": "uuid",
+  "unidadeId": "uuid",
+  "unidadeNome": "Unidade Centro",
+  "pacienteId": "uuid",
+  "pacienteNome": "Maria Silva",
+  "funcionarioId": "uuid",
+  "funcionarioNome": "Dr. João",
+  "compraPacienteId": null,
+  "procedimentoId": "uuid",
+  "procedimentoNome": "Aplicação IM",
+  "tipo": "Aplicacao",
+  "status": "Agendado",
+  "dataInicio": "2026-06-27T14:00:00Z",
+  "dataFim": "2026-06-27T14:30:00Z",
+  "observacao": null,
+  "criadoPorId": "uuid",
+  "criadoPorNome": "Admin",
+  "canceladoPorId": null,
+  "motivoCancelamento": null,
+  "excecaoHorario": false,
+  "aplicacaoPacienteId": null,
+  "criadoEm": "2026-06-27T10:00:00Z",
+  "atualizadoEm": null
+}
+```
+
+---
+
+## 21. Horário de funcionamento da unidade — `/api/units/{unitId}/operating-hours`
+
+Requer apenas autenticação. Define em quais dias/horários a unidade aceita agendamentos (validado em `POST`/`PUT` de appointments).
+
+### GET `/api/units/{unitId}/operating-hours`
+
+Lista faixas de funcionamento da unidade.
+
+| Query | Tipo | Descrição |
+|-------|------|-----------|
+| `includeInactive` | bool | Incluir faixas inativas (default `false`) |
+
+**Resposta (`UnitOperatingHourDto[]`):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "unidadeId": "uuid",
+    "diaSemana": "Segunda",
+    "horaInicio": "08:00:00",
+    "horaFim": "18:00:00",
+    "ativo": true,
+    "criadoEm": "2026-06-27T10:00:00Z",
+    "atualizadoEm": null
+  }
+]
+```
+
+**`diaSemana`:** `Domingo`, `Segunda`, `Terca`, `Quarta`, `Quinta`, `Sexta`, `Sabado`
+
+### POST `/api/units/{unitId}/operating-hours`
+
+Cadastra uma faixa de funcionamento.
+
+```json
+{
+  "diaSemana": "Segunda",
+  "horaInicio": "08:00:00",
+  "horaFim": "18:00:00"
+}
+```
+
+**Regras:** no mesmo dia, faixas não podem ser iguais nem se sobrepor.
+
+### PATCH `/api/unit-operating-hours/{id}/active`
+
+Ativa ou inativa um horário pelo id, sem alterar dia/horários.
+
+```json
+{
+  "ativo": false
+}
+```
+
+`ativo: true` reativa; `ativo: false` inativa. Ao reativar, valida sobreposição com outras faixas **ativas** do mesmo dia.
+
+### PUT `/api/units/{unitId}/operating-hours/{id}`
+
+Atualiza faixa existente.
+
+```json
+{
+  "diaSemana": "Segunda",
+  "horaInicio": "09:00:00",
+  "horaFim": "17:00:00",
+  "ativo": true
+}
+```
+
+**Regras:** no mesmo dia da unidade, não é permitido cadastrar faixas iguais nem que se sobreponham (ex.: `08:00–18:00` com `10:00–13:00`). Faixas adjacentes sem sobreposição são permitidas (ex.: `08:00–18:00` e `20:00–22:00`).
+
+---
+
+## 22. Tipos TypeScript (referência)
 
 ```typescript
 interface ApiResponse<T> {
@@ -2111,6 +2436,7 @@ interface AuthenticatedUser {
   email: string;
   isAdmin: boolean;
   flagAplicador: boolean;
+  permissions: string[];
 }
 
 interface ValidateFirstAccessEmailRequest {
@@ -2154,6 +2480,7 @@ interface Company {
 interface Position {
   id: string;
   nome: string;
+  flagAplicador: boolean;
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string | null;
@@ -2197,9 +2524,19 @@ interface Supplier {
   cnpj: string;
   telefone: string | null;
   email: string | null;
+  observacao: string | null;
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string | null;
+}
+
+interface SupplierOrderAttachment {
+  id: string;
+  nomeArquivo: string;
+  contentType: string;
+  url: string;
+  tamanhoBytes: number;
+  criadoEm: string;
 }
 
 interface SupplierOrderItem {
@@ -2231,6 +2568,7 @@ interface SupplierOrder {
   valorTotal: number;
   observacao: string | null;
   itens: SupplierOrderItem[];
+  anexos: SupplierOrderAttachment[];
   criadoEm: string;
   atualizadoEm: string | null;
 }
@@ -2270,7 +2608,6 @@ interface EmployeeLink {
   empresaId: string | null;
   unidadeId: string | null;
   cargoId: string | null;
-  flagAplicador: boolean;
   ativo: boolean;
 }
 
@@ -2379,11 +2716,59 @@ interface UpdatePatientApplicationRequest {
   observacao?: string | null;
   sintomaIds?: string[] | null;
 }
+
+interface Appointment {
+  id: string;
+  unidadeId: string;
+  unidadeNome: string;
+  pacienteId: string;
+  pacienteNome: string;
+  funcionarioId: string;
+  funcionarioNome: string;
+  compraPacienteId: string | null;
+  procedimentoId: string | null;
+  procedimentoNome: string | null;
+  tipo: 'Consulta' | 'Retorno' | 'Aplicacao' | 'Avaliacao';
+  status: 'Agendado' | 'Confirmado' | 'Concluido' | 'Cancelado' | 'Faltou';
+  dataInicio: string;
+  dataFim: string;
+  observacao: string | null;
+  criadoPorId: string;
+  criadoPorNome: string;
+  canceladoPorId: string | null;
+  motivoCancelamento: string | null;
+  aplicacaoPacienteId: string | null;
+  criadoEm: string;
+  atualizadoEm: string | null;
+}
+
+interface CreateAppointmentRequest {
+  unidadeId: string;
+  pacienteId: string;
+  funcionarioId: string;
+  tipo: 'Consulta' | 'Retorno' | 'Aplicacao' | 'Avaliacao';
+  dataInicio: string;
+  dataFim: string;
+  procedimentoId?: string | null;
+  compraPacienteId?: string | null;
+  observacao?: string | null;
+}
+
+interface UpdateAppointmentRequest extends CreateAppointmentRequest {}
+
+interface CancelAppointmentRequest {
+  motivo: string;
+}
+
+interface CompleteAppointmentRequest {
+  quantidadeUtilizada?: number | null;
+  peso?: number | null;
+}
 ```
 
 ---
 
-## 21. Fluxo sugerido no frontend
+## 23. Fluxo sugerido no frontend
 
 ```text
 1. Registrar clínica  → POST /api/auth/registrar  → guardar token (primeira clínica)
@@ -2396,7 +2781,7 @@ interface UpdatePatientApplicationRequest {
 8. Upload da logo     → POST /api/companies/current/logo (somente Admin, multipart)
 9. Editar clínica     → PUT  /api/companies/current (somente Admin)
 10. CRUD unidades     → /api/units/*
-11. CRUD cargos       → /api/positions/* (popular select antes de cadastrar funcionário)
+11. CRUD cargos       → /api/positions/* (definir flagAplicador no cargo; popular select antes de cadastrar funcionário)
 12. CRUD funcionários → POST/PUT /api/employees (somente Admin) → e-mail de convite no create
 13. CRUD pacientes    → /api/patients/*
 14. CRUD sintomas     → /api/symptoms/* (popular multi-select em aplicações)
@@ -2409,6 +2794,7 @@ interface UpdatePatientApplicationRequest {
 21. Histórico estoque → GET /api/stock-movements
 22. CRUD procedimentos → /api/procedures/*
 23. Aplicações paciente → /api/patient-applications/* (sempre via procedimentoId)
+24. CRUD agendamentos → /api/appointments/*
 23. Funcionário abre link → /primeiro-acesso?token=...
    a. Digita e-mail   → POST /api/auth/primeiro-acesso/validar-email
    b. Define senha    → POST /api/auth/primeiro-acesso/concluir → guardar token
@@ -2418,13 +2804,13 @@ interface UpdatePatientApplicationRequest {
 
 ---
 
-## 22. Rotas ainda não disponíveis
+## 24. Rotas ainda não disponíveis
 
 | Recurso | Status |
 |---------|--------|
 | Reenvio de convite de primeiro acesso | Não implementado |
-| Permissões por módulo | Não implementado |
+| Permissões por módulo | Não implementado (attributes prontos para uso futuro) |
 
 ---
 
-*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (… + Procedures simplificado + PatientApplications somente via procedimento).*
+*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (… + Appointments / Agendamentos).*

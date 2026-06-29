@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { tipoProdutoService } from '@/services/tipo-produto.service';
@@ -11,7 +12,9 @@ import type { TipoProduto } from '@/types/entidades/tipo-produto';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.tiposProduto.criar);
+const podeEditar = usePermissao(permissoes.tiposProduto.editar);
+const podeDesativar = usePermissao(permissoes.tiposProduto.desativar);
 
 const tiposProduto = ref<TipoProduto[]>([]);
 const carregando = ref(true);
@@ -111,8 +114,8 @@ onMounted(() => {
         icon="add"
         unelevated
         no-caps
-        :disable="!isAdmin"
-        :to="isAdmin ? { name: 'tipos-produto-novo' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'tipos-produto-novo' } : undefined"
       />
     </app-page-header>
 
@@ -151,21 +154,21 @@ onMounted(() => {
             <app-table-action-button
               acao="editar"
               rotulo="Editar tipo de produto"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="editarTipo(cell.row.id)"
             />
             <app-table-action-button
               v-if="cell.row.ativo"
               acao="desativar"
               rotulo="Desativar tipo de produto"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogDesativar(cell.row)"
             />
             <app-table-action-button
               v-else
               acao="reativar"
               rotulo="Reativar tipo de produto"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
@@ -189,8 +192,8 @@ onMounted(() => {
             icon="add"
             unelevated
             no-caps
-            :disable="!isAdmin"
-            :to="isAdmin ? { name: 'tipos-produto-novo' } : undefined"
+            :disable="!podeCriar"
+            :to="podeCriar ? { name: 'tipos-produto-novo' } : undefined"
           />
         </div>
       </q-card-section>

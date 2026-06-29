@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
@@ -14,7 +15,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.pacientes.criar);
+const podeEditar = usePermissao(permissoes.pacientes.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -42,7 +45,7 @@ const opcoesUnidades = computed(() =>
 );
 
 const mostrarAlertaUnidades = computed(
-  () => dadosIniciaisCarregados.value && isAdmin.value && opcoesUnidades.value.length === 0,
+  () => dadosIniciaisCarregados.value && podeSalvar.value && opcoesUnidades.value.length === 0,
 );
 
 function validarEmail(value: string): boolean | string {
@@ -200,7 +203,7 @@ onMounted(async () => {
             emit-value
             map-options
             :rules="[validarUnidade]"
-            :disable="!isAdmin || opcoesUnidades.length === 0"
+            :disable="!podeSalvar || opcoesUnidades.length === 0"
             hint="Unidade em que o paciente será atendido."
           />
 
@@ -209,7 +212,7 @@ onMounted(async () => {
             class="form-field--required"
             label="Nome completo"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value?.trim()) || 'Informe o nome do paciente']"
           />
 
@@ -222,7 +225,7 @@ onMounted(async () => {
                 mask="###.###.###-##"
                 unmasked-value
                 fill-mask
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
                 :rules="[validarCpf]"
               />
             </div>
@@ -232,7 +235,7 @@ onMounted(async () => {
                 label="Data de nascimento"
                 outlined
                 type="date"
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
               />
             </div>
           </div>
@@ -246,7 +249,7 @@ onMounted(async () => {
                 mask="(##) #####-####"
                 unmasked-value
                 fill-mask
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
               />
             </div>
             <div class="col-12 col-md-6">
@@ -255,7 +258,7 @@ onMounted(async () => {
                 label="E-mail"
                 type="email"
                 outlined
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
                 :rules="[validarEmail]"
               />
             </div>
@@ -267,7 +270,7 @@ onMounted(async () => {
             outlined
             type="textarea"
             autogrow
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
           />
 
           <div class="row q-gutter-sm q-mt-md">
@@ -278,7 +281,7 @@ onMounted(async () => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin || opcoesUnidades.length === 0"
+              :disable="!podeSalvar || opcoesUnidades.length === 0"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

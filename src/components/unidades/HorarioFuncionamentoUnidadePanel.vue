@@ -2,7 +2,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import HorarioFuncionamentoFaixaFields from '@/components/unidades/HorarioFuncionamentoFaixaFields.vue';
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { horarioFuncionamentoUnidadeService } from '@/services/horario-funcionamento-unidade.service';
@@ -48,7 +49,7 @@ const emit = defineEmits<{
 
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeEditar = usePermissao(permissoes.unidades.editar);
 
 const horariosPendentes = ref<FaixaPendente[]>([]);
 const carregando = ref(Boolean(props.unidadeId));
@@ -74,7 +75,7 @@ const horarios = ref<HorarioFuncionamentoUnidade[]>([]);
 
 const modoPersistido = computed(() => Boolean(props.unidadeId));
 
-const bloqueado = computed(() => props.desabilitado || !isAdmin.value || salvando.value);
+const bloqueado = computed(() => props.desabilitado || !podeEditar.value || salvando.value);
 
 const colunas = [
   { name: 'dia', label: 'Dia', field: 'diaSemana', align: 'left' as const },

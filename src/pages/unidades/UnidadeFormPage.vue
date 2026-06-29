@@ -3,7 +3,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import HorarioFuncionamentoUnidadePanel from '@/components/unidades/HorarioFuncionamentoUnidadePanel.vue';
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { horarioFuncionamentoUnidadeService } from '@/services/horario-funcionamento-unidade.service';
@@ -14,7 +15,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.unidades.criar);
+const podeEditar = usePermissao(permissoes.unidades.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -118,7 +121,7 @@ onMounted(() => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value) || 'Informe o nome da unidade']"
           />
 
@@ -129,7 +132,7 @@ onMounted(() => {
             outlined
             type="textarea"
             autogrow
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value) || 'Informe o endereço']"
           />
 
@@ -141,7 +144,7 @@ onMounted(() => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin"
+              :disable="!podeSalvar"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>
@@ -154,7 +157,7 @@ onMounted(() => {
         <horario-funcionamento-unidade-panel
           ref="horarioPanelRef"
           :unidade-id="isEdicao ? unidadeId : null"
-          :desabilitado="!isAdmin || salvando"
+          :desabilitado="!podeSalvar || salvando"
           :texto-ajuda="
             isEdicao
               ? 'Gerencie os dias e horários em que a unidade aceita agendamentos.'

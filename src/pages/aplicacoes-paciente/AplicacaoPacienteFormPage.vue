@@ -6,6 +6,7 @@ import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
+import { cargoService } from '@/services/cargo.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
 import { procedimentoService } from '@/services/procedimento.service';
@@ -18,8 +19,9 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
 } from '@/types/entidades/aplicacao-paciente';
-import { extrairDadosVinculo } from '@/types/entidades/funcionario';
+import { isFuncionarioAplicador } from '@/types/entidades/funcionario';
 import type { Funcionario } from '@/types/entidades/funcionario';
+import type { Cargo } from '@/types/entidades/cargo';
 import { formatarSaldoComUnidade } from '@/types/entidades/saldo-estoque';
 import type { Paciente } from '@/types/entidades/paciente';
 import type { Procedimento } from '@/types/entidades/procedimento';
@@ -55,6 +57,7 @@ const procedimentosDisponiveis = ref<Procedimento[]>([]);
 const procedimentoSelecionado = ref<Procedimento | null>(null);
 const saldosKit = ref<SaldoKitItem[]>([]);
 const aplicadoresDisponiveis = ref<Funcionario[]>([]);
+const cargosDisponiveis = ref<Cargo[]>([]);
 const existemAplicadoresNaEmpresa = ref(false);
 const sintomasDisponiveis = ref<Sintoma[]>([]);
 const dadosIniciaisCarregados = ref(false);
@@ -113,6 +116,10 @@ const opcoesProcedimentos = computed(() =>
 
 const produtosPorId = computed(
   () => new Map(produtosDisponiveis.value.map((produto) => [produto.id, produto])),
+);
+
+const cargosPorId = computed(
+  () => new Map(cargosDisponiveis.value.map((cargo) => [cargo.id, cargo])),
 );
 
 const opcoesAplicadores = computed(() =>
@@ -212,16 +219,16 @@ const temAplicadoresNaEmpresa = computed(() => existemAplicadoresNaEmpresa.value
 
 const mensagemAlertaAplicador = computed(() =>
   temAplicadoresNaEmpresa.value
-    ? 'Nenhum aplicador vinculado a esta unidade. Vincule um colaborador existente ou cadastre um novo com permissão de aplicação.'
-    : 'Nenhum aplicador cadastrado. Cadastre um colaborador e marque a opção "Pode realizar aplicações".',
+    ? 'Nenhum aplicador vinculado a esta unidade. Vincule um colaborador com cargo de aplicador ou cadastre um novo.'
+    : 'Nenhum aplicador cadastrado. Crie um cargo com permissão de aplicação e vincule a um colaborador.',
 );
 
 const rotuloAlertaAplicador = computed(() =>
-  temAplicadoresNaEmpresa.value ? 'Gerenciar colaboradores' : 'Cadastrar colaborador',
+  temAplicadoresNaEmpresa.value ? 'Gerenciar colaboradores' : 'Cadastrar cargo',
 );
 
 const destinoAlertaAplicador = computed(() =>
-  temAplicadoresNaEmpresa.value ? { name: 'funcionarios' } : { name: 'funcionarios-novo' },
+  temAplicadoresNaEmpresa.value ? { name: 'funcionarios' } : { name: 'cargos-novo' },
 );
 
 function validarUnidade(value: string | null): boolean | string {
@@ -385,8 +392,8 @@ async function carregarAplicadoresDaUnidade(): Promise<void> {
 
   try {
     const funcionarios = await funcionarioService.listar({ unidadeId: form.unidadeId });
-    aplicadoresDisponiveis.value = normalizarLista(funcionarios).filter(
-      (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
+    aplicadoresDisponiveis.value = normalizarLista(funcionarios).filter((funcionario) =>
+      isFuncionarioAplicador(funcionario, cargosPorId.value),
     );
   } catch (error) {
     notificacao.erro(obterMensagem(error));
@@ -437,21 +444,23 @@ async function garantirAplicadorNaLista(aplicadorId: string): Promise<void> {
 
 async function carregarDadosIniciais(): Promise<void> {
   try {
-    const [listaUnidades, listaProdutos, listaProcedimentos, listaFuncionariosEmpresa, listaSintomas] =
+    const [listaUnidades, listaProdutos, listaProcedimentos, listaFuncionariosEmpresa, listaSintomas, listaCargos] =
       await Promise.all([
         unidadeService.listar(),
         produtoService.listar(),
         procedimentoService.listar(),
         funcionarioService.listar(),
         sintomaService.listar(),
+        cargoService.listar(true),
       ]);
 
     unidadesDisponiveis.value = normalizarLista(listaUnidades);
     produtosDisponiveis.value = normalizarLista(listaProdutos);
     procedimentosDisponiveis.value = normalizarLista(listaProcedimentos);
     sintomasDisponiveis.value = normalizarLista(listaSintomas);
+    cargosDisponiveis.value = normalizarLista(listaCargos);
     existemAplicadoresNaEmpresa.value = normalizarLista(listaFuncionariosEmpresa).some(
-      (funcionario) => funcionario.ativo && extrairDadosVinculo(funcionario).flagAplicador,
+      (funcionario) => isFuncionarioAplicador(funcionario, cargosPorId.value),
     );
   } catch (error) {
     notificacao.erro(obterMensagem(error));

@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { cargoService } from '@/services/cargo.service';
@@ -11,7 +12,9 @@ import type { Cargo } from '@/types/entidades/cargo';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.cargos.criar);
+const podeEditar = usePermissao(permissoes.cargos.editar);
+const podeDesativar = usePermissao(permissoes.cargos.desativar);
 
 const cargos = ref<Cargo[]>([]);
 const carregando = ref(true);
@@ -24,6 +27,7 @@ const reativando = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
+  { name: 'aplicador', label: 'Aplicações', field: 'flagAplicador', align: 'center' as const },
   { name: 'status', label: 'Status', field: 'ativo', align: 'center' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
@@ -111,8 +115,8 @@ onMounted(() => {
         icon="add"
         unelevated
         no-caps
-        :disable="!isAdmin"
-        :to="isAdmin ? { name: 'cargos-novo' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'cargos-novo' } : undefined"
       />
     </app-page-header>
 
@@ -137,6 +141,15 @@ onMounted(() => {
         :loading="carregando"
         :rows-per-page-options="[10, 25, 50]"
       >
+        <template #body-cell-aplicador="props">
+          <q-td :props="props">
+            <q-badge
+              :color="props.row.flagAplicador ? 'primary' : 'grey'"
+              :label="props.row.flagAplicador ? 'Sim' : 'Não'"
+            />
+          </q-td>
+        </template>
+
         <template #body-cell-status="props">
           <q-td :props="props">
             <q-badge
@@ -151,21 +164,21 @@ onMounted(() => {
             <app-table-action-button
               acao="editar"
               rotulo="Editar cargo"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="editarCargo(cell.row.id)"
             />
             <app-table-action-button
               v-if="cell.row.ativo"
               acao="desativar"
               rotulo="Desativar cargo"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogDesativar(cell.row)"
             />
             <app-table-action-button
               v-else
               acao="reativar"
               rotulo="Reativar cargo"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
@@ -189,8 +202,8 @@ onMounted(() => {
             icon="add"
             unelevated
             no-caps
-            :disable="!isAdmin"
-            :to="isAdmin ? { name: 'cargos-novo' } : undefined"
+            :disable="!podeCriar"
+            :to="podeCriar ? { name: 'cargos-novo' } : undefined"
           />
         </div>
       </q-card-section>

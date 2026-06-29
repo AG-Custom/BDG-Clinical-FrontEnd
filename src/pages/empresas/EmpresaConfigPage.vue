@@ -2,7 +2,8 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { empresaService } from '@/services/empresa.service';
@@ -15,7 +16,7 @@ const TAMANHO_MAX_LOGO = 2 * 1024 * 1024;
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeEditar = usePermissao(permissoes.empresas.editar);
 const empresaStore = useEmpresaStore();
 
 const carregando = ref(false);
@@ -184,7 +185,7 @@ onUnmounted(() => {
             class="form-field--required"
             label="Nome da clínica"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeEditar"
             :rules="[(value: string) => Boolean(value) || 'Informe o nome da clínica']"
           />
 
@@ -194,7 +195,7 @@ onUnmounted(() => {
             outlined
             mask="##.###.###/####-##"
             unmasked-value
-            :readonly="!isAdmin"
+            :readonly="!podeEditar"
           />
 
           <q-input
@@ -203,7 +204,7 @@ onUnmounted(() => {
             outlined
             mask="(##) #####-####"
             unmasked-value
-            :readonly="!isAdmin"
+            :readonly="!podeEditar"
           />
 
           <div class="empresa-logo">
@@ -230,7 +231,7 @@ onUnmounted(() => {
                   outlined
                   accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                   :max-file-size="TAMANHO_MAX_LOGO"
-                  :disable="!isAdmin || enviandoLogo"
+                  :disable="!podeEditar || enviandoLogo"
                   @rejected="aoRejeitarArquivo"
                 >
                   <template #prepend>
@@ -248,7 +249,7 @@ onUnmounted(() => {
                   no-caps
                   class="q-mt-sm"
                   :loading="enviandoLogo"
-                  :disable="!isAdmin"
+                  :disable="!podeEditar"
                   @click="enviarLogo"
                 />
               </div>
@@ -263,14 +264,14 @@ onUnmounted(() => {
                 format-model="hex"
                 no-header
                 no-footer
-                :disable="!isAdmin"
+                :disable="!podeEditar"
               />
               <q-input
                 v-model="form.corPrincipal"
                 label="Hex"
                 outlined
                 class="col"
-                :readonly="!isAdmin"
+                :readonly="!podeEditar"
                 :rules="[
                   (value: string) =>
                     !value || validarCorHex(value) || 'Use o formato #RGB ou #RRGGBB',
@@ -282,7 +283,7 @@ onUnmounted(() => {
           <q-toggle
             v-model="form.ativo"
             label="Clínica ativa"
-            :disable="!isAdmin"
+            :disable="!podeEditar"
             color="primary"
           />
 
@@ -303,7 +304,7 @@ onUnmounted(() => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

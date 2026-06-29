@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
@@ -13,7 +14,9 @@ import type { TipoProduto } from '@/types/entidades/tipo-produto';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.produtos.criar);
+const podeEditar = usePermissao(permissoes.produtos.editar);
+const podeDesativar = usePermissao(permissoes.produtos.desativar);
 
 const produtos = ref<Produto[]>([]);
 const tiposProduto = ref<TipoProduto[]>([]);
@@ -164,8 +167,8 @@ onMounted(async () => {
         icon="add"
         unelevated
         no-caps
-        :disable="!isAdmin"
-        :to="isAdmin ? { name: 'produtos-novo' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'produtos-novo' } : undefined"
       />
     </app-page-header>
 
@@ -250,21 +253,21 @@ onMounted(async () => {
             <app-table-action-button
               acao="editar"
               rotulo="Editar produto"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="editarProduto(cell.row.id)"
             />
             <app-table-action-button
               v-if="cell.row.ativo"
               acao="desativar"
               rotulo="Desativar produto"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogDesativar(cell.row)"
             />
             <app-table-action-button
               v-else
               acao="reativar"
               rotulo="Reativar produto"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
@@ -288,8 +291,8 @@ onMounted(async () => {
             icon="add"
             unelevated
             no-caps
-            :disable="!isAdmin"
-            :to="isAdmin ? { name: 'produtos-novo' } : undefined"
+            :disable="!podeCriar"
+            :to="podeCriar ? { name: 'produtos-novo' } : undefined"
           />
         </div>
       </q-card-section>

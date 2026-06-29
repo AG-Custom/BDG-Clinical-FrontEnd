@@ -7,6 +7,7 @@ import {
   type LoginResult,
   type RegistrarRequest,
 } from '@/services/auth.service';
+import { permissaoService } from '@/services/permissao.service';
 import type { EmpresaResumo } from '@/types/entidades/empresa';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
 import {
@@ -17,6 +18,11 @@ import {
   salvarTokenAuth,
   salvarUsuarioAuth,
 } from '@/utils/auth-storage';
+import {
+  usuarioPossuiAlgumaPermissao,
+  usuarioPossuiPermissao,
+  usuarioPossuiTodasPermissoes,
+} from '@/utils/checar-permissao';
 import { aplicarMarcaDocumento, restaurarMarcaDocumentoPadrao } from '@/utils/whitelabel';
 
 interface AuthState {
@@ -61,6 +67,7 @@ export const useAuthStore = defineStore('auth', {
       const usuario = await authService.me();
       this.usuario = usuario;
       salvarUsuarioAuth(usuario);
+      permissaoService.invalidarCacheMapa();
       aplicarMarcaDocumento({
         nome: usuario.empresaAtual?.nome,
         logo: usuario.empresaAtual?.logo,
@@ -115,12 +122,47 @@ export const useAuthStore = defineStore('auth', {
     },
 
     possuiPermissao(permissao: string): boolean {
-      return this.permissoes.includes(permissao);
+      if (this.isAdmin) {
+        return true;
+      }
+
+      return usuarioPossuiPermissao(this.permissoes, permissao);
+    },
+
+    possuiAlgumaPermissao(chaves: string[]): boolean {
+      if (this.isAdmin) {
+        return true;
+      }
+
+      return usuarioPossuiAlgumaPermissao(this.permissoes, chaves);
+    },
+
+    possuiTodasPermissoes(chaves: string[]): boolean {
+      if (this.isAdmin) {
+        return true;
+      }
+
+      return usuarioPossuiTodasPermissoes(this.permissoes, chaves);
+    },
+
+    possuiModulo(moduleCode: string): boolean {
+      if (this.isAdmin) {
+        return true;
+      }
+
+      const prefixo = `${moduleCode}.`;
+
+      return this.permissoes.some(
+        (chave) => chave.startsWith(prefixo) || chave === moduleCode,
+      );
     },
 
     persistirSessao(token: string, usuario: UsuarioAutenticado): void {
       this.token = token;
-      this.usuario = usuario;
+      this.usuario = {
+        ...usuario,
+        permissoes: usuario.permissoes ?? [],
+      };
       salvarTokenAuth(token);
       salvarUsuarioAuth(usuario);
       aplicarMarcaDocumento({

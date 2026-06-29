@@ -2,6 +2,7 @@ import { api } from '@/boot/axios';
 import type { ApiResponse } from '@/types/api/api';
 import type { EmpresaContexto } from '@/types/entidades/empresa';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
+import { normalizarUsuarioAuth } from '@/utils/normalizar-usuario-auth';
 
 export interface LoginRequest {
   email: string;
@@ -60,7 +61,7 @@ export function extrairSessaoAuth(
 
   return {
     token: response.token,
-    usuario: response.usuario,
+    usuario: normalizarUsuarioAuth(response.usuario),
   };
 }
 
@@ -85,13 +86,16 @@ export const authService = {
       payload,
     );
 
-    return data.data;
+    return {
+      token: data.data.token,
+      usuario: normalizarUsuarioAuth(data.data.usuario),
+    };
   },
 
   async me(): Promise<UsuarioAutenticado> {
     const { data } = await api.get<ApiResponse<UsuarioAutenticado>>('/api/auth/me');
 
-    return data.data;
+    return normalizarUsuarioAuth(data.data);
   },
 
   async validarEmailPrimeiroAcesso(
@@ -113,6 +117,9 @@ export const authService = {
       payload,
     );
 
-    return data.data;
+    return {
+      token: data.data.token,
+      usuario: normalizarUsuarioAuth(data.data.usuario),
+    };
   },
 };

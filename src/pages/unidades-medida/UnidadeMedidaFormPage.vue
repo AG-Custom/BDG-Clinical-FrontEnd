@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { unidadeMedidaService } from '@/services/unidade-medida.service';
@@ -15,7 +16,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.unidadesMedida.criar);
+const podeEditar = usePermissao(permissoes.unidadesMedida.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -114,7 +117,7 @@ onMounted(() => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value?.trim()) || 'Informe o nome']"
             hint="Ex.: Miligrama, Mililitro, Unidade"
           />
@@ -126,7 +129,7 @@ onMounted(() => {
                 class="form-field--required"
                 label="Sigla"
                 outlined
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
                 :rules="[(value: string) => Boolean(value?.trim()) || 'Informe a sigla']"
                 hint="Ex.: mg, ml, un"
               />
@@ -141,7 +144,7 @@ onMounted(() => {
                 emit-value
                 map-options
                 :rules="[validarTipo]"
-                :disable="!isAdmin"
+                :disable="!podeSalvar"
               />
             </div>
           </div>
@@ -154,7 +157,7 @@ onMounted(() => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin"
+              :disable="!podeSalvar"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

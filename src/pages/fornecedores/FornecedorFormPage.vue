@@ -2,17 +2,20 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { fornecedorService } from '@/services/fornecedor.service';
-import { normalizarCnpj } from '@/types/entidades/fornecedor';
+import { normalizarCnpj, OBSERVACAO_FORNECEDOR_MAX_CARACTERES } from '@/types/entidades/fornecedor';
 
 const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.fornecedores.criar);
+const podeEditar = usePermissao(permissoes.fornecedores.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -25,6 +28,7 @@ const form = reactive({
   cnpj: '',
   telefone: '',
   email: '',
+  observacao: '',
 });
 
 function validarCnpj(value: string): boolean | string {
@@ -49,6 +53,7 @@ function montarPayload() {
     cnpj: normalizarCnpj(form.cnpj),
     telefone: form.telefone.trim() || null,
     email: form.email.trim() || null,
+    observacao: form.observacao.trim() || null,
   };
 }
 
@@ -65,6 +70,7 @@ async function carregarFornecedor(): Promise<void> {
     form.cnpj = fornecedor.cnpj;
     form.telefone = fornecedor.telefone ?? '';
     form.email = fornecedor.email ?? '';
+    form.observacao = fornecedor.observacao ?? '';
   } catch (error) {
     notificacao.erro(obterMensagem(error));
     await router.push({ name: 'fornecedores' });
@@ -125,7 +131,7 @@ onMounted(() => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[(value: string) => Boolean(value?.trim()) || 'Informe o nome do fornecedor']"
           />
 
@@ -137,7 +143,7 @@ onMounted(() => {
             mask="##.###.###/####-##"
             unmasked-value
             fill-mask
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[validarCnpj]"
           />
 
@@ -150,7 +156,7 @@ onMounted(() => {
                 mask="(##) #####-####"
                 unmasked-value
                 fill-mask
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
               />
             </div>
             <div class="col-12 col-md-6">
@@ -159,11 +165,23 @@ onMounted(() => {
                 label="E-mail"
                 type="email"
                 outlined
-                :readonly="!isAdmin"
+                :readonly="!podeSalvar"
                 :rules="[validarEmail]"
               />
             </div>
           </div>
+
+          <q-input
+            v-model="form.observacao"
+            label="Observação"
+            outlined
+            type="textarea"
+            autogrow
+            counter
+            :maxlength="OBSERVACAO_FORNECEDOR_MAX_CARACTERES"
+            :readonly="!podeSalvar"
+            hint="Informações adicionais sobre o fornecedor (opcional)."
+          />
 
           <div class="row q-gutter-sm q-mt-md">
             <q-btn
@@ -173,7 +191,7 @@ onMounted(() => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin"
+              :disable="!podeSalvar"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

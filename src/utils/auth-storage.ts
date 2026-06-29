@@ -1,5 +1,6 @@
 import { AUTH_TOKEN_KEY, AUTH_USUARIO_KEY } from '@/constants/auth';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
+import { normalizarUsuarioAuth } from '@/utils/normalizar-usuario-auth';
 
 export function lerTokenAuth(): string | null {
   migrarSessionParaLocalStorage();
@@ -12,7 +13,9 @@ export function lerUsuarioAuth(): UsuarioAutenticado | null {
 
   const usuarioJson = localStorage.getItem(AUTH_USUARIO_KEY);
 
-  return usuarioJson ? (JSON.parse(usuarioJson) as UsuarioAutenticado) : null;
+  return usuarioJson
+    ? normalizarUsuarioAuth(JSON.parse(usuarioJson) as UsuarioAutenticado)
+    : null;
 }
 
 export function salvarTokenAuth(token: string): void {

@@ -1,6 +1,7 @@
 import { api } from '@/boot/axios';
 import type { ApiResponse } from '@/types/api/api';
 import type {
+  AnexoPedidoFornecedor,
   ListarPedidosFornecedorParams,
   PedidoFornecedor,
   SalvarPedidoFornecedorRequest,
@@ -35,10 +36,26 @@ export const pedidoFornecedorService = {
     return data.data;
   },
 
-  async criar(payload: SalvarPedidoFornecedorRequest): Promise<PedidoFornecedor> {
+  async criar(
+    payload: SalvarPedidoFornecedorRequest,
+    arquivos: File[] = [],
+  ): Promise<PedidoFornecedor> {
+    if (arquivos.length === 0) {
+      const { data } = await api.post<ApiResponse<PedidoFornecedor>>('/api/supplier-orders', payload);
+
+      return data.data;
+    }
+
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(payload));
+
+    for (const arquivo of arquivos) {
+      formData.append('files', arquivo);
+    }
+
     const { data } = await api.post<ApiResponse<PedidoFornecedor>>(
       '/api/supplier-orders',
-      payload,
+      formData,
     );
 
     return data.data;
@@ -67,5 +84,29 @@ export const pedidoFornecedorService = {
     );
 
     return data.data;
+  },
+
+  async listarAnexos(id: string): Promise<AnexoPedidoFornecedor[]> {
+    const { data } = await api.get<ApiResponse<AnexoPedidoFornecedor[]>>(
+      `/api/supplier-orders/${id}/attachments`,
+    );
+
+    return data.data;
+  },
+
+  async enviarAnexo(id: string, arquivo: File): Promise<AnexoPedidoFornecedor> {
+    const formData = new FormData();
+    formData.append('file', arquivo);
+
+    const { data } = await api.post<ApiResponse<AnexoPedidoFornecedor>>(
+      `/api/supplier-orders/${id}/attachments`,
+      formData,
+    );
+
+    return data.data;
+  },
+
+  async removerAnexo(id: string, attachmentId: string): Promise<void> {
+    await api.delete(`/api/supplier-orders/${id}/attachments/${attachmentId}`);
   },
 };

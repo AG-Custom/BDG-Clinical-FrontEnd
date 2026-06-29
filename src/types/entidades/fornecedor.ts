@@ -1,9 +1,12 @@
+export const OBSERVACAO_FORNECEDOR_MAX_CARACTERES = 2000;
+
 export interface Fornecedor {
   id: string;
   nome: string;
   cnpj: string;
   telefone: string | null;
   email: string | null;
+  observacao: string | null;
   ativo: boolean;
   criadoEm?: string;
   atualizadoEm?: string | null;
@@ -14,6 +17,7 @@ export interface CriarFornecedorRequest {
   cnpj: string;
   telefone?: string | null;
   email?: string | null;
+  observacao?: string | null;
 }
 
 export interface AtualizarFornecedorRequest {
@@ -21,6 +25,7 @@ export interface AtualizarFornecedorRequest {
   cnpj: string;
   telefone?: string | null;
   email?: string | null;
+  observacao?: string | null;
 }
 
 export interface ListarFornecedoresParams {

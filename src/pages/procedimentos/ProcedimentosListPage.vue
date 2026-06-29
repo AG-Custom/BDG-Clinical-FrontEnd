@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { procedimentoService } from '@/services/procedimento.service';
@@ -11,7 +12,9 @@ import type { Procedimento } from '@/types/entidades/procedimento';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.procedimentos.criar);
+const podeEditar = usePermissao(permissoes.procedimentos.editar);
+const podeDesativar = usePermissao(permissoes.procedimentos.desativar);
 
 const procedimentos = ref<Procedimento[]>([]);
 const carregando = ref(true);
@@ -125,8 +128,8 @@ onMounted(() => {
         icon="add"
         unelevated
         no-caps
-        :disable="!isAdmin"
-        :to="isAdmin ? { name: 'procedimentos-novo' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'procedimentos-novo' } : undefined"
       />
     </app-page-header>
 
@@ -177,21 +180,21 @@ onMounted(() => {
             <app-table-action-button
               acao="editar"
               rotulo="Editar procedimento"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="editarProcedimento(cell.row.id)"
             />
             <app-table-action-button
               v-if="cell.row.ativo"
               acao="desativar"
               rotulo="Desativar procedimento"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogDesativar(cell.row)"
             />
             <app-table-action-button
               v-else
               acao="reativar"
               rotulo="Reativar procedimento"
-              :disable="!isAdmin"
+              :disable="!podeDesativar"
               @click="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
@@ -215,8 +218,8 @@ onMounted(() => {
             icon="add"
             unelevated
             no-caps
-            :disable="!isAdmin"
-            :to="isAdmin ? { name: 'procedimentos-novo' } : undefined"
+            :disable="!podeCriar"
+            :to="podeCriar ? { name: 'procedimentos-novo' } : undefined"
           />
         </div>
       </q-card-section>

@@ -1,74 +1,80 @@
-# Autorização — perfil Admin vs Funcionário
+# Autorização — Admin e permissões granulares
 
 ## Fonte de verdade
 
-O perfil do usuário autenticado vem de **`GET /api/auth/me`** (Bearer token).
+O perfil e as permissões do usuário autenticado vêm de **`GET /api/auth/me`** (Bearer token).
 
 | Campo | Significado |
 |-------|-------------|
-| `isAdmin: true` | Perfil **Admin** — pode executar ações de gestão |
-| `isAdmin: false` | Perfil **Funcionário** — visualiza telas, mas ações ficam desabilitadas |
+| `isAdmin: true` | Bypass total — todas as checagens de permissão retornam `true` |
+| `isAdmin: false` | Funcionário — acesso definido por perfil + overrides |
+| `permissoes[]` | Chaves efetivas resolvidas no servidor (ex.: `pacientes.criar`). Mapeadas de `permissions` na API |
 
-O front sincroniza o usuário via `authStore.sincronizarUsuario()` após login e na inicialização da app.
+O front sincroniza o usuário via `authStore.sincronizarUsuario()` após login, troca de empresa e na inicialização da app.
 
 ## Sessão e token (front-end)
 
-O backend usa **JWT Bearer** (`Authorization: Bearer {token}`) — **não** há cookie HTTP no fluxo atual.
+O backend usa **JWT Bearer** (`Authorization: Bearer {token}`).
 
-O token fica em **`localStorage`** (`src/utils/auth-storage.ts`), compartilhado entre **abas** do mesmo navegador. Isso permite abrir cadastros em nova aba (ex.: alertas de dependência em formulários) sem novo login.
+O token fica em **`localStorage`** (`src/utils/auth-storage.ts`), compartilhado entre abas do mesmo navegador.
 
-| Storage | Comportamento |
-|---------|----------------|
-| `localStorage` | Usado hoje — persiste entre abas até logout |
-| `sessionStorage` | Legado — migrado automaticamente para `localStorage` na leitura |
-
-Logout (`authStore.logout()`) limpa ambos os storages.
-
-**Não** voltar a salvar o token só em `sessionStorage` — nova aba não enxerga a sessão.
+Logout (`authStore.logout()`) limpa o storage.
 
 ## No front-end
 
-### Store e composable
+### Store e composables
 
-- Getter `authStore.isAdmin` em [`src/stores/auth.store.ts`](../src/stores/auth.store.ts)
-- Composable `useAdmin()` em [`src/composables/useAdmin.ts`](../src/composables/useAdmin.ts)
+- `authStore.possuiPermissao(chave)` — bypass automático para admin
+- `authStore.possuiAlgumaPermissao(chaves)` / `possuiTodasPermissoes` / `possuiModulo`
+- `usePermissao(chave)` — computed reativo para uma chave
+- `usePermissoes()` — helpers + `isAdmin`
+- `useAdmin()` — legado; preferir `usePermissao` em novas features
 
 ```vue
 <script setup lang="ts">
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.pacientes.criar);
 </script>
 
 <template>
-  <q-btn label="Novo" :disable="!isAdmin" />
+  <q-btn label="Novo" :disable="!podeCriar" />
 </template>
 ```
+
+### Rotas
+
+Rotas autenticadas definem `meta.permissao` em `src/router/routes.ts`. O guard em `src/router/index.ts` redireciona para a primeira rota permitida quando o usuário não tem acesso.
+
+### Menu
+
+Itens e seções do drawer em `MainLayout.vue` usam `v-if` com `possuiPermissao` / `possuiAlguma`. Seções expansíveis ficam ocultas quando nenhum filho é visível.
 
 ### Regra de UI
 
 | Elemento | Comportamento |
 |----------|---------------|
-| Menu e rotas | **Visíveis para todos** autenticados |
-| Botões Novo / Editar / Desativar / Reativar | `:disable="!isAdmin"` |
-| Formulários | Campos `readonly` e botão Salvar `disable` quando `!isAdmin` |
+| Menu e rotas | **Ocultos** sem permissão mínima |
+| Botões Novo / Editar / Desativar | `:disable="!podeAcao"` com chave específica |
+| Formulários | `readonly` e Salvar `disable` quando sem permissão de escrita |
 
-**Não** usar `v-if="isAdmin"` para esconder telas ou menus — apenas desabilitar ações.
+Admin (`isAdmin`) não precisa de checagem explícita nas páginas — o store faz bypass.
 
-### Checklist para novas features admin-only
+### Funcionários
 
-1. Backend: restringir escrita a **Admin** (POST/PUT/DELETE/PATCH)
-2. Listagem: botões de ação com `:disable="!isAdmin"`
-3. Formulário: `:readonly="!isAdmin"` nos campos + Salvar com `:disable="!isAdmin"`
-4. Botões com `:to`: usar `:to="isAdmin ? { name: '...' } : undefined"` junto com `:disable="!isAdmin"`
+- Toggle **Administrador** (`isAdmin`) no formulário — bypass total
+- **Perfil de permissão** (`perfilId`) quando não é admin
+- **Permissões avançadas** — overrides Allow/Deny em rota dedicada
 
-## Telas com ações admin-only hoje
+### Checklist para novas features
 
-| Módulo | Ações restritas |
-|--------|-----------------|
-| Unidades | Novo, Editar, Desativar, Reativar, Salvar |
-| Funcionários | Novo, Editar, Desativar, Reativar, Salvar |
+1. Backend: `[RequirePermission("modulo.acao")]` nas rotas de escrita
+2. Constantes em `src/constants/permissoes.ts`
+3. `meta.permissao` na rota em `routes.ts`
+4. `v-if` no item do menu em `MainLayout.vue`
+5. Listagem/form: `usePermissao` por ação (criar, editar, desativar)
 
 ## Backend
 
-Rotas de escrita retornam **403** para perfil Funcionário. O front desabilita botões para melhor UX; a API continua sendo a garantia final.
+Rotas protegidas retornam **403** sem permissão. O front oculta/desabilita para melhor UX; a API continua sendo a garantia final.

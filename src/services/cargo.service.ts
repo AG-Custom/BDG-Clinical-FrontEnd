@@ -1,8 +1,10 @@
 import { api } from '@/boot/axios';
 import type { ApiResponse } from '@/types/api/api';
 import type {
+  AtualizarCargoPermissoesRequest,
   AtualizarCargoRequest,
   Cargo,
+  CargoPermissoes,
   CriarCargoRequest,
 } from '@/types/entidades/cargo';
 
@@ -39,6 +41,26 @@ export const cargoService = {
 
   async reativar(id: string): Promise<Cargo> {
     const { data } = await api.patch<ApiResponse<Cargo>>(`/api/positions/${id}/reactivate`);
+
+    return data.data;
+  },
+
+  async obterPermissoes(id: string): Promise<CargoPermissoes> {
+    const { data } = await api.get<ApiResponse<CargoPermissoes>>(
+      `/api/positions/${id}/permissions`,
+    );
+
+    return data.data;
+  },
+
+  async atualizarPermissoes(
+    id: string,
+    payload: AtualizarCargoPermissoesRequest,
+  ): Promise<CargoPermissoes> {
+    const { data } = await api.put<ApiResponse<CargoPermissoes>>(
+      `/api/positions/${id}/permissions`,
+      payload,
+    );
 
     return data.data;
   },

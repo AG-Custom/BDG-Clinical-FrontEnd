@@ -6,6 +6,10 @@ import type {
   Funcionario,
   ListarFuncionariosParams,
 } from '@/types/entidades/funcionario';
+import type {
+  AtualizarPermissoesFuncionarioRequest,
+  PermissoesFuncionario,
+} from '@/types/entidades/permissao';
 
 export const funcionarioService = {
   async listar(params: ListarFuncionariosParams = {}): Promise<Funcionario[]> {
@@ -52,6 +56,26 @@ export const funcionarioService = {
 
   async reativar(id: string): Promise<Funcionario> {
     const { data } = await api.patch<ApiResponse<Funcionario>>(`/api/employees/${id}/reactivate`);
+
+    return data.data;
+  },
+
+  async obterPermissoes(id: string): Promise<PermissoesFuncionario> {
+    const { data } = await api.get<ApiResponse<PermissoesFuncionario>>(
+      `/api/employees/${id}/permissions`,
+    );
+
+    return data.data;
+  },
+
+  async atualizarPermissoes(
+    id: string,
+    payload: AtualizarPermissoesFuncionarioRequest,
+  ): Promise<PermissoesFuncionario> {
+    const { data } = await api.put<ApiResponse<PermissoesFuncionario>>(
+      `/api/employees/${id}/permissions`,
+      payload,
+    );
 
     return data.data;
   },

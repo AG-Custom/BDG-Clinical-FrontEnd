@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
@@ -14,7 +15,9 @@ import type { Unidade } from '@/types/entidades/unidade';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.pacientes.criar);
+const podeEditar = usePermissao(permissoes.pacientes.editar);
+const podeDesativar = usePermissao(permissoes.pacientes.desativar);
 
 const pacientes = ref<Paciente[]>([]);
 const unidades = ref<Unidade[]>([]);
@@ -153,8 +156,8 @@ onMounted(async () => {
         icon="person_add"
         unelevated
         no-caps
-        :disable="!isAdmin"
-        :to="isAdmin ? { name: 'pacientes-novo' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'pacientes-novo' } : undefined"
       />
     </app-page-header>
 
@@ -233,21 +236,21 @@ onMounted(async () => {
             <app-table-action-button
               acao="editar"
               rotulo="Editar paciente"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="editarPaciente(cell.row.id)"
             />
             <app-table-action-button
               v-if="cell.row.ativo"
               acao="desativar"
               rotulo="Desativar paciente"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="abrirDialogDesativar(cell.row)"
             />
             <app-table-action-button
               v-else
               acao="reativar"
               rotulo="Reativar paciente"
-              :disable="!isAdmin"
+              :disable="!podeEditar"
               @click="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
@@ -271,8 +274,8 @@ onMounted(async () => {
             icon="person_add"
             unelevated
             no-caps
-            :disable="!isAdmin"
-            :to="isAdmin ? { name: 'pacientes-novo' } : undefined"
+              :disable="!podeDesativar"
+            :to="podeCriar ? { name: 'pacientes-novo' } : undefined"
           />
         </div>
       </q-card-section>

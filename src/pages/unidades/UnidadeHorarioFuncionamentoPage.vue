@@ -3,13 +3,14 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import HorarioFuncionamentoUnidadePanel from '@/components/unidades/HorarioFuncionamentoUnidadePanel.vue';
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { unidadeService } from '@/services/unidade.service';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const route = useRoute();
 const router = useRouter();
-const { isAdmin } = useAdmin();
+const podeEditar = usePermissao(permissoes.unidades.editar);
 
 const unidadeId = computed(() => route.params.id as string);
 const unidade = ref<Unidade | null>(null);
@@ -38,7 +39,7 @@ onMounted(() => {
 
     <horario-funcionamento-unidade-panel
       :unidade-id="unidadeId"
-      :desabilitado="!isAdmin"
+      :desabilitado="!podeEditar"
       ocultar-cabecalho
     />
   </q-page>

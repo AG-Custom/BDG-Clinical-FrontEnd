@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { useAdmin } from '@/composables/useAdmin';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { procedimentoService } from '@/services/procedimento.service';
@@ -18,7 +19,9 @@ const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
-const { isAdmin } = useAdmin();
+const podeCriar = usePermissao(permissoes.procedimentos.criar);
+const podeEditar = usePermissao(permissoes.procedimentos.editar);
+const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -282,7 +285,7 @@ onMounted(async () => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             :rules="[validarNome]"
           />
 
@@ -294,7 +297,7 @@ onMounted(async () => {
             emit-value
             map-options
             clearable
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
             hint="Medicamento ou produto clínico aplicado. Opcional se houver apenas insumos."
             :rules="[validarProdutoAplicado]"
           />
@@ -305,7 +308,7 @@ onMounted(async () => {
             outlined
             type="textarea"
             autogrow
-            :readonly="!isAdmin"
+            :readonly="!podeSalvar"
           />
 
           <q-separator class="q-my-md" />
@@ -319,7 +322,7 @@ onMounted(async () => {
               icon="add"
               label="Adicionar insumo"
               no-caps
-              :disable="!isAdmin || opcoesProdutosInsumos.length === 0"
+              :disable="!podeSalvar || opcoesProdutosInsumos.length === 0"
               @click="adicionarItem"
             />
           </div>
@@ -340,7 +343,7 @@ onMounted(async () => {
                   dense
                   emit-value
                   map-options
-                  :disable="!isAdmin || opcoesProdutosInsumos.length === 0"
+                  :disable="!podeSalvar || opcoesProdutosInsumos.length === 0"
                 />
               </div>
 
@@ -354,7 +357,7 @@ onMounted(async () => {
                   type="number"
                   min="0.01"
                   step="any"
-                  :readonly="!isAdmin"
+                  :readonly="!podeSalvar"
                   :rules="[validarQuantidadeItem]"
                 >
                   <template v-if="item.produtoId" #append>
@@ -369,7 +372,7 @@ onMounted(async () => {
                 <app-table-action-button
                   acao="excluir"
                   rotulo="Remover insumo"
-                  :disable="!isAdmin"
+                  :disable="!podeSalvar"
                   @click="removerItem(indice)"
                 />
               </div>
@@ -384,7 +387,7 @@ onMounted(async () => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!isAdmin"
+              :disable="!podeSalvar"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

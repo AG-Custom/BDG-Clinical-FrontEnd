@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth.store';
+import { resolverRotaInicial } from '@/utils/resolver-rota-inicial';
 
 import { routes } from './routes';
 
@@ -8,12 +9,6 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
 });
-
-function resolverRotaInicial(
-  authStore: ReturnType<typeof useAuthStore>,
-): { name: 'dashboard' } {
-  return { name: 'dashboard' };
-}
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();

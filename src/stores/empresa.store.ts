@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 
 import { authService, extrairSessaoAuth } from '@/services/auth.service';
 import { empresaService } from '@/services/empresa.service';
+import { permissaoService } from '@/services/permissao.service';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Empresa, EmpresaContexto, CriarEmpresaRequest } from '@/types/entidades/empresa';
 import { contextoParaResumo } from '@/types/entidades/empresa';

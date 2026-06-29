@@ -6,6 +6,6 @@ export interface UsuarioAutenticado {
   email: string;
   isAdmin: boolean;
   flagAplicador?: boolean;
-  permissoes?: string[];
+  permissoes: string[];
   empresaAtual?: EmpresaResumo;
 }
