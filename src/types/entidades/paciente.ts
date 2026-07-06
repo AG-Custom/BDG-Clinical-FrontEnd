@@ -1,6 +1,13 @@
+export interface UnidadePacienteResumo {
+  id: string;
+  nome: string;
+}
+
 export interface Paciente {
   id: string;
   unidadeId: string;
+  unidadeIds?: string[];
+  unidades?: UnidadePacienteResumo[];
   nome: string;
   cpf: string | null;
   telefone: string | null;
@@ -13,7 +20,8 @@ export interface Paciente {
 }
 
 export interface CriarPacienteRequest {
-  unidadeId: string;
+  unidadeId?: string;
+  unidadeIds?: string[];
   nome: string;
   cpf?: string | null;
   telefone?: string | null;
@@ -23,7 +31,8 @@ export interface CriarPacienteRequest {
 }
 
 export interface AtualizarPacienteRequest {
-  unidadeId: string;
+  unidadeId?: string;
+  unidadeIds?: string[];
   nome: string;
   cpf?: string | null;
   telefone?: string | null;
@@ -69,4 +78,48 @@ export function normalizarCpf(cpf: string): string | null {
   const digitos = cpf.replace(/\D/g, '');
 
   return digitos.length > 0 ? digitos : null;
+}
+
+export function obterUnidadeIdsDoPaciente(paciente: Paciente): string[] {
+  if (paciente.unidadeIds && paciente.unidadeIds.length > 0) {
+    return paciente.unidadeIds;
+  }
+
+  if (paciente.unidadeId) {
+    return [paciente.unidadeId];
+  }
+
+  return [];
+}
+
+export function obterUnidadesDoPaciente(paciente: Paciente): UnidadePacienteResumo[] {
+  if (paciente.unidades && paciente.unidades.length > 0) {
+    return paciente.unidades;
+  }
+
+  return obterUnidadeIdsDoPaciente(paciente).map((id) => ({
+    id,
+    nome: id,
+  }));
+}
+
+export function formatarNomesUnidadesPaciente(
+  paciente: Paciente,
+  nomesPorId?: ReadonlyMap<string, string>,
+): string {
+  if (paciente.unidades && paciente.unidades.length > 0) {
+    return paciente.unidades.map((unidade) => unidade.nome).join(', ');
+  }
+
+  const ids = obterUnidadeIdsDoPaciente(paciente);
+
+  if (ids.length === 0) {
+    return '—';
+  }
+
+  if (nomesPorId) {
+    return ids.map((id) => nomesPorId.get(id) ?? '—').join(', ');
+  }
+
+  return '—';
 }

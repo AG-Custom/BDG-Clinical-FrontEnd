@@ -19,6 +19,11 @@ export type StatusAgendamento = (typeof STATUS_AGENDAMENTO)[number];
 
 export const STATUS_AGENDAMENTO_EDITAVEL: StatusAgendamento[] = ['Agendado', 'Confirmado'];
 
+export interface ProcedimentoAgendamentoResumo {
+  id: string;
+  nome: string;
+}
+
 export interface Agendamento {
   id: string;
   unidadeId: string;
@@ -30,6 +35,7 @@ export interface Agendamento {
   compraPacienteId: string | null;
   procedimentoId: string | null;
   procedimentoNome: string | null;
+  procedimentos?: ProcedimentoAgendamentoResumo[];
   tipo: TipoAgendamento;
   status: StatusAgendamento;
   dataInicio: string;
@@ -40,6 +46,7 @@ export interface Agendamento {
   canceladoPorId: string | null;
   motivoCancelamento: string | null;
   aplicacaoPacienteId: string | null;
+  aplicacaoPacienteIds?: string[];
   criadoEm: string;
   atualizadoEm: string | null;
 }
@@ -52,15 +59,22 @@ export interface CriarAgendamentoRequest {
   dataInicio: string;
   dataFim: string;
   procedimentoId?: string | null;
+  procedimentoIds?: string[] | null;
   compraPacienteId?: string | null;
   observacao?: string | null;
 }
 
 export type AtualizarAgendamentoRequest = CriarAgendamentoRequest;
 
+export interface ProcedimentoConclusaoRequest {
+  procedimentoId: string;
+  quantidadeUtilizada?: number | null;
+}
+
 export interface ConcluirAgendamentoRequest {
   quantidadeUtilizada?: number | null;
   peso?: number | null;
+  procedimentos?: ProcedimentoConclusaoRequest[];
 }
 
 export interface CancelarAgendamentoRequest {
@@ -246,6 +260,55 @@ export function obterCorEventoAgendamento(status: StatusAgendamento): string {
 
 export function isAgendamentoEditavel(status: StatusAgendamento): boolean {
   return STATUS_AGENDAMENTO_EDITAVEL.includes(status);
+}
+
+export function obterProcedimentosDoAgendamento(
+  agendamento: Agendamento,
+): ProcedimentoAgendamentoResumo[] {
+  if (agendamento.procedimentos && agendamento.procedimentos.length > 0) {
+    return agendamento.procedimentos;
+  }
+
+  if (agendamento.procedimentoId) {
+    return [
+      {
+        id: agendamento.procedimentoId,
+        nome: agendamento.procedimentoNome ?? 'Procedimento',
+      },
+    ];
+  }
+
+  return [];
+}
+
+export function formatarNomesProcedimentos(agendamento: Agendamento): string | null {
+  const procedimentos = obterProcedimentosDoAgendamento(agendamento);
+
+  if (procedimentos.length === 0) {
+    return null;
+  }
+
+  return procedimentos.map((procedimento) => procedimento.nome).join(', ');
+}
+
+export function temAplicacoesRegistradas(agendamento: Agendamento): boolean {
+  if (agendamento.aplicacaoPacienteIds && agendamento.aplicacaoPacienteIds.length > 0) {
+    return true;
+  }
+
+  return Boolean(agendamento.aplicacaoPacienteId);
+}
+
+export function obterIdsAplicacoesPaciente(agendamento: Agendamento): string[] {
+  if (agendamento.aplicacaoPacienteIds && agendamento.aplicacaoPacienteIds.length > 0) {
+    return agendamento.aplicacaoPacienteIds;
+  }
+
+  if (agendamento.aplicacaoPacienteId) {
+    return [agendamento.aplicacaoPacienteId];
+  }
+
+  return [];
 }
 
 export { deInputDatetimeLocalParaIso, deIsoParaInputDatetimeLocal };

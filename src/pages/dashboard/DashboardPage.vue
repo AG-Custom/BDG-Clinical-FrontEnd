@@ -373,7 +373,6 @@ onMounted(async () => {
         <q-icon name="today" size="16px" />
         {{ agendamentosHoje }} agendamento{{ agendamentosHoje === 1 ? '' : 's' }} hoje
       </span>
-      <span v-if="carregando" class="agenda-page__carregando-texto">Atualizando…</span>
     </div>
 
     <q-banner

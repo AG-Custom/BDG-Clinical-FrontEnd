@@ -22,8 +22,6 @@ const content = {
         :style="{ backgroundImage: `url(${DesignSystemAuth.heroImage})` }"
       />
       <div class="auth-premium__visual-overlay" />
-      <div class="auth-premium__orb auth-premium__orb--1 ds-animate-float" />
-      <div class="auth-premium__orb auth-premium__orb--2 ds-animate-float-delayed" />
 
       <div class="auth-premium__visual-content ds-animate-fade-in">
         <div class="auth-premium__visual-logo">
@@ -40,22 +38,30 @@ const content = {
           {{ content[variant].subline }}
         </p>
 
-        <div class="auth-premium__floating-cards">
-          <div
-            v-for="(stat, index) in DesignSystemAuth.stats"
-            :key="stat.label"
-            class="auth-premium__float-card"
-            :class="index === 1 ? 'ds-animate-float-delayed' : 'ds-animate-float'"
+        <ul class="auth-premium__features">
+          <li
+            v-for="feature in content[variant].features"
+            :key="feature.text"
+            class="auth-premium__feature"
           >
-            <strong>{{ stat.value }}</strong>
-            <span>{{ stat.label }}</span>
-          </div>
-        </div>
+            <span class="auth-premium__feature-icon" aria-hidden="true">
+              <q-icon :name="feature.icon" size="18px" />
+            </span>
+            <span>{{ feature.text }}</span>
+          </li>
+        </ul>
       </div>
     </aside>
 
     <section class="auth-premium__form-panel">
       <div class="auth-premium__form-inner ds-animate-fade-in-up">
+        <div class="auth-premium__form-brand">
+          <span class="auth-premium__form-brand-icon" aria-hidden="true">
+            <q-icon :name="DesignSystemBrand.icone" size="22px" color="primary" />
+          </span>
+          <span class="auth-premium__form-brand-name">{{ DesignSystemBrand.nome }}</span>
+        </div>
+
         <header class="auth-premium__form-header">
           <h1>{{ formTitle }}</h1>
           <p>{{ formSubtitle }}</p>

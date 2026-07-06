@@ -14,6 +14,7 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
   obterLabelTipoAgendamento,
+  obterProcedimentosDoAgendamento,
 } from '@/types/entidades/agendamento';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import type { Paciente } from '@/types/entidades/paciente';
@@ -52,7 +53,7 @@ const form = reactive({
   tipo: 'Consulta' as TipoAgendamento,
   dataInicio: '',
   dataFim: '',
-  procedimentoId: null as string | null,
+  procedimentoIds: [] as string[],
   observacao: '',
 });
 
@@ -91,6 +92,14 @@ const opcoesTipos = computed(() =>
 
 const exigeProcedimento = computed(() => form.tipo === 'Aplicacao');
 
+const mostrarAlertaProcedimentos = computed(
+  () =>
+    exigeProcedimento.value &&
+    dadosIniciaisCarregados.value &&
+    !carregandoDados.value &&
+    opcoesProcedimentos.value.length === 0,
+);
+
 const tituloDialog = computed(() =>
   isEdicao.value ? 'Editar agendamento' : 'Novo agendamento',
 );
@@ -109,7 +118,9 @@ function preencherFormulario(): void {
     form.tipo = props.agendamento.tipo;
     form.dataInicio = deIsoParaInputDatetimeLocal(props.agendamento.dataInicio);
     form.dataFim = deIsoParaInputDatetimeLocal(props.agendamento.dataFim);
-    form.procedimentoId = props.agendamento.procedimentoId;
+    form.procedimentoIds = obterProcedimentosDoAgendamento(props.agendamento).map(
+      (procedimento) => procedimento.id,
+    );
     form.observacao = props.agendamento.observacao ?? '';
     return;
   }
@@ -118,7 +129,7 @@ function preencherFormulario(): void {
   form.pacienteId = null;
   form.funcionarioId = null;
   form.tipo = 'Consulta';
-  form.procedimentoId = null;
+  form.procedimentoIds = [];
   form.observacao = '';
 
   if (props.intervaloInicial) {
@@ -203,6 +214,14 @@ async function carregarDependencias(): Promise<void> {
   }
 }
 
+async function recarregarProcedimentos(): Promise<void> {
+  try {
+    procedimentosDisponiveis.value = normalizarLista(await procedimentoService.listar());
+  } catch (erro) {
+    notificacao.erro(obterMensagem(erro));
+  }
+}
+
 function fechar(): void {
   emit('update:modelValue', false);
 }
@@ -215,7 +234,7 @@ function montarPayload() {
     tipo: form.tipo,
     dataInicio: deInputDatetimeLocalParaIso(form.dataInicio),
     dataFim: deInputDatetimeLocalParaIso(form.dataFim),
-    procedimentoId: exigeProcedimento.value ? form.procedimentoId : null,
+    procedimentoIds: exigeProcedimento.value ? form.procedimentoIds : null,
     observacao: form.observacao.trim() || null,
   };
 }
@@ -232,8 +251,8 @@ async function salvar(): Promise<void> {
     return;
   }
 
-  if (exigeProcedimento.value && !form.procedimentoId) {
-    notificacao.info('Selecione o procedimento para agendamentos de aplicação.');
+  if (exigeProcedimento.value && form.procedimentoIds.length === 0) {
+    notificacao.info('Selecione ao menos um procedimento para agendamentos de aplicação.');
     return;
   }
 
@@ -302,7 +321,7 @@ watch(
   () => form.tipo,
   (novoTipo) => {
     if (novoTipo !== 'Aplicacao') {
-      form.procedimentoId = null;
+      form.procedimentoIds = [];
     }
   },
 );
@@ -371,18 +390,29 @@ watch(
             :disable="salvando"
           />
 
-          <q-select
-            v-if="exigeProcedimento"
-            v-model="form.procedimentoId"
-            :options="opcoesProcedimentos"
-            label="Procedimento *"
-            outlined
-            emit-value
-            map-options
-            :loading="carregandoDados"
-            :disable="salvando"
-            :rules="[(v) => Boolean(v) || 'Obrigatório para aplicação']"
-          />
+          <div v-if="exigeProcedimento" class="form-field-stack">
+            <q-select
+              v-model="form.procedimentoIds"
+              :options="opcoesProcedimentos"
+              label="Procedimentos *"
+              outlined
+              multiple
+              use-chips
+              emit-value
+              map-options
+              :loading="carregandoDados"
+              :disable="salvando || opcoesProcedimentos.length === 0"
+              :rules="[(v) => (Array.isArray(v) && v.length > 0) || 'Obrigatório para aplicação']"
+            />
+            <app-form-dependencia-alerta
+              v-if="mostrarAlertaProcedimentos"
+              inline
+              mensagem="Nenhum procedimento cadastrado. Cadastre um procedimento antes de agendar uma aplicação."
+              rotulo-acao="Cadastrar procedimento"
+              :destino="{ name: 'procedimentos-novo' }"
+              @atualizar="recarregarProcedimentos"
+            />
+          </div>
 
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
@@ -426,6 +456,7 @@ watch(
           color="primary"
           no-caps
           :loading="salvando"
+          :disable="exigeProcedimento && opcoesProcedimentos.length === 0"
           @click="salvar"
         />
       </q-card-actions>

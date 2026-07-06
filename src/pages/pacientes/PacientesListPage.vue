@@ -9,7 +9,7 @@ import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Paciente } from '@/types/entidades/paciente';
-import { formatarCpf, formatarDataNascimento } from '@/types/entidades/paciente';
+import { formatarCpf, formatarDataNascimento, formatarNomesUnidadesPaciente } from '@/types/entidades/paciente';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const router = useRouter();
@@ -33,7 +33,7 @@ const reativando = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
-  { name: 'unidade', label: 'Unidade', field: 'unidade', align: 'left' as const },
+  { name: 'unidade', label: 'Unidades', field: 'unidade', align: 'left' as const },
   { name: 'cpf', label: 'CPF', field: 'cpf', align: 'left' as const },
   { name: 'telefone', label: 'Telefone', field: 'telefone', align: 'left' as const },
   { name: 'dataNascimento', label: 'Nascimento', field: 'dataNascimento', align: 'left' as const },
@@ -49,8 +49,8 @@ function formatarTelefone(telefone: string | null): string {
   return telefone || '—';
 }
 
-function obterNomeUnidade(unidadeId: string): string {
-  return unidadesPorId.value.get(unidadeId) ?? '—';
+function obterTextoUnidades(paciente: Paciente): string {
+  return formatarNomesUnidadesPaciente(paciente, unidadesPorId.value);
 }
 
 async function carregarUnidades(): Promise<void> {
@@ -200,7 +200,7 @@ onMounted(async () => {
       >
         <template #body-cell-unidade="props">
           <q-td :props="props">
-            {{ obterNomeUnidade(props.row.unidadeId) }}
+            {{ obterTextoUnidades(props.row) }}
           </q-td>
         </template>
 

@@ -5,12 +5,13 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
 import { procedimentoService } from '@/services/procedimento.service';
-import type { Agendamento } from '@/types/entidades/agendamento';
+import type { Agendamento, ConcluirAgendamentoRequest } from '@/types/entidades/agendamento';
 import {
   calcularDuracaoAgendamento,
   formatarDataCabecalhoAgendamento,
   formatarDataHoraAgendamento,
   formatarIntervaloHorarioAgendamento,
+  formatarNomesProcedimentos,
   isAgendamentoEditavel,
   obterCorEventoAgendamento,
   obterCorStatusAgendamento,
@@ -18,8 +19,9 @@ import {
   obterIniciaisNome,
   obterLabelStatusAgendamento,
   obterLabelTipoAgendamento,
+  obterProcedimentosDoAgendamento,
+  temAplicacoesRegistradas,
 } from '@/types/entidades/agendamento';
-import type { Procedimento } from '@/types/entidades/procedimento';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -39,10 +41,17 @@ const processando = ref(false);
 const dialogCancelar = ref(false);
 const dialogConcluir = ref(false);
 const motivoCancelamento = ref('');
-const procedimento = ref<Procedimento | null>(null);
+
+interface ProcedimentoConclusaoFormulario {
+  procedimentoId: string;
+  nome: string;
+  exigeQuantidade: boolean;
+  quantidadeUtilizada: number | null;
+}
+
+const procedimentosConclusao = ref<ProcedimentoConclusaoFormulario[]>([]);
 
 const formConclusao = reactive({
-  quantidadeUtilizada: null as number | null,
   peso: null as number | null,
 });
 
@@ -66,8 +75,34 @@ const podeMarcarFalta = computed(
     (props.agendamento.status === 'Agendado' || props.agendamento.status === 'Confirmado'),
 );
 
-const exigeQuantidadeConclusao = computed(
-  () => Boolean(procedimento.value?.produtoAplicadoId),
+const exigeQuantidadeConclusao = computed(() =>
+  procedimentosConclusao.value.some((procedimento) => procedimento.exigeQuantidade),
+);
+
+const conclusaoMultipla = computed(() => procedimentosConclusao.value.length > 1);
+
+const nomesProcedimentos = computed(() =>
+  props.agendamento ? formatarNomesProcedimentos(props.agendamento) : null,
+);
+
+const possuiAplicacoes = computed(() =>
+  props.agendamento ? temAplicacoesRegistradas(props.agendamento) : false,
+);
+
+const quantidadeAplicacoes = computed(() => {
+  if (!props.agendamento) {
+    return 0;
+  }
+
+  if (props.agendamento.aplicacaoPacienteIds && props.agendamento.aplicacaoPacienteIds.length > 0) {
+    return props.agendamento.aplicacaoPacienteIds.length;
+  }
+
+  return props.agendamento.aplicacaoPacienteId ? 1 : 0;
+});
+
+const quantidadeProcedimentos = computed(() =>
+  props.agendamento ? obterProcedimentosDoAgendamento(props.agendamento).length : 0,
 );
 
 const corStatus = computed(() =>
@@ -105,18 +140,61 @@ function fechar(): void {
   emit('update:modelValue', false);
 }
 
-async function carregarProcedimento(): Promise<void> {
-  procedimento.value = null;
+async function carregarProcedimentosConclusao(): Promise<void> {
+  procedimentosConclusao.value = [];
 
-  if (!props.agendamento?.procedimentoId) {
+  if (!props.agendamento) {
     return;
   }
 
-  try {
-    procedimento.value = await procedimentoService.obter(props.agendamento.procedimentoId);
-  } catch {
-    procedimento.value = null;
+  const resumos = obterProcedimentosDoAgendamento(props.agendamento);
+
+  if (resumos.length === 0) {
+    return;
   }
+
+  const detalhes = await Promise.all(
+    resumos.map(async (resumo) => {
+      try {
+        const procedimento = await procedimentoService.obter(resumo.id);
+
+        return {
+          procedimentoId: resumo.id,
+          nome: procedimento.nome,
+          exigeQuantidade: Boolean(procedimento.produtoAplicadoId),
+          quantidadeUtilizada: null,
+        };
+      } catch {
+        return {
+          procedimentoId: resumo.id,
+          nome: resumo.nome,
+          exigeQuantidade: false,
+          quantidadeUtilizada: null,
+        };
+      }
+    }),
+  );
+
+  procedimentosConclusao.value = detalhes;
+}
+
+function montarPayloadConclusao(): ConcluirAgendamentoRequest {
+  if (procedimentosConclusao.value.length <= 1) {
+    return {
+      quantidadeUtilizada: procedimentosConclusao.value[0]?.quantidadeUtilizada ?? null,
+      peso: formConclusao.peso,
+    };
+  }
+
+  return {
+    peso: formConclusao.peso,
+    procedimentos: procedimentosConclusao.value.map((procedimento) => ({
+      procedimentoId: procedimento.procedimentoId,
+      ...(procedimento.exigeQuantidade
+        ? { quantidadeUtilizada: procedimento.quantidadeUtilizada }
+        : {}),
+    })),
+  };
 }
 
 async function confirmar(): Promise<void> {
@@ -143,18 +221,20 @@ async function concluir(): Promise<void> {
     return;
   }
 
-  if (exigeQuantidadeConclusao.value && formConclusao.quantidadeUtilizada === null) {
-    notificacao.info('Informe a quantidade utilizada.');
+  if (
+    procedimentosConclusao.value.some(
+      (procedimento) =>
+        procedimento.exigeQuantidade && procedimento.quantidadeUtilizada === null,
+    )
+  ) {
+    notificacao.info('Informe a quantidade utilizada para todos os procedimentos com medicamento.');
     return;
   }
 
   processando.value = true;
 
   try {
-    await agendamentoService.concluir(props.agendamento.id, {
-      quantidadeUtilizada: formConclusao.quantidadeUtilizada,
-      peso: formConclusao.peso,
-    });
+    await agendamentoService.concluir(props.agendamento.id, montarPayloadConclusao());
     notificacao.sucesso('Agendamento concluído.');
     dialogConcluir.value = false;
     emit('atualizado');
@@ -217,10 +297,9 @@ function abrirEdicao(): void {
 }
 
 function abrirDialogConcluir(): void {
-  formConclusao.quantidadeUtilizada = null;
   formConclusao.peso = null;
   dialogConcluir.value = true;
-  void carregarProcedimento();
+  void carregarProcedimentosConclusao();
 }
 
 watch(
@@ -304,11 +383,13 @@ watch(
           </div>
         </div>
 
-        <div v-if="agendamento.procedimentoNome" class="agendamento-detalhe__secao">
+        <div v-if="nomesProcedimentos" class="agendamento-detalhe__secao">
           <q-icon name="vaccines" size="20px" class="agendamento-detalhe__icone-secao" />
           <div class="agendamento-detalhe__secao-conteudo">
-            <div class="agendamento-detalhe__secao-label">Procedimento</div>
-            <div class="agendamento-detalhe__secao-valor">{{ agendamento.procedimentoNome }}</div>
+            <div class="agendamento-detalhe__secao-label">
+              {{ quantidadeProcedimentos > 1 ? 'Procedimentos' : 'Procedimento' }}
+            </div>
+            <div class="agendamento-detalhe__secao-valor">{{ nomesProcedimentos }}</div>
           </div>
         </div>
 
@@ -325,9 +406,15 @@ watch(
           </div>
         </div>
 
-        <div v-if="agendamento.aplicacaoPacienteId" class="agendamento-detalhe__info-extra">
+        <div v-if="possuiAplicacoes" class="agendamento-detalhe__info-extra">
           <q-icon name="check_circle" size="16px" color="positive" />
-          <span>Aplicação registrada no prontuário</span>
+          <span>
+            {{
+              quantidadeAplicacoes > 1
+                ? `${quantidadeAplicacoes} aplicações registradas no prontuário`
+                : 'Aplicação registrada no prontuário'
+            }}
+          </span>
         </div>
       </q-card-section>
 
@@ -429,17 +516,36 @@ watch(
   </q-dialog>
 
   <q-dialog v-model="dialogConcluir" persistent>
-    <q-card style="min-width: 320px">
+    <q-card style="min-width: 320px; max-width: 95vw">
       <q-card-section>
         <div class="text-h6">Concluir agendamento</div>
         <p v-if="agendamento?.tipo === 'Aplicacao'" class="text-body2 q-mt-sm">
-          Ao concluir, será registrada a aplicação e movimentação de estoque.
+          Ao concluir, serão registradas as aplicações e movimentações de estoque.
         </p>
       </q-card-section>
       <q-card-section class="q-gutter-md">
+        <template v-if="conclusaoMultipla">
+          <div
+            v-for="procedimento in procedimentosConclusao"
+            :key="procedimento.procedimentoId"
+            class="agendamento-detalhe__procedimento-conclusao"
+          >
+            <div class="text-subtitle2">{{ procedimento.nome }}</div>
+            <q-input
+              v-if="procedimento.exigeQuantidade"
+              v-model.number="procedimento.quantidadeUtilizada"
+              label="Quantidade utilizada *"
+              type="number"
+              outlined
+              :disable="processando"
+              min="0"
+              step="0.01"
+            />
+          </div>
+        </template>
         <q-input
-          v-if="exigeQuantidadeConclusao"
-          v-model.number="formConclusao.quantidadeUtilizada"
+          v-else-if="exigeQuantidadeConclusao && procedimentosConclusao[0]"
+          v-model.number="procedimentosConclusao[0].quantidadeUtilizada"
           label="Quantidade utilizada *"
           type="number"
           outlined
@@ -667,6 +773,12 @@ watch(
   &__acoes {
     gap: var(--ds-space-2);
     padding: var(--ds-space-3) var(--ds-space-4);
+  }
+
+  &__procedimento-conclusao {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-2);
   }
 }
 </style>

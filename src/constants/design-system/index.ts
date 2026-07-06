@@ -128,16 +128,21 @@ export const DesignSystemAuth = {
     subline: 'A forma mais simples de gerenciar sua clínica com excelência.',
     formTitle: 'Bem-vindo de volta',
     formSubtitle: 'Entre para continuar de onde parou.',
+    features: [
+      { icon: 'event', text: 'Agenda e agendamentos integrados' },
+      { icon: 'medical_services', text: 'Prontuário eletrônico do paciente' },
+      { icon: 'account_balance_wallet', text: 'Financeiro conectado à operação' },
+    ],
   },
   register: {
     headline: 'Sua clínica, elevada.',
     subline: 'Configure tudo em minutos e foque no que realmente importa.',
     formTitle: 'Crie sua conta',
     formSubtitle: 'Sem cartão. Sem burocracia. Comece agora.',
+    features: [
+      { icon: 'rocket_launch', text: 'Configuração rápida em poucos passos' },
+      { icon: 'groups', text: 'Equipe com permissões por função' },
+      { icon: 'palette', text: 'Identidade visual da sua clínica' },
+    ],
   },
-  stats: [
-    { value: '2.4k+', label: 'Clínicas ativas' },
-    { value: '98%', label: 'Satisfação' },
-    { value: '24/7', label: 'Suporte' },
-  ],
 } as const;

@@ -18,6 +18,7 @@ import type { Agendamento } from '@/types/entidades/agendamento';
 import {
   obterCorEventoAgendamento,
   obterLabelTipoAgendamento,
+  formatarNomesProcedimentos,
 } from '@/types/entidades/agendamento';
 import type { ConfigCalendarioHorario } from '@/types/entidades/horario-funcionamento-unidade';
 
@@ -87,10 +88,14 @@ function renderizarConteudoEvento(arg: EventContentArg) {
   const nomePaciente = escaparHtml(agendamento.pacienteNome);
   const tipo = escaparHtml(obterLabelTipoAgendamento(agendamento.tipo));
   const funcionario = escaparHtml(agendamento.funcionarioNome);
+  const procedimentos = formatarNomesProcedimentos(agendamento);
+  const procedimentosHtml = procedimentos
+    ? `<span class="agenda-evento-card__separador" aria-hidden="true">·</span><span class="agenda-evento-card__procedimentos">${escaparHtml(procedimentos)}</span>`
+    : '';
   const classeMes = ehMes ? ' agenda-evento-card--mes' : '';
 
   return {
-    html: `<div class="agenda-evento-card${classeMes}">${hora}<div class="agenda-evento-card__titulo">${nomePaciente}</div><div class="agenda-evento-card__meta"><span class="agenda-evento-card__tipo">${tipo}</span><span class="agenda-evento-card__separador" aria-hidden="true">·</span><span class="agenda-evento-card__funcionario">${funcionario}</span></div></div>`,
+    html: `<div class="agenda-evento-card${classeMes}">${hora}<div class="agenda-evento-card__titulo">${nomePaciente}</div><div class="agenda-evento-card__meta"><span class="agenda-evento-card__tipo">${tipo}</span><span class="agenda-evento-card__separador" aria-hidden="true">·</span><span class="agenda-evento-card__funcionario">${funcionario}</span>${procedimentosHtml}</div></div>`,
   };
 }
 
@@ -399,6 +404,12 @@ watch(
   }
 
   .agenda-evento-card__funcionario {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .agenda-evento-card__procedimentos {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

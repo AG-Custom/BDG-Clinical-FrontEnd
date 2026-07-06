@@ -8,7 +8,7 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
 import { unidadeService } from '@/services/unidade.service';
-import { normalizarCpf } from '@/types/entidades/paciente';
+import { normalizarCpf, obterUnidadeIdsDoPaciente } from '@/types/entidades/paciente';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const route = useRoute();
@@ -28,7 +28,7 @@ const isEdicao = computed(() => route.name === 'pacientes-editar');
 const pacienteId = computed(() => route.params.id as string | undefined);
 
 const form = reactive({
-  unidadeId: null as string | null,
+  unidadeIds: [] as string[],
   nome: '',
   cpf: '',
   telefone: '',
@@ -68,13 +68,13 @@ function validarCpf(value: string): boolean | string {
   return digitos.length === 11 || 'Informe um CPF válido com 11 dígitos';
 }
 
-function validarUnidade(value: string | null): boolean | string {
-  return Boolean(value) || 'Selecione a unidade do paciente';
+function validarUnidades(value: string[] | null): boolean | string {
+  return (Array.isArray(value) && value.length > 0) || 'Selecione ao menos uma unidade';
 }
 
 function montarPayload() {
   return {
-    unidadeId: form.unidadeId as string,
+    unidadeIds: form.unidadeIds,
     nome: form.nome.trim(),
     cpf: normalizarCpf(form.cpf),
     telefone: form.telefone.trim() || null,
@@ -98,14 +98,18 @@ async function recarregarDependencias(): Promise<void> {
   await carregarUnidades();
 }
 
-async function garantirUnidadeNaLista(unidadeId: string): Promise<void> {
-  if (unidadesDisponiveis.value.some((unidade) => unidade.id === unidadeId)) {
+async function garantirUnidadesNaLista(unidadeIds: string[]): Promise<void> {
+  const faltantes = unidadeIds.filter(
+    (unidadeId) => !unidadesDisponiveis.value.some((unidade) => unidade.id === unidadeId),
+  );
+
+  if (faltantes.length === 0) {
     return;
   }
 
   try {
-    const unidade = await unidadeService.obter(unidadeId);
-    unidadesDisponiveis.value = [unidade, ...unidadesDisponiveis.value];
+    const unidades = await Promise.all(faltantes.map((id) => unidadeService.obter(id)));
+    unidadesDisponiveis.value = [...unidades, ...unidadesDisponiveis.value];
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   }
@@ -121,7 +125,7 @@ async function carregarPaciente(): Promise<void> {
   try {
     const paciente = await pacienteService.obter(pacienteId.value);
 
-    form.unidadeId = paciente.unidadeId;
+    form.unidadeIds = obterUnidadeIdsDoPaciente(paciente);
     form.nome = paciente.nome;
     form.cpf = paciente.cpf ?? '';
     form.telefone = paciente.telefone ?? '';
@@ -129,7 +133,7 @@ async function carregarPaciente(): Promise<void> {
     form.dataNascimento = paciente.dataNascimento ?? '';
     form.observacao = paciente.observacao ?? '';
 
-    await garantirUnidadeNaLista(paciente.unidadeId);
+    await garantirUnidadesNaLista(form.unidadeIds);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
     await router.push({ name: 'pacientes' });
@@ -177,7 +181,7 @@ onMounted(async () => {
       :subtitulo="
         isEdicao
           ? 'Atualize os dados do paciente.'
-          : 'Cadastre um novo paciente vinculado à unidade da clínica.'
+          : 'Cadastre um novo paciente vinculado às unidades da clínica.'
       "
     />
 
@@ -195,16 +199,18 @@ onMounted(async () => {
           />
 
           <q-select
-            v-model="form.unidadeId"
+            v-model="form.unidadeIds"
             class="form-field--required"
             :options="opcoesUnidades"
-            label="Unidade"
+            label="Unidades"
             outlined
+            multiple
+            use-chips
             emit-value
             map-options
-            :rules="[validarUnidade]"
+            :rules="[validarUnidades]"
             :disable="!podeSalvar || opcoesUnidades.length === 0"
-            hint="Unidade em que o paciente será atendido."
+            hint="Unidades em que o paciente pode ser atendido."
           />
 
           <q-input
