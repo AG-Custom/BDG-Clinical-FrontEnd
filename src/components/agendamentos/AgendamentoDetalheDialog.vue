@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
 import { procedimentoService } from '@/services/procedimento.service';
+import { saldoEstoqueService } from '@/services/saldo-estoque.service';
 import type { Agendamento, ConcluirAgendamentoRequest } from '@/types/entidades/agendamento';
 import {
   calcularDuracaoAgendamento,
@@ -22,6 +23,10 @@ import {
   obterProcedimentosDoAgendamento,
   temAplicacoesRegistradas,
 } from '@/types/entidades/agendamento';
+import {
+  formatarMensagemEstoqueInsuficiente,
+  formatarSaldoComUnidade,
+} from '@/types/entidades/saldo-estoque';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -47,13 +52,12 @@ interface ProcedimentoConclusaoFormulario {
   nome: string;
   exigeQuantidade: boolean;
   quantidadeUtilizada: number | null;
+  produtoAplicadoNome: string | null;
+  saldoAtual: number | null;
+  unidadeMedidaSigla: string;
 }
 
 const procedimentosConclusao = ref<ProcedimentoConclusaoFormulario[]>([]);
-
-const formConclusao = reactive({
-  peso: null as number | null,
-});
 
 const podeEditar = computed(
   () => props.agendamento && isAgendamentoEditavel(props.agendamento.status),
@@ -105,6 +109,16 @@ const quantidadeProcedimentos = computed(() =>
   props.agendamento ? obterProcedimentosDoAgendamento(props.agendamento).length : 0,
 );
 
+const produtosAplicacaoConclusao = computed(() =>
+  procedimentosConclusao.value
+    .filter((procedimento) => procedimento.exigeQuantidade && procedimento.produtoAplicadoNome)
+    .map((procedimento) => procedimento.produtoAplicadoNome as string),
+);
+
+const exibirTextoConclusaoAplicacao = computed(
+  () => props.agendamento?.tipo === 'Aplicacao',
+);
+
 const corStatus = computed(() =>
   props.agendamento ? obterCorEventoAgendamento(props.agendamento.status) : 'var(--ds-brand-primary)',
 );
@@ -140,6 +154,50 @@ function fechar(): void {
   emit('update:modelValue', false);
 }
 
+function obterClasseSaldoProduto(saldoAtual: number | null): string {
+  if (saldoAtual === null) {
+    return '';
+  }
+
+  return saldoAtual > 0
+    ? 'agendamento-detalhe__saldo-valor--positivo'
+    : 'agendamento-detalhe__saldo-valor--negativo';
+}
+
+function formatarErroConclusao(erro: unknown): string {
+  const mensagem = obterMensagem(erro);
+  const procedimentoRelacionado = procedimentosConclusao.value.find(
+    (procedimento) =>
+      procedimento.produtoAplicadoNome &&
+      mensagem.includes(procedimento.produtoAplicadoNome),
+  );
+
+  return formatarMensagemEstoqueInsuficiente(mensagem, {
+    unidadeNome: props.agendamento?.unidadeNome,
+    unidadeMedidaSigla: procedimentoRelacionado?.unidadeMedidaSigla,
+  });
+}
+
+async function carregarSaldoProduto(
+  unidadeId: string,
+  produtoId: string,
+): Promise<{ saldoAtual: number; unidadeMedidaSigla: string }> {
+  try {
+    const saldos = await saldoEstoqueService.listar({ unidadeId, produtoId });
+    const saldo = saldos[0];
+
+    return {
+      saldoAtual: saldo?.saldoAtual ?? 0,
+      unidadeMedidaSigla: saldo?.unidadeMedidaSigla ?? '',
+    };
+  } catch {
+    return {
+      saldoAtual: 0,
+      unidadeMedidaSigla: '',
+    };
+  }
+}
+
 async function carregarProcedimentosConclusao(): Promise<void> {
   procedimentosConclusao.value = [];
 
@@ -157,12 +215,27 @@ async function carregarProcedimentosConclusao(): Promise<void> {
     resumos.map(async (resumo) => {
       try {
         const procedimento = await procedimentoService.obter(resumo.id);
+        const exigeQuantidade = Boolean(procedimento.produtoAplicadoId);
+        let saldoAtual: number | null = null;
+        let unidadeMedidaSigla = '';
+
+        if (exigeQuantidade && procedimento.produtoAplicadoId && props.agendamento) {
+          const saldo = await carregarSaldoProduto(
+            props.agendamento.unidadeId,
+            procedimento.produtoAplicadoId,
+          );
+          saldoAtual = saldo.saldoAtual;
+          unidadeMedidaSigla = saldo.unidadeMedidaSigla;
+        }
 
         return {
           procedimentoId: resumo.id,
           nome: procedimento.nome,
-          exigeQuantidade: Boolean(procedimento.produtoAplicadoId),
+          exigeQuantidade,
           quantidadeUtilizada: null,
+          produtoAplicadoNome: procedimento.produtoAplicadoNome ?? null,
+          saldoAtual,
+          unidadeMedidaSigla,
         };
       } catch {
         return {
@@ -170,6 +243,9 @@ async function carregarProcedimentosConclusao(): Promise<void> {
           nome: resumo.nome,
           exigeQuantidade: false,
           quantidadeUtilizada: null,
+          produtoAplicadoNome: null,
+          saldoAtual: null,
+          unidadeMedidaSigla: '',
         };
       }
     }),
@@ -182,12 +258,10 @@ function montarPayloadConclusao(): ConcluirAgendamentoRequest {
   if (procedimentosConclusao.value.length <= 1) {
     return {
       quantidadeUtilizada: procedimentosConclusao.value[0]?.quantidadeUtilizada ?? null,
-      peso: formConclusao.peso,
     };
   }
 
   return {
-    peso: formConclusao.peso,
     procedimentos: procedimentosConclusao.value.map((procedimento) => ({
       procedimentoId: procedimento.procedimentoId,
       ...(procedimento.exigeQuantidade
@@ -227,7 +301,7 @@ async function concluir(): Promise<void> {
         procedimento.exigeQuantidade && procedimento.quantidadeUtilizada === null,
     )
   ) {
-    notificacao.info('Informe a quantidade utilizada para todos os procedimentos com medicamento.');
+    notificacao.info('Informe a quantidade do produto utilizada para todos os procedimentos com medicamento.');
     return;
   }
 
@@ -240,7 +314,7 @@ async function concluir(): Promise<void> {
     emit('atualizado');
     fechar();
   } catch (erro) {
-    notificacao.erro(obterMensagem(erro));
+    notificacao.erro(formatarErroConclusao(erro));
   } finally {
     processando.value = false;
   }
@@ -297,7 +371,6 @@ function abrirEdicao(): void {
 }
 
 function abrirDialogConcluir(): void {
-  formConclusao.peso = null;
   dialogConcluir.value = true;
   void carregarProcedimentosConclusao();
 }
@@ -519,8 +592,23 @@ watch(
     <q-card style="min-width: 320px; max-width: 95vw">
       <q-card-section>
         <div class="text-h6">Concluir agendamento</div>
-        <p v-if="agendamento?.tipo === 'Aplicacao'" class="text-body2 q-mt-sm">
-          Ao concluir, serão registradas as aplicações e movimentações de estoque.
+        <p v-if="exibirTextoConclusaoAplicacao" class="text-body2 q-mt-sm agendamento-detalhe__texto-conclusao">
+          <template v-if="produtosAplicacaoConclusao.length === 0">
+            Ao concluir, serão registradas as aplicações e movimentações de estoque.
+          </template>
+          <template v-else-if="produtosAplicacaoConclusao.length === 1">
+            Ao concluir, serão registradas as aplicações e movimentações de estoque para o produto
+            <strong class="agendamento-detalhe__produto-nome">{{ produtosAplicacaoConclusao[0] }}</strong>.
+          </template>
+          <template v-else>
+            Ao concluir, serão registradas as aplicações e movimentações de estoque para os produtos
+            <template
+              v-for="(produto, indice) in produtosAplicacaoConclusao"
+              :key="produto"
+            >
+              <strong class="agendamento-detalhe__produto-nome">{{ produto }}</strong><span v-if="indice < produtosAplicacaoConclusao.length - 1">, </span>
+            </template>.
+          </template>
         </p>
       </q-card-section>
       <q-card-section class="q-gutter-md">
@@ -530,38 +618,79 @@ watch(
             :key="procedimento.procedimentoId"
             class="agendamento-detalhe__procedimento-conclusao"
           >
-            <div class="text-subtitle2">{{ procedimento.nome }}</div>
-            <q-input
-              v-if="procedimento.exigeQuantidade"
-              v-model.number="procedimento.quantidadeUtilizada"
-              label="Quantidade utilizada *"
-              type="number"
-              outlined
-              :disable="processando"
-              min="0"
-              step="0.01"
-            />
+            <template v-if="procedimento.exigeQuantidade">
+              <div
+                v-if="procedimento.produtoAplicadoNome"
+                class="agendamento-detalhe__produto-nome agendamento-detalhe__produto-nome--destaque"
+              >
+                {{ procedimento.produtoAplicadoNome }}
+              </div>
+              <q-input
+                v-model.number="procedimento.quantidadeUtilizada"
+                label="Quantidade do produto utilizada *"
+                type="number"
+                outlined
+                :disable="processando"
+                min="0"
+                step="0.01"
+              />
+              <p
+                v-if="agendamento && procedimento.saldoAtual !== null"
+                class="agendamento-detalhe__saldo-unidade"
+              >
+                Saldo na unidade {{ agendamento.unidadeNome }}:
+                <span
+                  class="agendamento-detalhe__saldo-valor"
+                  :class="obterClasseSaldoProduto(procedimento.saldoAtual)"
+                >
+                  {{
+                    formatarSaldoComUnidade(
+                      procedimento.saldoAtual,
+                      procedimento.unidadeMedidaSigla,
+                    )
+                  }}
+                </span>
+              </p>
+            </template>
           </div>
         </template>
-        <q-input
+        <div
           v-else-if="exigeQuantidadeConclusao && procedimentosConclusao[0]"
-          v-model.number="procedimentosConclusao[0].quantidadeUtilizada"
-          label="Quantidade utilizada *"
-          type="number"
-          outlined
-          :disable="processando"
-          min="0"
-          step="0.01"
-        />
-        <q-input
-          v-model.number="formConclusao.peso"
-          label="Peso (kg)"
-          type="number"
-          outlined
-          :disable="processando"
-          min="0"
-          step="0.1"
-        />
+          class="agendamento-detalhe__procedimento-conclusao"
+        >
+          <div
+            v-if="procedimentosConclusao[0].produtoAplicadoNome"
+            class="agendamento-detalhe__produto-nome agendamento-detalhe__produto-nome--destaque"
+          >
+            {{ procedimentosConclusao[0].produtoAplicadoNome }}
+          </div>
+          <q-input
+            v-model.number="procedimentosConclusao[0].quantidadeUtilizada"
+            label="Quantidade do produto utilizada *"
+            type="number"
+            outlined
+            :disable="processando"
+            min="0"
+            step="0.01"
+          />
+          <p
+            v-if="agendamento && procedimentosConclusao[0].saldoAtual !== null"
+            class="agendamento-detalhe__saldo-unidade"
+          >
+            Saldo na unidade {{ agendamento.unidadeNome }}:
+            <span
+              class="agendamento-detalhe__saldo-valor"
+              :class="obterClasseSaldoProduto(procedimentosConclusao[0].saldoAtual)"
+            >
+              {{
+                formatarSaldoComUnidade(
+                  procedimentosConclusao[0].saldoAtual,
+                  procedimentosConclusao[0].unidadeMedidaSigla,
+                )
+              }}
+            </span>
+          </p>
+        </div>
       </q-card-section>
       <q-card-actions align="right">
         <q-btn flat label="Voltar" color="primary" no-caps :disable="processando" v-close-popup />
@@ -779,6 +908,40 @@ watch(
     display: flex;
     flex-direction: column;
     gap: var(--ds-space-2);
+  }
+
+  &__texto-conclusao {
+    color: var(--ds-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  &__produto-nome {
+    color: var(--ds-text-primary);
+    font-weight: var(--ds-font-weight-semibold);
+
+    &--destaque {
+      font-size: var(--ds-font-size-base, 1rem);
+    }
+  }
+
+  &__saldo-unidade {
+    color: var(--ds-text-secondary);
+    font-size: var(--ds-font-size-xs, 0.75rem);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  &__saldo-valor {
+    font-weight: var(--ds-font-weight-semibold);
+
+    &--positivo {
+      color: var(--ds-color-success-500);
+    }
+
+    &--negativo {
+      color: var(--ds-color-error-500);
+    }
   }
 }
 </style>
