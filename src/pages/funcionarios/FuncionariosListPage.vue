@@ -28,6 +28,7 @@ const unidadesPorId = ref<Map<string, string>>(new Map());
 const cargosPorId = ref<Map<string, string>>(new Map());
 const carregando = ref(true);
 const incluirInativos = ref(false);
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const funcionarioSelecionado = ref<Funcionario | null>(null);
@@ -98,6 +99,11 @@ async function carregarFuncionarios(): Promise<void> {
   } finally {
     carregando.value = false;
   }
+}
+
+function abrirDialogVisualizar(funcionario: Funcionario): void {
+  funcionarioSelecionado.value = funcionario;
+  dialogVisualizar.value = true;
 }
 
 function abrirDialogDesativar(funcionario: Funcionario): void {
@@ -249,25 +255,14 @@ onMounted(async () => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar funcionário"
-              :disable="!podeEditar"
-              @click="editarFuncionario(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar funcionário"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar funcionário"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarFuncionario(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -296,6 +291,12 @@ onMounted(async () => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar funcionário"
+      :registro="funcionarioSelecionado"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

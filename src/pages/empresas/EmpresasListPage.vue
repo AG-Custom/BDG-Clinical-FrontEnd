@@ -162,30 +162,27 @@ onMounted(() => {
         </template>
 
         <template #body-cell-acoes="props">
-          <q-td :props="props">
-            <q-btn
-              v-if="props.row.isCurrent"
-              flat
-              dense
-              no-caps
-              color="primary"
-              label="Configurar"
-              icon="settings"
-              @click="configurarEmpresaAtual"
-            />
-            <q-btn
-              v-else
-              flat
-              dense
-              no-caps
-              color="primary"
-              label="Acessar"
-              icon="login"
-              :disable="!props.row.ativo"
-              :loading="trocandoId === props.row.empresaId"
-              @click="acessarEmpresa(props.row)"
-            />
-          </q-td>
+          <app-table-actions-cell :cell="props">
+            <app-table-actions-menu
+              :mostrar-visualizar="false"
+              :mostrar-status="false"
+              :pode-editar="props.row.isCurrent"
+              @editar="configurarEmpresaAtual"
+            >
+              <q-item
+                v-if="!props.row.isCurrent"
+                clickable
+                v-close-popup
+                :disable="!props.row.ativo || trocandoId === props.row.empresaId"
+                @click="acessarEmpresa(props.row)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="login" color="primary" />
+                </q-item-section>
+                <q-item-section>Acessar</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
+          </app-table-actions-cell>
         </template>
       </q-table>
 

@@ -12,6 +12,7 @@ import type { Funcionario } from '@/types/entidades/funcionario';
 import type { ConfigCalendarioHorario } from '@/types/entidades/horario-funcionamento-unidade';
 import { obterConfigCalendarioHorarios } from '@/types/entidades/horario-funcionamento-unidade';
 import type { Unidade } from '@/types/entidades/unidade';
+import { parsearDataBackend } from '@/utils/data-hora';
 import { normalizarLista } from '@/utils/normalizar-lista';
 
 import AgendaCalendar from '@/components/agendamentos/AgendaCalendar.vue';
@@ -126,7 +127,7 @@ async function atualizarContagemHoje(): Promise<void> {
 
     if (hoje.getTime() >= inicioPeriodo && hoje.getTime() < fimPeriodo) {
       agendamentosHoje.value = agendamentos.value.filter((agendamento) => {
-        const inicio = new Date(agendamento.dataInicio);
+        const inicio = parsearDataBackend(agendamento.dataInicio);
         return inicio >= hoje && inicio < amanha && agendamento.status !== 'Cancelado';
       }).length;
       return;

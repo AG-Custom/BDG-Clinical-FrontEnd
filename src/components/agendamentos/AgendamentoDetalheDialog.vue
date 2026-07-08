@@ -15,10 +15,8 @@ import {
   formatarNomesProcedimentos,
   isAgendamentoEditavel,
   obterCorEventoAgendamento,
-  obterCorStatusAgendamento,
   obterIconeTipoAgendamento,
   obterIniciaisNome,
-  obterLabelStatusAgendamento,
   obterLabelTipoAgendamento,
   obterProcedimentosDoAgendamento,
   temAplicacoesRegistradas,
@@ -401,10 +399,6 @@ watch(
             <q-icon :name="obterIconeTipoAgendamento(agendamento.tipo)" size="16px" />
             <span>{{ obterLabelTipoAgendamento(agendamento.tipo) }}</span>
           </div>
-          <q-badge
-            :color="obterCorStatusAgendamento(agendamento.status)"
-            :label="obterLabelStatusAgendamento(agendamento.status)"
-          />
           <q-space />
           <q-btn flat round dense icon="close" aria-label="Fechar" @click="fechar" />
         </div>

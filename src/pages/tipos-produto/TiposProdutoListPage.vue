@@ -19,6 +19,7 @@ const podeDesativar = usePermissao(permissoes.tiposProduto.desativar);
 const tiposProduto = ref<TipoProduto[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const tipoSelecionado = ref<TipoProduto | null>(null);
@@ -41,6 +42,11 @@ async function carregarTiposProduto(): Promise<void> {
   } finally {
     carregando.value = false;
   }
+}
+
+function abrirDialogVisualizar(tipo: TipoProduto): void {
+  tipoSelecionado.value = tipo;
+  dialogVisualizar.value = true;
 }
 
 function abrirDialogDesativar(tipo: TipoProduto): void {
@@ -151,25 +157,14 @@ onMounted(() => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar tipo de produto"
-              :disable="!podeEditar"
-              @click="editarTipo(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar tipo de produto"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar tipo de produto"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarTipo(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -198,6 +193,12 @@ onMounted(() => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar tipo de produto"
+      :registro="tipoSelecionado"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

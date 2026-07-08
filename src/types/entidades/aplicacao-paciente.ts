@@ -2,6 +2,7 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
 } from '@/types/entidades/pedido-fornecedor';
+import { formatarDataHoraBrasil } from '@/utils/data-hora';
 
 export interface AplicacaoPacienteSintoma {
   id: string;
@@ -73,19 +74,7 @@ export interface ListarAplicacoesPacienteParams {
 }
 
 export function formatarDataAplicacao(data: string): string {
-  const parsed = new Date(data);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return data;
-  }
-
-  return parsed.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatarDataHoraBrasil(data);
 }
 
 export function formatarResumoSintomas(sintomas: AplicacaoPacienteSintoma[]): string {

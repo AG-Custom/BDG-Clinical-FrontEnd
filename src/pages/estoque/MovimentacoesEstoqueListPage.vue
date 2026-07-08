@@ -36,6 +36,8 @@ const filtroProdutoId = ref<string | null>(null);
 const filtroTipo = ref<TipoMovimentacaoEstoque | null>(null);
 const filtroDataInicio = ref('');
 const filtroDataFim = ref('');
+const dialogVisualizar = ref(false);
+const movimentacaoSelecionada = ref<MovimentacaoEstoque | null>(null);
 
 const colunas = [
   { name: 'data', label: 'Data', field: 'data', align: 'left' as const, sortable: true },
@@ -135,6 +137,11 @@ function verPedido(pedidoFornecedorId: string): void {
 
 function verAplicacao(aplicacaoPacienteId: string): void {
   router.push({ name: 'aplicacoes-paciente-editar', params: { id: aplicacaoPacienteId } });
+}
+
+function abrirDialogVisualizar(movimentacao: MovimentacaoEstoque): void {
+  movimentacaoSelecionada.value = movimentacao;
+  dialogVisualizar.value = true;
 }
 
 watch(
@@ -279,18 +286,34 @@ onMounted(async () => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              v-if="cell.row.pedidoFornecedorId"
-              acao="pedido"
-              rotulo="Ver pedido ao fornecedor"
-              @click="verPedido(cell.row.pedidoFornecedorId)"
-            />
-            <app-table-action-button
-              v-if="cell.row.aplicacaoPacienteId"
-              acao="aplicacao"
-              rotulo="Ver aplicação em paciente"
-              @click="verAplicacao(cell.row.aplicacaoPacienteId)"
-            />
+            <app-table-actions-menu
+              :mostrar-editar="false"
+              :mostrar-status="false"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+            >
+              <q-item
+                v-if="cell.row.pedidoFornecedorId"
+                clickable
+                v-close-popup
+                @click="verPedido(cell.row.pedidoFornecedorId)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="shopping_cart" color="primary" />
+                </q-item-section>
+                <q-item-section>Ver pedido</q-item-section>
+              </q-item>
+              <q-item
+                v-if="cell.row.aplicacaoPacienteId"
+                clickable
+                v-close-popup
+                @click="verAplicacao(cell.row.aplicacaoPacienteId)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="vaccines" color="primary" />
+                </q-item-section>
+                <q-item-section>Ver aplicação</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
       </q-table>
@@ -307,5 +330,11 @@ onMounted(async () => {
         />
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar movimentação"
+      :registro="movimentacaoSelecionada"
+    />
   </q-page>
 </template>

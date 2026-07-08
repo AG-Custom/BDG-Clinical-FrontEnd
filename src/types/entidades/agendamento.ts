@@ -2,6 +2,12 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
 } from '@/types/entidades/pedido-fornecedor';
+import {
+  formatarDataHoraBrasil,
+  formatarDataLongaBrasil,
+  formatarHoraBrasil,
+  parsearDataBackend,
+} from '@/utils/data-hora';
 
 export const TIPOS_AGENDAMENTO = ['Consulta', 'Retorno', 'Aplicacao', 'Avaliacao'] as const;
 
@@ -91,48 +97,15 @@ export interface ListarAgendamentosParams {
 }
 
 export function formatarDataHoraAgendamento(data: string): string {
-  const parsed = new Date(data);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return data;
-  }
-
-  return parsed.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatarDataHoraBrasil(data);
 }
 
 export function formatarHorarioAgendamento(data: string): string {
-  const parsed = new Date(data);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return data;
-  }
-
-  return parsed.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatarHoraBrasil(data);
 }
 
 export function formatarDataCabecalhoAgendamento(dataInicio: string): string {
-  const parsed = new Date(dataInicio);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return dataInicio;
-  }
-
-  const formatado = parsed.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-
-  return formatado.charAt(0).toUpperCase() + formatado.slice(1);
+  return formatarDataLongaBrasil(dataInicio);
 }
 
 export function formatarIntervaloHorarioAgendamento(dataInicio: string, dataFim: string): string {
@@ -140,8 +113,8 @@ export function formatarIntervaloHorarioAgendamento(dataInicio: string, dataFim:
 }
 
 export function calcularDuracaoAgendamento(dataInicio: string, dataFim: string): string {
-  const inicio = new Date(dataInicio);
-  const fim = new Date(dataFim);
+  const inicio = parsearDataBackend(dataInicio);
+  const fim = parsearDataBackend(dataFim);
 
   if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) {
     return '';

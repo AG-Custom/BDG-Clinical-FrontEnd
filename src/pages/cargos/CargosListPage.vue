@@ -19,6 +19,7 @@ const podeDesativar = usePermissao(permissoes.cargos.desativar);
 const cargos = ref<Cargo[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const cargoSelecionado = ref<Cargo | null>(null);
@@ -42,6 +43,11 @@ async function carregarCargos(): Promise<void> {
   } finally {
     carregando.value = false;
   }
+}
+
+function abrirDialogVisualizar(cargo: Cargo): void {
+  cargoSelecionado.value = cargo;
+  dialogVisualizar.value = true;
 }
 
 function abrirDialogDesativar(cargo: Cargo): void {
@@ -161,25 +167,14 @@ onMounted(() => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar cargo"
-              :disable="!podeEditar"
-              @click="editarCargo(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar cargo"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar cargo"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarCargo(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -208,6 +203,12 @@ onMounted(() => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar cargo"
+      :registro="cargoSelecionado"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

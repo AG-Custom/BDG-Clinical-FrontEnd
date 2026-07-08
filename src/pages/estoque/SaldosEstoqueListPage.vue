@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { isRequisicaoCancelada, useBuscaRemota } from '@/composables/useBuscaRemota';
@@ -27,6 +27,8 @@ const termoBusca = ref('');
 const filtroUnidadeId = ref<string | null>(null);
 const filtroProdutoId = ref<string | null>(null);
 const apenasAbaixoDoMinimo = ref(false);
+const dialogVisualizar = ref(false);
+const saldoSelecionado = ref<SaldoEstoque | null>(null);
 
 const colunas = [
   { name: 'unidade', label: 'Unidade', field: 'unidadeNome', align: 'left' as const, sortable: true },
@@ -44,6 +46,16 @@ const opcoesUnidadesFiltro = ref<{ label: string; value: string | null }[]>([
 const opcoesProdutosFiltro = ref<{ label: string; value: string | null }[]>([
   { label: 'Todos os produtos', value: null },
 ]);
+
+const totalProdutos = computed(() => new Set(saldos.value.map((saldo) => saldo.produtoId)).size);
+const totalUnidades = computed(() => new Set(saldos.value.map((saldo) => saldo.unidadeId)).size);
+const itensSemPreco = computed(
+  () => saldos.value.filter((saldo) => !saldo.valorUnitario || saldo.valorUnitario <= 0).length,
+);
+const valorTotalEstoque = computed(() =>
+  saldos.value.reduce((total, saldo) => total + obterValorEstoque(saldo), 0),
+);
+const valorTotalEstoqueFormatado = computed(() => formatarMoeda(valorTotalEstoque.value));
 
 async function buscarSaldos(termo: string, signal?: AbortSignal): Promise<void> {
   const termoNormalizado = termo.trim();
@@ -126,6 +138,26 @@ function verMovimentacoes(saldo: SaldoEstoque): void {
   });
 }
 
+function abrirDialogVisualizar(saldo: SaldoEstoque): void {
+  saldoSelecionado.value = saldo;
+  dialogVisualizar.value = true;
+}
+
+function obterValorEstoque(saldo: SaldoEstoque): number {
+  if (Number.isFinite(saldo.valorEstoque)) {
+    return saldo.valorEstoque;
+  }
+
+  return saldo.saldoAtual * (saldo.valorUnitario ?? 0);
+}
+
+function formatarMoeda(valor: number): string {
+  return valor.toLocaleString('pt-BR', {
+    currency: 'BRL',
+    style: 'currency',
+  });
+}
+
 onMounted(async () => {
   await carregarFiltros();
   await carregarSaldos();
@@ -138,6 +170,28 @@ onMounted(async () => {
       titulo="Saldos de estoque"
       subtitulo="Saldo atual por unidade e produto, calculado a partir das movimentações."
     />
+
+    <section class="estoque-summary q-mb-md">
+      <div class="estoque-summary__main">
+        <span class="estoque-summary__label">Valor total do estoque</span>
+        <strong class="estoque-summary__value">{{ valorTotalEstoqueFormatado }}</strong>
+      </div>
+
+      <div class="estoque-summary__metrics">
+        <div class="estoque-summary__metric">
+          <span>Unidades</span>
+          <strong>{{ totalUnidades.toLocaleString('pt-BR') }}</strong>
+        </div>
+        <div class="estoque-summary__metric">
+          <span>Itens</span>
+          <strong>{{ totalProdutos.toLocaleString('pt-BR') }}</strong>
+        </div>
+        <div class="estoque-summary__metric">
+          <span>Sem preço</span>
+          <strong>{{ itensSemPreco.toLocaleString('pt-BR') }}</strong>
+        </div>
+      </div>
+    </section>
 
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
@@ -238,10 +292,18 @@ onMounted(async () => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="movimentacoes"
-              @click="verMovimentacoes(cell.row)"
-            />
+            <app-table-actions-menu
+              :mostrar-editar="false"
+              :mostrar-status="false"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+            >
+              <q-item clickable v-close-popup @click="verMovimentacoes(cell.row)">
+                <q-item-section avatar>
+                  <q-icon name="history" color="primary" />
+                </q-item-section>
+                <q-item-section>Ver movimentações</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
       </q-table>
@@ -258,10 +320,82 @@ onMounted(async () => {
         />
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar saldo"
+      :registro="saldoSelecionado"
+    />
   </q-page>
 </template>
 
 <style scoped lang="scss">
+.estoque-summary {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) 2fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.estoque-summary__main,
+.estoque-summary__metric {
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.estoque-summary__main {
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px;
+  border-top: 4px solid #008766;
+}
+
+.estoque-summary__label,
+.estoque-summary__metric span {
+  color: #5b6470;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.estoque-summary__value {
+  color: #06231f;
+  font-size: clamp(24px, 3vw, 38px);
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.estoque-summary__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.estoque-summary__metric {
+  display: grid;
+  gap: 8px;
+  min-height: 86px;
+  padding: 14px 16px;
+}
+
+.estoque-summary__metric strong {
+  color: #06231f;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .estoque-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .text-warning {
   color: var(--ds-color-warning-600, #b54708);
 }

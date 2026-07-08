@@ -25,6 +25,7 @@ const fornecedores = ref<Fornecedor[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
 const termoBusca = ref('');
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const fornecedorSelecionado = ref<Fornecedor | null>(null);
@@ -89,6 +90,11 @@ useBuscaRemota(
   },
   { minCaracteres: MIN_CARACTERES_BUSCA, debounceMs: 300 },
 );
+
+function abrirDialogVisualizar(fornecedor: Fornecedor): void {
+  fornecedorSelecionado.value = fornecedor;
+  dialogVisualizar.value = true;
+}
 
 function abrirDialogDesativar(fornecedor: Fornecedor): void {
   fornecedorSelecionado.value = fornecedor;
@@ -235,25 +241,14 @@ onMounted(() => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar fornecedor"
-              :disable="!podeEditar"
-              @click="editarFornecedor(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar fornecedor"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar fornecedor"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarFornecedor(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -282,6 +277,12 @@ onMounted(() => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar fornecedor"
+      :registro="fornecedorSelecionado"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

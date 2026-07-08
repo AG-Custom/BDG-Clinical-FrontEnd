@@ -57,6 +57,8 @@ const salvando = ref(false);
 const incluirInativos = ref(false);
 const formularioAberto = ref(false);
 const horarioEdicao = ref<HorarioFuncionamentoUnidade | null>(null);
+const horarioVisualizacao = ref<Record<string, unknown> | null>(null);
+const dialogVisualizar = ref(false);
 const faixaFieldsRef = ref<InstanceType<typeof HorarioFuncionamentoFaixaFields> | null>(null);
 const ativoEdicao = ref(true);
 const idAlternando = ref<string | null>(null);
@@ -110,6 +112,11 @@ const possuiHorarios = computed(() => linhasTabela.value.length > 0);
 
 function gerarIdLocal(): string {
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function abrirDialogVisualizar(horario: Record<string, unknown>): void {
+  horarioVisualizacao.value = horario;
+  dialogVisualizar.value = true;
 }
 
 function ordenarHorario(a: HorarioFuncionamentoUnidade, b: HorarioFuncionamentoUnidade): number {
@@ -412,26 +419,16 @@ defineExpose({
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              v-if="modoPersistido"
-              :acao="cell.row.ativo ? 'inativar' : 'reativar'"
-              :rotulo="cell.row.ativo ? 'Inativar horário' : 'Ativar horário'"
-              :disable="bloqueado || idAlternando === cell.row.id"
-              @click="alternarAtivo(cell.row as HorarioFuncionamentoUnidade)"
-            />
-            <app-table-action-button
-              v-if="modoPersistido"
-              acao="editar"
-              rotulo="Editar horário"
-              :disable="bloqueado || idAlternando === cell.row.id"
-              @click="abrirEdicao(cell.row as HorarioFuncionamentoUnidade)"
-            />
-            <app-table-action-button
-              v-else-if="!modoPersistido"
-              acao="excluir"
-              rotulo="Remover horário"
-              :disable="bloqueado"
-              @click="removerPendente(cell.row.id)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="modoPersistido && !bloqueado && idAlternando !== cell.row.id"
+              :pode-alterar-status="!bloqueado && idAlternando !== cell.row.id"
+              :mostrar-editar="modoPersistido"
+              :desabilitar-label="modoPersistido ? 'Desabilitar' : 'Remover'"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="abrirEdicao(cell.row as HorarioFuncionamentoUnidade)"
+              @desabilitar="modoPersistido ? alternarAtivo(cell.row as HorarioFuncionamentoUnidade) : removerPendente(cell.row.id)"
+              @ativar="alternarAtivo(cell.row as HorarioFuncionamentoUnidade)"
             />
           </app-table-actions-cell>
         </template>
@@ -449,6 +446,12 @@ defineExpose({
         />
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar horário"
+      :registro="horarioVisualizacao"
+    />
   </div>
 </template>
 

@@ -25,6 +25,7 @@ const unidadesPorId = ref<Map<string, string>>(new Map());
 const carregando = ref(true);
 const incluirInativos = ref(false);
 const filtroUnidadeId = ref<string | null>(null);
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const pacienteSelecionado = ref<Paciente | null>(null);
@@ -82,6 +83,11 @@ async function carregarPacientes(): Promise<void> {
   } finally {
     carregando.value = false;
   }
+}
+
+function abrirDialogVisualizar(paciente: Paciente): void {
+  pacienteSelecionado.value = paciente;
+  dialogVisualizar.value = true;
 }
 
 function abrirDialogDesativar(paciente: Paciente): void {
@@ -233,25 +239,14 @@ onMounted(async () => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar paciente"
-              :disable="!podeEditar"
-              @click="editarPaciente(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar paciente"
-              :disable="!podeEditar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar paciente"
-              :disable="!podeEditar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarPaciente(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -280,6 +275,12 @@ onMounted(async () => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar paciente"
+      :registro="pacienteSelecionado"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

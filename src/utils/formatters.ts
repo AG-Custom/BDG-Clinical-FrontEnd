@@ -1,5 +1,7 @@
+import { formatarDataBrasil } from '@/utils/data-hora';
+
 export function formatarData(value: string | Date): string {
-  return new Intl.DateTimeFormat('pt-BR').format(new Date(value));
+  return formatarDataBrasil(value);
 }
 
 export function formatarDocumento(value: string): string {
