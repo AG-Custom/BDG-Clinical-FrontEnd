@@ -169,35 +169,11 @@ export function parsearMoedaDoInput(texto: string): number | null {
 }
 
 export function formatarDataPedido(data: string): string {
-  const parsed = new Date(data);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return data;
-  }
-
-  return parsed.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatarDataHoraBrasil(data);
 }
 
 export function deIsoParaInputDatetimeLocal(iso: string): string {
-  const data = new Date(iso);
-
-  if (Number.isNaN(data.getTime())) {
-    return '';
-  }
-
-  const pad = (valor: number) => String(valor).padStart(2, '0');
-
-  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}T${pad(data.getHours())}:${pad(data.getMinutes())}`;
-}
-
-export function deInputDatetimeLocalParaIso(valor: string): string {
-  return new Date(valor).toISOString();
+  return deIsoBackendParaInputDatetimeLocal(iso);
 }
 
 export function obterCorStatusPedido(status: StatusPedidoFornecedor): string {
@@ -266,3 +242,10 @@ export function formatarTamanhoArquivo(bytes: number): string {
 export function possuiTooltipItensPedido(pedido: PedidoFornecedor): boolean {
   return obterTooltipItensPedido(pedido) !== null;
 }
+import {
+  deInputDatetimeLocalParaIso,
+  deIsoBackendParaInputDatetimeLocal,
+  formatarDataHoraBrasil,
+} from '@/utils/data-hora';
+
+export { deInputDatetimeLocalParaIso };

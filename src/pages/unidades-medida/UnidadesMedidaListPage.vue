@@ -29,6 +29,7 @@ const carregando = ref(true);
 const incluirInativas = ref(false);
 const filtroTipo = ref<TipoUnidadeMedida | null>(null);
 const termoBusca = ref('');
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const unidadeSelecionada = ref<UnidadeMedida | null>(null);
@@ -90,6 +91,11 @@ useBuscaRemota(
   },
   { minCaracteres: MIN_CARACTERES_BUSCA, debounceMs: 300 },
 );
+
+function abrirDialogVisualizar(unidade: UnidadeMedida): void {
+  unidadeSelecionada.value = unidade;
+  dialogVisualizar.value = true;
+}
 
 function abrirDialogDesativar(unidade: UnidadeMedida): void {
   unidadeSelecionada.value = unidade;
@@ -229,25 +235,14 @@ onMounted(() => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar unidade de medida"
-              :disable="!podeEditar"
-              @click="editarUnidade(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar unidade de medida"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar unidade de medida"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarUnidade(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -276,6 +271,12 @@ onMounted(() => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar unidade de medida"
+      :registro="unidadeSelecionada"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

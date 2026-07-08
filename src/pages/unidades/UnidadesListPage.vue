@@ -19,6 +19,7 @@ const podeDesativar = usePermissao(permissoes.unidades.desativar);
 const unidades = ref<Unidade[]>([]);
 const carregando = ref(true);
 const incluirInativas = ref(false);
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const unidadeSelecionada = ref<Unidade | null>(null);
@@ -42,6 +43,11 @@ async function carregarUnidades(): Promise<void> {
   } finally {
     carregando.value = false;
   }
+}
+
+function abrirDialogVisualizar(unidade: Unidade): void {
+  unidadeSelecionada.value = unidade;
+  dialogVisualizar.value = true;
 }
 
 function abrirDialogDesativar(unidade: Unidade): void {
@@ -152,30 +158,26 @@ onMounted(() => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="horario"
-              @click="router.push({ name: 'unidades-horario-funcionamento', params: { id: cell.row.id } })"
-            />
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar unidade"
-              :disable="!podeEditar"
-              @click="editarUnidade(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar unidade"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar unidade"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
-            />
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarUnidade(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
+            >
+              <q-item
+                clickable
+                v-close-popup
+                @click="router.push({ name: 'unidades-horario-funcionamento', params: { id: cell.row.id } })"
+              >
+                <q-item-section avatar>
+                  <q-icon name="schedule" color="primary" />
+                </q-item-section>
+                <q-item-section>Horário de funcionamento</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
       </q-table>
@@ -203,6 +205,12 @@ onMounted(() => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar unidade"
+      :registro="unidadeSelecionada"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

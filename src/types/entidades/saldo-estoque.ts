@@ -6,6 +6,8 @@ export interface SaldoEstoque {
   unidadeMedidaSigla: string;
   estoqueMinimo: number;
   saldoAtual: number;
+  valorUnitario: number | null;
+  valorEstoque: number;
   abaixoDoMinimo: boolean;
 }
 

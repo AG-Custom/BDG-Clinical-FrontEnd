@@ -19,6 +19,7 @@ const podeDesativar = usePermissao(permissoes.sintomas.desativar);
 const sintomas = ref<Sintoma[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
+const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
 const sintomaSelecionado = ref<Sintoma | null>(null);
@@ -41,6 +42,11 @@ async function carregarSintomas(): Promise<void> {
   } finally {
     carregando.value = false;
   }
+}
+
+function abrirDialogVisualizar(sintoma: Sintoma): void {
+  sintomaSelecionado.value = sintoma;
+  dialogVisualizar.value = true;
 }
 
 function abrirDialogDesativar(sintoma: Sintoma): void {
@@ -151,25 +157,14 @@ onMounted(() => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="editar"
-              rotulo="Editar sintoma"
-              :disable="!podeEditar"
-              @click="editarSintoma(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="cell.row.ativo"
-              acao="desativar"
-              rotulo="Desativar sintoma"
-              :disable="!podeDesativar"
-              @click="abrirDialogDesativar(cell.row)"
-            />
-            <app-table-action-button
-              v-else
-              acao="reativar"
-              rotulo="Reativar sintoma"
-              :disable="!podeDesativar"
-              @click="abrirDialogReativar(cell.row)"
+            <app-table-actions-menu
+              :ativo="cell.row.ativo"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeDesativar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarSintoma(cell.row.id)"
+              @desabilitar="abrirDialogDesativar(cell.row)"
+              @ativar="abrirDialogReativar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -198,6 +193,12 @@ onMounted(() => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar sintoma"
+      :registro="sintomaSelecionado"
+    />
 
     <q-dialog v-model="dialogDesativar" persistent>
       <q-card style="min-width: 320px">

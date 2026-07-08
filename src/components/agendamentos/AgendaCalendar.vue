@@ -21,6 +21,7 @@ import {
   formatarNomesProcedimentos,
 } from '@/types/entidades/agendamento';
 import type { ConfigCalendarioHorario } from '@/types/entidades/horario-funcionamento-unidade';
+import { parsearDataBackend } from '@/utils/data-hora';
 
 const CALENDAR_PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
 
@@ -54,8 +55,8 @@ const eventos = computed<EventInput[]>(() =>
   props.agendamentos.map((agendamento) => ({
     id: agendamento.id,
     title: agendamento.pacienteNome,
-    start: agendamento.dataInicio,
-    end: agendamento.dataFim,
+    start: parsearDataBackend(agendamento.dataInicio),
+    end: parsearDataBackend(agendamento.dataFim),
     backgroundColor: obterCorEventoAgendamento(agendamento.status),
     borderColor: obterCorEventoAgendamento(agendamento.status),
     extendedProps: { agendamento },

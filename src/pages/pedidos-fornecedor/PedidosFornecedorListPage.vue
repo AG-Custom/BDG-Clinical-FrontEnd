@@ -37,6 +37,7 @@ const carregando = ref(true);
 const filtroStatus = ref<StatusPedidoFornecedor | null>(null);
 const filtroFornecedorId = ref<string | null>(null);
 const filtroUnidadeId = ref<string | null>(null);
+const dialogVisualizar = ref(false);
 const dialogCancelar = ref(false);
 const dialogReceber = ref(false);
 const pedidoSelecionado = ref<PedidoFornecedor | null>(null);
@@ -125,6 +126,11 @@ function abrirDialogCancelar(pedido: PedidoFornecedor): void {
 function abrirDialogReceber(pedido: PedidoFornecedor): void {
   pedidoSelecionado.value = pedido;
   dialogReceber.value = true;
+}
+
+function abrirDialogVisualizar(pedido: PedidoFornecedor): void {
+  pedidoSelecionado.value = pedido;
+  dialogVisualizar.value = true;
 }
 
 async function confirmarCancelar(): Promise<void> {
@@ -287,25 +293,28 @@ onMounted(async () => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="visualizar"
-              rotulo="Ver ou editar pedido"
-              @click="editarPedido(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="podeEditarPedido(cell.row)"
-              acao="receber"
-              rotulo="Receber pedido"
-              :disable="!podeReceber"
-              @click="abrirDialogReceber(cell.row)"
-            />
-            <app-table-action-button
-              v-if="podeEditarPedido(cell.row)"
-              acao="cancelar"
-              rotulo="Cancelar pedido"
-              :disable="!podeEditar"
-              @click="abrirDialogCancelar(cell.row)"
-            />
+            <app-table-actions-menu
+              :mostrar-status="podeEditarPedido(cell.row)"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeEditar"
+              desabilitar-label="Cancelar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarPedido(cell.row.id)"
+              @desabilitar="abrirDialogCancelar(cell.row)"
+            >
+              <q-item
+                v-if="podeEditarPedido(cell.row)"
+                clickable
+                v-close-popup
+                :disable="!podeReceber"
+                @click="abrirDialogReceber(cell.row)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="inventory" color="positive" />
+                </q-item-section>
+                <q-item-section>Receber</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
       </q-table>
@@ -333,6 +342,12 @@ onMounted(async () => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar pedido"
+      :registro="pedidoSelecionado"
+    />
 
     <q-dialog v-model="dialogCancelar" persistent>
       <q-card style="min-width: 320px">

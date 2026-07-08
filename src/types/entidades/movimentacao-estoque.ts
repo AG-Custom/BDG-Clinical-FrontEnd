@@ -1,3 +1,5 @@
+import { formatarDataHoraBrasil } from '@/utils/data-hora';
+
 export const TIPOS_MOVIMENTACAO_ESTOQUE = ['Entrada', 'Saida', 'Ajuste', 'Perda'] as const;
 
 export type TipoMovimentacaoEstoque = (typeof TIPOS_MOVIMENTACAO_ESTOQUE)[number];
@@ -47,19 +49,7 @@ export interface ListarMovimentacoesEstoqueParams {
 }
 
 export function formatarDataMovimentacao(data: string): string {
-  const parsed = new Date(data);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return data;
-  }
-
-  return parsed.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatarDataHoraBrasil(data);
 }
 
 export function obterCorTipoMovimentacao(tipo: TipoMovimentacaoEstoque): string {

@@ -51,6 +51,7 @@ const filtroAplicadorId = ref<string | null>(null);
 const filtroCancelada = ref<boolean | null>(null);
 const filtroDataInicio = ref('');
 const filtroDataFim = ref('');
+const dialogVisualizar = ref(false);
 const dialogCancelar = ref(false);
 const aplicacaoSelecionada = ref<AplicacaoPaciente | null>(null);
 const cancelando = ref(false);
@@ -222,6 +223,11 @@ async function onFiltroUnidadeChange(): Promise<void> {
 function abrirDialogCancelar(aplicacao: AplicacaoPaciente): void {
   aplicacaoSelecionada.value = aplicacao;
   dialogCancelar.value = true;
+}
+
+function abrirDialogVisualizar(aplicacao: AplicacaoPaciente): void {
+  aplicacaoSelecionada.value = aplicacao;
+  dialogVisualizar.value = true;
 }
 
 async function confirmarCancelar(): Promise<void> {
@@ -423,17 +429,15 @@ onMounted(async () => {
 
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
-            <app-table-action-button
-              acao="visualizar"
-              rotulo="Ver ou editar aplicação"
-              @click="editarAplicacao(cell.row.id)"
-            />
-            <app-table-action-button
-              v-if="!cell.row.cancelada"
-              acao="cancelar"
-              rotulo="Cancelar aplicação"
-              :disable="!podeGerenciarAplicacoes"
-              @click="abrirDialogCancelar(cell.row)"
+            <app-table-actions-menu
+              :ativo="!cell.row.cancelada"
+              :pode-editar="podeGerenciarAplicacoes"
+              :pode-alterar-status="podeGerenciarAplicacoes"
+              :mostrar-status="!cell.row.cancelada"
+              desabilitar-label="Cancelar"
+              @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="editarAplicacao(cell.row.id)"
+              @desabilitar="abrirDialogCancelar(cell.row)"
             />
           </app-table-actions-cell>
         </template>
@@ -462,6 +466,12 @@ onMounted(async () => {
         </div>
       </q-card-section>
     </q-card>
+
+    <app-entity-details-dialog
+      v-model="dialogVisualizar"
+      titulo="Detalhar aplicação"
+      :registro="aplicacaoSelecionada"
+    />
 
     <q-dialog v-model="dialogCancelar" persistent>
       <q-card style="min-width: 320px">
