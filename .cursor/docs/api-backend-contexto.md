@@ -7,6 +7,12 @@ Documento de contrato HTTP entre o backend (`BGD.CLINICAL.WebApi`) e o frontend.
 **Formato:** JSON (`Content-Type: application/json`)  
 **Nomenclatura JSON:** camelCase (padrão ASP.NET Core)
 
+**Documentos complementares:**
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [api-cargos-permissoes.md](./api-cargos-permissoes.md) | Cargos, mapa de permissões, permissões por cargo/funcionário, modelo e fluxo no front |
+
 ---
 
 ## 1. Autenticação
@@ -827,112 +833,16 @@ Reativa uma unidade inativa. Sem body.
 
 ---
 
-## 7. Cargos — `/api/positions`
+## 7. Cargos e permissões
 
-Cadastro de cargos vinculados aos funcionários (ex.: Médico, Enfermeiro, Recepcionista). A flag `flagAplicador` no cargo define se funcionários com aquele cargo podem realizar aplicações. Todas as rotas exigem **Bearer token**. Os dados são filtrados pela empresa do token.
+Documentação completa em **[api-cargos-permissoes.md](./api-cargos-permissoes.md)**.
 
-### GET `/api/positions`
-
-Lista cargos da empresa logada.
-
-**Query params**
-
-| Param | Tipo | Default | Descrição |
-|-------|------|---------|-----------|
-| `includeInactive` | `boolean` | `false` | Incluir cargos desativados |
-
-**Exemplo:** `GET /api/positions?includeInactive=false`
-
-**Response 200**
-
-```json
-{
-  "data": [
-    {
-      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "nome": "Médico",
-      "flagAplicador": true,
-      "ativo": true,
-      "criadoEm": "2026-06-25T12:00:00Z",
-      "atualizadoEm": null
-    }
-  ],
-  "success": true,
-  "message": null
-}
-```
-
----
-
-### GET `/api/positions/{id}`
-
-**Response 200** — um `PositionDto` em `data`.
-
-**Response 404**
-
-```json
-{
-  "data": null,
-  "success": false,
-  "message": "Cargo não encontrado."
-}
-```
-
----
-
-### POST `/api/positions`
-
-**Request**
-
-```json
-{
-  "nome": "Enfermeiro",
-  "flagAplicador": true
-}
-```
-
-| Campo | Obrigatório |
-|-------|-------------|
-| `nome` | Sim |
-| `flagAplicador` | Não | Default `false`. Indica se funcionários com este cargo podem realizar aplicações |
-
-**Response 201** — `Location: /api/positions/{id}`
-
-**Response 400** — nome duplicado na empresa:
-
-```json
-{
-  "data": null,
-  "success": false,
-  "message": "Já existe um cargo com este nome."
-}
-```
-
----
-
-### PUT `/api/positions/{id}`
-
-**Request** — mesmo body do POST.
-
-**Response 200** — `PositionDto` atualizado em `data`.  
-**Response 404** — cargo não encontrado.  
-**Response 400** — cargo inativo ou nome duplicado.
-
----
-
-### DELETE `/api/positions/{id}`
-
-Desativa o cargo (soft delete). Funcionários que já possuem o cargo vinculado mantêm a referência histórica; novos vínculos devem usar apenas cargos ativos.
-
-**Response 200** — `PositionDto` com `ativo: false`.
-
----
-
-### PATCH `/api/positions/{id}/reactivate`
-
-Reativa um cargo inativo. Sem body.
-
-**Response 200** — `PositionDto` com `ativo: true`.
+| Recurso | Rotas |
+|---------|-------|
+| Mapa do catálogo | `GET /api/permissions/map` |
+| CRUD cargos | `GET/POST/PUT/DELETE/PATCH /api/positions` |
+| Permissões do cargo | `GET/PUT /api/positions/{id}/permissions` |
+| Overrides do funcionário | `GET/PUT /api/employees/{id}/permissions` |
 
 ---
 
@@ -953,7 +863,7 @@ Cadastro de colaboradores com acesso à plataforma. Todas as rotas exigem **Bear
 | `pendentePrimeiroAcesso` | `true` = usuário criado sem senha; deve passar pelo fluxo de primeiro acesso |
 | `links` | Vínculos do funcionário com empresa/unidade e cargo na resposta |
 
-> Para saber se um funcionário é aplicador, consulte o cargo vinculado em `links[].cargoId` via `GET /api/positions` (`flagAplicador` no cargo).
+> Permissões e `flagAplicador`: ver [api-cargos-permissoes.md](./api-cargos-permissoes.md). Defina `cargoId` no cadastro — as permissões vêm do cargo.
 
 **Não enviar senha no cadastro** — a senha é definida no primeiro acesso via link enviado por e-mail para `emailLogin`.
 
@@ -1045,9 +955,8 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
   "unidadeIds": [
     "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
   ],
-  "cargoId": null,
-  "isAdmin": false,
-  "perfilId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  "cargoId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "isAdmin": false
 }
 ```
 
@@ -1074,7 +983,7 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
 | `emailLogin` | Sim | E-mail válido; único por empresa |
 | `linkToEmpresa` | Sim | `true` ou `false` |
 | `unidadeIds` | Condicional | Obrigatório (≥1) quando `linkToEmpresa = false` |
-| `cargoId` | Não | Deve existir na empresa, se informado. Permissão de aplicador vem do cargo (`GET /api/positions`) |
+| `cargoId` | Não | Deve existir na empresa, se informado. **Permissões** do funcionário vêm do cargo; `flagAplicador` também vem do cargo |
 | `isAdmin` | Não | Default `false`. `true` cria usuário com `tipo_usuario = Admin` |
 
 **Response 201**
@@ -1240,75 +1149,9 @@ Reativa funcionário inativo, os vínculos inativos na empresa logada e o usuár
 
 ---
 
-### GET `/api/employees/{id}/permissions`
+### Permissões do funcionário
 
-**Requer perfil Admin.** Retorna perfil atribuído, overrides e permissões efetivas.
-
-**Response 200**
-
-```json
-{
-  "data": {
-    "employeeId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-    "usuarioId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "perfilId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "perfilNome": "Recepcionista",
-    "allows": [],
-    "denies": ["agendamento.cancelar"],
-    "effectivePermissions": ["agenda.visualizar", "agendamento.criar"]
-  },
-  "success": true,
-  "message": null
-}
-```
-
----
-
-### PUT `/api/employees/{id}/permissions`
-
-**Requer perfil Admin.**
-
-```json
-{
-  "perfilId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "allows": ["financeiro.visualizar"],
-  "denies": ["agendamento.cancelar"]
-}
-```
-
----
-
-## 8.1 Mapa de permissões
-
-### GET `/api/permissions/map`
-
-Árvore de permissões do catálogo, filtrada pelos módulos licenciados da empresa (+ Core).
-
-**Response 200** — array de nós com `key`, `description`, `category`, `moduleCode`, `order`, `parent`, `children`.
-
----
-
-### GET `/api/permission-profiles`
-
-Lista perfis de permissão da empresa (Recepcionista, Médico, etc.).
-
----
-
-### POST `/api/permission-profiles`
-
-```json
-{
-  "nome": "Recepcionista",
-  "descricao": "Atendimento",
-  "permissionKeys": ["agenda.visualizar", "agendamento.criar"]
-}
-```
-
----
-
-### PUT `/api/permission-profiles/{id}`
-
-Atualiza perfil. Usuários vinculados ao perfil têm cache de permissões invalidado.
+`GET` / `PUT` `/api/employees/{id}/permissions` — documentados em [api-cargos-permissoes.md § 6](./api-cargos-permissoes.md).
 
 ---
 
@@ -1342,6 +1185,15 @@ Lista pacientes da empresa logada.
       "telefone": "(11) 99999-0000",
       "email": "maria@email.com",
       "dataNascimento": "1990-05-15",
+      "endereco": {
+        "cep": "01310100",
+        "logradouro": "Av. Paulista",
+        "numero": "1000",
+        "complemento": "Sala 10",
+        "bairro": "Bela Vista",
+        "cidade": "São Paulo",
+        "uf": "SP"
+      },
       "observacao": null,
       "ativo": true,
       "criadoEm": "2026-06-25T12:00:00Z",
@@ -1383,6 +1235,15 @@ Lista pacientes da empresa logada.
   "telefone": "(11) 99999-0000",
   "email": "maria@email.com",
   "dataNascimento": "1990-05-15",
+  "endereco": {
+    "cep": "01310-100",
+    "logradouro": "Av. Paulista",
+    "numero": "1000",
+    "complemento": "Sala 10",
+    "bairro": "Bela Vista",
+    "cidade": "São Paulo",
+    "uf": "SP"
+  },
   "observacao": null
 }
 ```
@@ -1395,6 +1256,7 @@ Lista pacientes da empresa logada.
 | `telefone` | Não | |
 | `email` | Não | Formato válido se informado |
 | `dataNascimento` | Não | Formato `YYYY-MM-DD` |
+| `endereco` | Não | Objeto com campos opcionais: `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `uf` |
 | `observacao` | Não | |
 
 `empresaId` **não** vai no body — vem do JWT.
@@ -2581,6 +2443,15 @@ interface Patient {
   telefone: string | null;
   email: string | null;
   dataNascimento: string | null;
+  endereco: {
+    cep: string | null;
+    logradouro: string | null;
+    numero: string | null;
+    complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+  } | null;
   observacao: string | null;
   ativo: boolean;
   criadoEm: string;
@@ -2781,7 +2652,7 @@ interface CompleteAppointmentRequest {
 8. Upload da logo     → POST /api/companies/current/logo (somente Admin, multipart)
 9. Editar clínica     → PUT  /api/companies/current (somente Admin)
 10. CRUD unidades     → /api/units/*
-11. CRUD cargos       → /api/positions/* (definir flagAplicador no cargo; popular select antes de cadastrar funcionário)
+11. Cargos e permissões → [api-cargos-permissoes.md](./api-cargos-permissoes.md) (`/api/positions`, `/api/permissions/map`, overrides em `/api/employees/{id}/permissions`)
 12. CRUD funcionários → POST/PUT /api/employees (somente Admin) → e-mail de convite no create
 13. CRUD pacientes    → /api/patients/*
 14. CRUD sintomas     → /api/symptoms/* (popular multi-select em aplicações)
@@ -2809,7 +2680,6 @@ interface CompleteAppointmentRequest {
 | Recurso | Status |
 |---------|--------|
 | Reenvio de convite de primeiro acesso | Não implementado |
-| Permissões por módulo | Não implementado (attributes prontos para uso futuro) |
 
 ---
 

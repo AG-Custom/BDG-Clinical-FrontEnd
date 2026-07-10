@@ -197,14 +197,12 @@ function formatarDataHora(valor: unknown): string {
 </script>
 
 <template>
-  <q-dialog v-model="model">
+  <q-dialog v-model="model" transition-show="none" transition-hide="none">
     <q-card class="entity-details">
       <q-card-section class="entity-details__header">
-        <div class="text-h6">{{ titulo }}</div>
+        <div class="entity-details__titulo">{{ titulo }}</div>
         <q-btn v-close-popup flat round dense icon="close" aria-label="Fechar" />
       </q-card-section>
-
-      <q-separator />
 
       <q-card-section class="entity-details__body">
         <section class="entity-details__section">
@@ -222,10 +220,7 @@ function formatarDataHora(valor: unknown): string {
         </section>
 
         <section class="entity-details__section">
-          <div class="entity-details__audit-title">
-            <q-icon name="history" />
-            <span>Auditoria</span>
-          </div>
+          <div class="entity-details__section-title">Auditoria</div>
 
           <div v-if="auditoria.length > 0" class="entity-details__audit">
             <div
@@ -248,10 +243,8 @@ function formatarDataHora(valor: unknown): string {
         </section>
       </q-card-section>
 
-      <q-separator />
-
-      <q-card-actions align="center" class="entity-details__actions">
-        <q-btn v-close-popup outline color="negative" icon="close" label="Fechar" no-caps />
+      <q-card-actions align="right" class="entity-details__actions">
+        <q-btn v-close-popup flat color="primary" label="Fechar" no-caps />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -259,126 +252,136 @@ function formatarDataHora(valor: unknown): string {
 
 <style scoped lang="scss">
 .entity-details {
-  width: min(760px, calc(100vw - 32px));
-  max-width: 760px;
+  width: min(640px, calc(100vw - 32px));
+  max-height: 90vh;
+  overflow-y: auto;
+  contain: layout style;
 }
 
 .entity-details__header {
   display: flex;
-  min-height: 64px;
   align-items: center;
   justify-content: space-between;
-  border-top: 4px solid #008766;
-  background: #f1faf6;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4) var(--ds-space-5);
+  border-bottom: 1px solid var(--ds-border-default);
+  background: var(--ds-bg-surface);
+}
+
+.entity-details__titulo {
+  color: var(--ds-text-primary);
+  font-size: var(--ds-font-size-lg);
+  font-weight: var(--ds-font-weight-semibold);
+  line-height: var(--ds-line-height-normal);
+  overflow-wrap: anywhere;
 }
 
 .entity-details__body {
   display: grid;
-  gap: 12px;
-  padding: 16px 24px;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4) var(--ds-space-5);
+  background: var(--ds-bg-page);
 }
 
 .entity-details__section {
-  border: 1px solid #d8dde3;
-  border-radius: 6px;
-  overflow: hidden;
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-border-default);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-bg-surface);
 }
 
 .entity-details__section-title {
-  padding: 14px 16px;
-  background: #f7f7f7;
-  color: #5b6470;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: .04em;
+  margin-bottom: var(--ds-space-3);
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-semibold);
+  letter-spacing: var(--ds-letter-spacing-wide);
   text-transform: uppercase;
 }
 
 .entity-details__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 20px;
-  padding: 14px 16px 16px;
+  gap: var(--ds-space-3) var(--ds-space-4);
 }
 
 .entity-details__field {
   display: grid;
-  gap: 6px;
+  gap: var(--ds-space-1);
   min-width: 0;
 }
 
 .entity-details__field span {
-  color: #111827;
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
 }
 
 .entity-details__field strong {
-  color: #111827;
-  font-weight: 500;
-  font-size: 15px;
+  color: var(--ds-text-primary);
+  font-size: 0.95rem;
+  font-weight: var(--ds-font-weight-medium);
   overflow-wrap: anywhere;
-}
-
-.entity-details__audit-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  color: #00759a;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
 }
 
 .entity-details__audit {
   display: grid;
-  gap: 8px;
-  padding: 0 8px 12px;
+  gap: var(--ds-space-2);
 }
 
 .entity-details__audit-empty {
-  color: #6b7280;
-  padding: 0 16px 16px;
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-font-size-sm);
 }
 
 .entity-details__audit-row {
   display: grid;
   grid-template-columns: 130px 1fr;
-  gap: 12px;
+  gap: var(--ds-space-3);
   align-items: center;
-  border-radius: 6px;
-  padding: 9px 12px;
-}
-
-.entity-details__audit-row--created {
-  background: #e2f3e9;
-  color: #006b43;
-}
-
-.entity-details__audit-row--updated {
-  background: #eef4ff;
-  color: #1f5fbf;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border-radius: var(--ds-radius-md);
 }
 
 .entity-details__audit-row strong {
-  color: #111827;
-  font-size: 12px;
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-bold);
   text-transform: uppercase;
 }
 
 .entity-details__audit-row span {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ds-space-2);
+  color: var(--ds-text-primary);
+  font-size: var(--ds-font-size-sm);
+}
+
+.entity-details__audit-row--created {
+  background: var(--ds-audit-created-bg);
+
+  strong,
+  span .q-icon {
+    color: var(--ds-audit-created-fg);
+  }
+}
+
+.entity-details__audit-row--updated {
+  background: var(--ds-audit-updated-bg);
+
+  strong,
+  span .q-icon {
+    color: var(--ds-audit-updated-fg);
+  }
 }
 
 .entity-details__actions {
-  min-height: 72px;
+  padding: var(--ds-space-3) var(--ds-space-5);
+  border-top: 1px solid var(--ds-border-default);
+  background: var(--ds-bg-surface);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 600px) {
   .entity-details__grid {
     grid-template-columns: 1fr;
   }

@@ -3,6 +3,16 @@ export interface UnidadePacienteResumo {
   nome: string;
 }
 
+export interface EnderecoPaciente {
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+}
+
 export interface Paciente {
   id: string;
   unidadeId: string;
@@ -13,6 +23,7 @@ export interface Paciente {
   telefone: string | null;
   email: string | null;
   dataNascimento: string | null;
+  endereco: EnderecoPaciente | null;
   observacao: string | null;
   ativo: boolean;
   criadoEm?: string;
@@ -27,6 +38,7 @@ export interface CriarPacienteRequest {
   telefone?: string | null;
   email?: string | null;
   dataNascimento?: string | null;
+  endereco?: EnderecoPaciente | null;
   observacao?: string | null;
 }
 
@@ -38,8 +50,39 @@ export interface AtualizarPacienteRequest {
   telefone?: string | null;
   email?: string | null;
   dataNascimento?: string | null;
+  endereco?: EnderecoPaciente | null;
   observacao?: string | null;
 }
+
+export const UFS_BRASIL = [
+  'AC',
+  'AL',
+  'AP',
+  'AM',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MT',
+  'MS',
+  'MG',
+  'PA',
+  'PB',
+  'PR',
+  'PE',
+  'PI',
+  'RJ',
+  'RN',
+  'RS',
+  'RO',
+  'RR',
+  'SC',
+  'SP',
+  'SE',
+  'TO',
+] as const;
 
 export interface ListarPacientesParams {
   unidadeId?: string;
@@ -60,6 +103,38 @@ export function formatarCpf(cpf: string | null): string {
   return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 }
 
+export function formatarTelefonePaciente(telefone: string | null): string {
+  if (!telefone) {
+    return '—';
+  }
+
+  const digitos = telefone.replace(/\D/g, '');
+
+  if (digitos.length === 11) {
+    return digitos.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+
+  if (digitos.length === 10) {
+    return digitos.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+
+  return telefone;
+}
+
+export function formatarCep(cep: string | null): string {
+  if (!cep) {
+    return '—';
+  }
+
+  const digitos = cep.replace(/\D/g, '');
+
+  if (digitos.length !== 8) {
+    return cep;
+  }
+
+  return digitos.replace(/(\d{5})(\d{3})/, '$1-$2');
+}
+
 export function formatarDataNascimento(data: string | null): string {
   if (!data) {
     return '—';
@@ -74,10 +149,60 @@ export function formatarDataNascimento(data: string | null): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+export function textoOuTraco(valor: string | null | undefined): string {
+  const texto = valor?.trim();
+
+  return texto ? texto : '—';
+}
+
+export function possuiEnderecoPaciente(endereco: EnderecoPaciente | null | undefined): boolean {
+  if (!endereco) {
+    return false;
+  }
+
+  return Object.values(endereco).some((valor) => Boolean(valor?.trim()));
+}
+
 export function normalizarCpf(cpf: string): string | null {
   const digitos = cpf.replace(/\D/g, '');
 
   return digitos.length > 0 ? digitos : null;
+}
+
+export function normalizarCep(cep: string): string | null {
+  const digitos = cep.replace(/\D/g, '');
+
+  return digitos.length > 0 ? digitos : null;
+}
+
+function textoOpcional(valor: string): string | null {
+  const texto = valor.trim();
+
+  return texto.length > 0 ? texto : null;
+}
+
+export function montarEnderecoPaciente(campos: {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}): EnderecoPaciente | null {
+  const endereco: EnderecoPaciente = {
+    cep: normalizarCep(campos.cep),
+    logradouro: textoOpcional(campos.logradouro),
+    numero: textoOpcional(campos.numero),
+    complemento: textoOpcional(campos.complemento),
+    bairro: textoOpcional(campos.bairro),
+    cidade: textoOpcional(campos.cidade),
+    uf: textoOpcional(campos.uf)?.toUpperCase() ?? null,
+  };
+
+  const possuiAlgumCampo = Object.values(endereco).some((valor) => valor !== null);
+
+  return possuiAlgumCampo ? endereco : null;
 }
 
 export function obterUnidadeIdsDoPaciente(paciente: Paciente): string[] {

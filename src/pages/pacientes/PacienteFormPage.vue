@@ -8,7 +8,12 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
 import { unidadeService } from '@/services/unidade.service';
-import { normalizarCpf, obterUnidadeIdsDoPaciente } from '@/types/entidades/paciente';
+import {
+  montarEnderecoPaciente,
+  normalizarCpf,
+  obterUnidadeIdsDoPaciente,
+  UFS_BRASIL,
+} from '@/types/entidades/paciente';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const route = useRoute();
@@ -23,6 +28,7 @@ const carregando = ref(false);
 const salvando = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const dadosIniciaisCarregados = ref(false);
+const opcoesUf = [...UFS_BRASIL];
 
 const isEdicao = computed(() => route.name === 'pacientes-editar');
 const pacienteId = computed(() => route.params.id as string | undefined);
@@ -34,6 +40,13 @@ const form = reactive({
   telefone: '',
   email: '',
   dataNascimento: '',
+  cep: '',
+  logradouro: '',
+  numero: '',
+  complemento: '',
+  bairro: '',
+  cidade: '',
+  uf: null as string | null,
   observacao: '',
 });
 
@@ -72,6 +85,16 @@ function validarUnidades(value: string[] | null): boolean | string {
   return (Array.isArray(value) && value.length > 0) || 'Selecione ao menos uma unidade';
 }
 
+function validarCep(value: string): boolean | string {
+  if (!value) {
+    return true;
+  }
+
+  const digitos = value.replace(/\D/g, '');
+
+  return digitos.length === 8 || 'Informe um CEP válido com 8 dígitos';
+}
+
 function montarPayload() {
   return {
     unidadeIds: form.unidadeIds,
@@ -80,6 +103,15 @@ function montarPayload() {
     telefone: form.telefone.trim() || null,
     email: form.email.trim() || null,
     dataNascimento: form.dataNascimento || null,
+    endereco: montarEnderecoPaciente({
+      cep: form.cep,
+      logradouro: form.logradouro,
+      numero: form.numero,
+      complemento: form.complemento,
+      bairro: form.bairro,
+      cidade: form.cidade,
+      uf: form.uf ?? '',
+    }),
     observacao: form.observacao.trim() || null,
   };
 }
@@ -131,6 +163,13 @@ async function carregarPaciente(): Promise<void> {
     form.telefone = paciente.telefone ?? '';
     form.email = paciente.email ?? '';
     form.dataNascimento = paciente.dataNascimento ?? '';
+    form.cep = paciente.endereco?.cep ?? '';
+    form.logradouro = paciente.endereco?.logradouro ?? '';
+    form.numero = paciente.endereco?.numero ?? '';
+    form.complemento = paciente.endereco?.complemento ?? '';
+    form.bairro = paciente.endereco?.bairro ?? '';
+    form.cidade = paciente.endereco?.cidade ?? '';
+    form.uf = paciente.endereco?.uf ?? null;
     form.observacao = paciente.observacao ?? '';
 
     await garantirUnidadesNaLista(form.unidadeIds);
@@ -266,6 +305,81 @@ onMounted(async () => {
                 outlined
                 :readonly="!podeSalvar"
                 :rules="[validarEmail]"
+              />
+            </div>
+          </div>
+
+          <q-separator class="q-my-sm" />
+
+          <div class="text-subtitle2 text-weight-medium">Endereço</div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-4">
+              <q-input
+                v-model="form.cep"
+                label="CEP"
+                outlined
+                mask="#####-###"
+                unmasked-value
+                fill-mask
+                :readonly="!podeSalvar"
+                :rules="[validarCep]"
+              />
+            </div>
+            <div class="col-12 col-md-8">
+              <q-input
+                v-model="form.logradouro"
+                label="Logradouro"
+                outlined
+                :readonly="!podeSalvar"
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-3">
+              <q-input
+                v-model="form.numero"
+                label="Número"
+                outlined
+                :readonly="!podeSalvar"
+              />
+            </div>
+            <div class="col-12 col-md-5">
+              <q-input
+                v-model="form.complemento"
+                label="Complemento"
+                outlined
+                :readonly="!podeSalvar"
+              />
+            </div>
+            <div class="col-12 col-md-4">
+              <q-input
+                v-model="form.bairro"
+                label="Bairro"
+                outlined
+                :readonly="!podeSalvar"
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-8">
+              <q-input
+                v-model="form.cidade"
+                label="Cidade"
+                outlined
+                :readonly="!podeSalvar"
+              />
+            </div>
+            <div class="col-12 col-md-4">
+              <q-select
+                v-model="form.uf"
+                :options="opcoesUf"
+                label="UF"
+                outlined
+                clearable
+                :disable="!podeSalvar"
               />
             </div>
           </div>

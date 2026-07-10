@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import PacienteDetalheDialog from '@/components/pacientes/PacienteDetalheDialog.vue';
 import { permissoes } from '@/constants/permissoes';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
@@ -9,7 +10,12 @@ import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Paciente } from '@/types/entidades/paciente';
-import { formatarCpf, formatarDataNascimento, formatarNomesUnidadesPaciente } from '@/types/entidades/paciente';
+import {
+  formatarCpf,
+  formatarDataNascimento,
+  formatarNomesUnidadesPaciente,
+  formatarTelefonePaciente,
+} from '@/types/entidades/paciente';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const router = useRouter();
@@ -47,7 +53,7 @@ const opcoesUnidadesFiltro = ref<{ label: string; value: string | null }[]>([
 ]);
 
 function formatarTelefone(telefone: string | null): string {
-  return telefone || '—';
+  return formatarTelefonePaciente(telefone);
 }
 
 function obterTextoUnidades(paciente: Paciente): string {
@@ -88,6 +94,19 @@ async function carregarPacientes(): Promise<void> {
 function abrirDialogVisualizar(paciente: Paciente): void {
   pacienteSelecionado.value = paciente;
   dialogVisualizar.value = true;
+  void enriquecerPacienteSelecionado(paciente.id);
+}
+
+async function enriquecerPacienteSelecionado(id: string): Promise<void> {
+  try {
+    const completo = await pacienteService.obter(id);
+
+    if (pacienteSelecionado.value?.id === id && dialogVisualizar.value) {
+      pacienteSelecionado.value = completo;
+    }
+  } catch {
+    // Mantém os dados da listagem se o detalhe falhar.
+  }
 }
 
 function abrirDialogDesativar(paciente: Paciente): void {
@@ -276,10 +295,10 @@ onMounted(async () => {
       </q-card-section>
     </q-card>
 
-    <app-entity-details-dialog
+    <paciente-detalhe-dialog
       v-model="dialogVisualizar"
-      titulo="Detalhar paciente"
-      :registro="pacienteSelecionado"
+      :paciente="pacienteSelecionado"
+      :nomes-unidades-por-id="unidadesPorId"
     />
 
     <q-dialog v-model="dialogDesativar" persistent>

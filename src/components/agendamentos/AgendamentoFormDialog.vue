@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue';
 
+import PacienteFormDialog from '@/components/pacientes/PacienteFormDialog.vue';
+import { permissoes } from '@/constants/permissoes';
 import { useNotificacao } from '@/composables/useNotificacao';
+import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
 import { funcionarioService } from '@/services/funcionario.service';
@@ -35,9 +38,11 @@ const emit = defineEmits<{
 
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
+const podeCriarPaciente = usePermissao(permissoes.pacientes.criar);
 
 const carregandoDados = ref(false);
 const salvando = ref(false);
+const dialogPaciente = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const pacientesDisponiveis = ref<Paciente[]>([]);
 const procedimentosDisponiveis = ref<Procedimento[]>([]);
@@ -98,6 +103,10 @@ const mostrarAlertaProcedimentos = computed(
     dadosIniciaisCarregados.value &&
     !carregandoDados.value &&
     opcoesProcedimentos.value.length === 0,
+);
+
+const mostrarBoxNovoPaciente = computed(
+  () => props.modelValue && Boolean(form.unidadeId) && podeCriarPaciente.value,
 );
 
 const tituloDialog = computed(() =>
@@ -223,7 +232,24 @@ async function recarregarProcedimentos(): Promise<void> {
 }
 
 function fechar(): void {
+  dialogPaciente.value = false;
   emit('update:modelValue', false);
+}
+
+function abrirCadastroPaciente(): void {
+  if (!form.unidadeId) {
+    return;
+  }
+
+  dialogPaciente.value = true;
+}
+
+function aoPacienteCriado(paciente: Paciente): void {
+  if (!pacientesDisponiveis.value.some((item) => item.id === paciente.id)) {
+    pacientesDisponiveis.value = [paciente, ...pacientesDisponiveis.value];
+  }
+
+  form.pacienteId = paciente.id;
 }
 
 function montarPayload() {
@@ -282,6 +308,7 @@ watch(
   () => props.modelValue,
   async (aberto) => {
     if (!aberto) {
+      dialogPaciente.value = false;
       return;
     }
 
@@ -354,19 +381,37 @@ watch(
             :rules="[(v) => Boolean(v) || 'Obrigatório']"
           />
 
-          <q-select
-            v-model="form.pacienteId"
-            :options="opcoesPacientes"
-            label="Paciente *"
-            outlined
-            emit-value
-            map-options
-            use-input
-            input-debounce="200"
-            :loading="carregandoDados"
-            :disable="salvando || !form.unidadeId"
-            :rules="[(v) => Boolean(v) || 'Obrigatório']"
-          />
+          <div class="form-field-stack">
+            <q-select
+              v-model="form.pacienteId"
+              :options="opcoesPacientes"
+              label="Paciente *"
+              outlined
+              emit-value
+              map-options
+              use-input
+              input-debounce="200"
+              :loading="carregandoDados"
+              :disable="salvando || !form.unidadeId"
+              :rules="[(v) => Boolean(v) || 'Obrigatório']"
+            />
+
+            <div v-if="mostrarBoxNovoPaciente" class="agendamento-form-dialog__box-paciente">
+              <p class="agendamento-form-dialog__box-paciente-texto">
+                Deseja cadastrar um novo paciente?
+              </p>
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                label="Cadastrar paciente"
+                icon="person_add"
+                :disable="salvando"
+                @click="abrirCadastroPaciente"
+              />
+            </div>
+          </div>
 
           <q-select
             v-model="form.funcionarioId"
@@ -462,11 +507,37 @@ watch(
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <paciente-form-dialog
+    v-model="dialogPaciente"
+    :unidade-id="form.unidadeId"
+    @criado="aoPacienteCriado"
+  />
 </template>
 
 <style scoped lang="scss">
 .agendamento-form-dialog {
   max-height: 90vh;
   overflow-y: auto;
+
+  &__box-paciente {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ds-space-2);
+    margin-top: var(--ds-space-2);
+    padding: var(--ds-space-3);
+    border: 1px solid var(--ds-border-default);
+    border-radius: var(--ds-radius-md);
+    background: var(--ds-bg-subtle);
+  }
+
+  &__box-paciente-texto {
+    margin: 0;
+    color: var(--ds-text-secondary);
+    font-size: var(--ds-font-size-sm);
+    line-height: var(--ds-line-height-normal);
+  }
 }
 </style>
