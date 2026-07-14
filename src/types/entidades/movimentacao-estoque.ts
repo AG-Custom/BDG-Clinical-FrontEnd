@@ -31,6 +31,8 @@ export interface MovimentacaoEstoque {
   tipo: TipoMovimentacaoEstoque;
   motivo: MotivoMovimentacaoEstoque | string;
   quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
   data: string;
   origem: OrigemMovimentacaoEstoque | string;
   pedidoFornecedorId: string | null;
@@ -100,6 +102,20 @@ export function formatarOrigemMovimentacao(origem: string): string {
       return 'Manual';
     default:
       return origem;
+  }
+}
+
+export function obterCorOrigemEntrada(origem: string): string {
+  switch (origem) {
+    case 'PEDIDO_FORNECEDOR':
+      return 'primary';
+    case 'AJUSTE_MANUAL':
+    case 'MANUAL':
+      return 'secondary';
+    case 'APLICACAO_PACIENTE_CANCELAMENTO':
+      return 'warning';
+    default:
+      return 'grey';
   }
 }
 

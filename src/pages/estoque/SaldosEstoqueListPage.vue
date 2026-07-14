@@ -13,6 +13,10 @@ import {
   formatarSaldoComUnidade,
   obterChaveSaldoEstoque,
 } from '@/types/entidades/saldo-estoque';
+import {
+  formatarOrigemMovimentacao,
+  obterCorOrigemEntrada,
+} from '@/types/entidades/movimentacao-estoque';
 
 const LIMITE_BUSCA = 20;
 const MIN_CARACTERES_BUSCA = 2;
@@ -35,6 +39,9 @@ const colunas = [
   { name: 'produto', label: 'Produto', field: 'produtoNome', align: 'left' as const, sortable: true },
   { name: 'estoqueMinimo', label: 'Mínimo', field: 'estoqueMinimo', align: 'right' as const },
   { name: 'saldoAtual', label: 'Saldo atual', field: 'saldoAtual', align: 'right' as const, sortable: true },
+  { name: 'valorUnitario', label: 'Valor unitário', field: 'valorUnitario', align: 'right' as const },
+  { name: 'valorEstoque', label: 'Valor em estoque', field: 'valorEstoque', align: 'right' as const, sortable: true },
+  { name: 'origensEntrada', label: 'Origem', field: 'origensEntrada', align: 'left' as const },
   { name: 'status', label: 'Situação', field: 'abaixoDoMinimo', align: 'center' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
@@ -56,6 +63,9 @@ const valorTotalEstoque = computed(() =>
   saldos.value.reduce((total, saldo) => total + obterValorEstoque(saldo), 0),
 );
 const valorTotalEstoqueFormatado = computed(() => formatarMoeda(valorTotalEstoque.value));
+
+const ajudaValorTotalEstoque =
+  'Soma do valor em estoque de cada item da listagem (saldo atual × valor unitário). O valor unitário prioriza o último pedido ao fornecedor recebido; se não houver compra, usa o valor cadastrado no produto. Os filtros da tela entram no cálculo.';
 
 async function buscarSaldos(termo: string, signal?: AbortSignal): Promise<void> {
   const termoNormalizado = termo.trim();
@@ -172,24 +182,34 @@ onMounted(async () => {
     />
 
     <section class="estoque-summary q-mb-md">
-      <div class="estoque-summary__main">
-        <span class="estoque-summary__label">Valor total do estoque</span>
-        <strong class="estoque-summary__value">{{ valorTotalEstoqueFormatado }}</strong>
+      <div class="col-summary">
+        <app-metric-card
+          label="Valor total do estoque"
+          icon="payments"
+          :valor="valorTotalEstoqueFormatado"
+          :hint="ajudaValorTotalEstoque"
+        />
       </div>
-
-      <div class="estoque-summary__metrics">
-        <div class="estoque-summary__metric">
-          <span>Unidades</span>
-          <strong>{{ totalUnidades.toLocaleString('pt-BR') }}</strong>
-        </div>
-        <div class="estoque-summary__metric">
-          <span>Itens</span>
-          <strong>{{ totalProdutos.toLocaleString('pt-BR') }}</strong>
-        </div>
-        <div class="estoque-summary__metric">
-          <span>Sem preço</span>
-          <strong>{{ itensSemPreco.toLocaleString('pt-BR') }}</strong>
-        </div>
+      <div class="col-summary">
+        <app-metric-card
+          label="Unidades"
+          icon="apartment"
+          :valor="totalUnidades.toLocaleString('pt-BR')"
+        />
+      </div>
+      <div class="col-summary">
+        <app-metric-card
+          label="Itens"
+          icon="inventory_2"
+          :valor="totalProdutos.toLocaleString('pt-BR')"
+        />
+      </div>
+      <div class="col-summary">
+        <app-metric-card
+          label="Sem preço"
+          icon="money_off"
+          :valor="itensSemPreco.toLocaleString('pt-BR')"
+        />
       </div>
     </section>
 
@@ -275,6 +295,35 @@ onMounted(async () => {
           </q-td>
         </template>
 
+        <template #body-cell-valorUnitario="props">
+          <q-td :props="props">
+            {{ formatarMoeda(props.row.valorUnitario ?? 0) }}
+          </q-td>
+        </template>
+
+        <template #body-cell-valorEstoque="props">
+          <q-td :props="props">
+            {{ formatarMoeda(obterValorEstoque(props.row)) }}
+          </q-td>
+        </template>
+
+        <template #body-cell-origensEntrada="props">
+          <q-td :props="props">
+            <div
+              v-if="props.row.origensEntrada?.length"
+              class="estoque-origens"
+            >
+              <q-badge
+                v-for="origem in props.row.origensEntrada"
+                :key="origem"
+                :color="obterCorOrigemEntrada(origem)"
+                :label="formatarOrigemMovimentacao(origem)"
+              />
+            </div>
+            <span v-else>—</span>
+          </q-td>
+        </template>
+
         <template #body-cell-status="props">
           <q-td :props="props">
             <q-badge
@@ -332,75 +381,38 @@ onMounted(async () => {
 <style scoped lang="scss">
 .estoque-summary {
   display: grid;
-  grid-template-columns: minmax(260px, 1.2fr) 2fr;
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ds-space-3);
   align-items: stretch;
 }
 
-.estoque-summary__main,
-.estoque-summary__metric {
-  border: 1px solid #d8dde3;
-  border-radius: 8px;
-  background: #ffffff;
+.col-summary {
+  min-width: 0;
 }
 
-.estoque-summary__main {
-  display: grid;
-  gap: 8px;
-  padding: 18px 20px;
-  border-top: 4px solid #008766;
+.estoque-origens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
 }
 
-.estoque-summary__label,
-.estoque-summary__metric span {
-  color: #5b6470;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+@media (max-width: 1100px) {
+  .estoque-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.estoque-summary__value {
-  color: #06231f;
-  font-size: clamp(24px, 3vw, 38px);
-  font-weight: 900;
-  line-height: 1.05;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-
-.estoque-summary__metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.estoque-summary__metric {
-  display: grid;
-  gap: 8px;
-  min-height: 86px;
-  padding: 14px 16px;
-}
-
-.estoque-summary__metric strong {
-  color: #06231f;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1.1;
-  text-transform: uppercase;
-}
-
-@media (max-width: 900px) {
+@media (max-width: 600px) {
   .estoque-summary {
     grid-template-columns: 1fr;
   }
 }
 
 .text-warning {
-  color: var(--ds-color-warning-600, #b54708);
+  color: var(--ds-color-warning-600);
 }
 
 .text-negative {
-  color: var(--ds-color-negative-600, #d92d20);
+  color: var(--ds-color-error-600);
 }
 </style>

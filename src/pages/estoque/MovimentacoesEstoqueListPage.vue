@@ -21,6 +21,7 @@ import {
 } from '@/types/entidades/movimentacao-estoque';
 import type { Produto } from '@/types/entidades/produto';
 import type { Unidade } from '@/types/entidades/unidade';
+import { formatarMoeda } from '@/types/entidades/pedido-fornecedor';
 
 const LIMITE_PADRAO = 50;
 
@@ -45,6 +46,7 @@ const colunas = [
   { name: 'produto', label: 'Produto', field: 'produtoNome', align: 'left' as const },
   { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center' as const },
   { name: 'quantidade', label: 'Quantidade', field: 'quantidade', align: 'right' as const },
+  { name: 'valorTotal', label: 'Valor', field: 'valorTotal', align: 'right' as const },
   { name: 'motivo', label: 'Motivo', field: 'motivo', align: 'left' as const },
   { name: 'observacao', label: 'Observação', field: 'observacao', align: 'left' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
@@ -269,6 +271,12 @@ onMounted(async () => {
         <template #body-cell-quantidade="props">
           <q-td :props="props">
             {{ props.row.quantidade.toLocaleString('pt-BR') }}
+          </q-td>
+        </template>
+
+        <template #body-cell-valorTotal="props">
+          <q-td :props="props">
+            {{ formatarMoeda(props.row.valorTotal ?? 0) }}
           </q-td>
         </template>
 

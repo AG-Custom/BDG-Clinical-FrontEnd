@@ -10,6 +10,7 @@ export interface Produto {
   codigoInterno: string | null;
   codigoBarras: string | null;
   estoqueMinimo: number;
+  valor: number;
   controlaEstoque: boolean;
   ativo: boolean;
   criadoEm?: string;
@@ -21,6 +22,7 @@ export interface CriarProdutoRequest {
   unidadeMedidaId: string;
   nome: string;
   estoqueMinimo: number;
+  valor: number;
   sku?: string | null;
   codigoInterno?: string | null;
   codigoBarras?: string | null;
@@ -32,6 +34,7 @@ export interface AtualizarProdutoRequest {
   unidadeMedidaId: string;
   nome: string;
   estoqueMinimo: number;
+  valor: number;
   sku?: string | null;
   codigoInterno?: string | null;
   codigoBarras?: string | null;

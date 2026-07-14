@@ -124,17 +124,33 @@
 
 .metric-card {
   border-radius: var(--ds-radius-md);
+  height: 100%;
+}
+
+.metric-card__content {
+  min-width: 0;
 }
 
 .metric-value {
   font-size: var(--ds-font-size-2xl);
   font-weight: var(--ds-font-weight-bold);
   line-height: var(--ds-line-height-tight);
+  color: var(--ds-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.metric-label-row {
+  gap: var(--ds-space-1);
+  margin-top: var(--ds-space-1);
 }
 
 .metric-label {
   color: var(--ds-text-secondary);
   font-size: var(--ds-font-size-sm);
+}
+
+.metric-card__hint {
+  flex-shrink: 0;
 }
 
 .empty-state {

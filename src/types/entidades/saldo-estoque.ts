@@ -9,6 +9,8 @@ export interface SaldoEstoque {
   valorUnitario: number | null;
   valorEstoque: number;
   abaixoDoMinimo: boolean;
+  /** Origens das entradas que compõem o saldo (ex.: PEDIDO_FORNECEDOR, AJUSTE_MANUAL). */
+  origensEntrada: string[];
 }
 
 export interface ListarSaldosEstoqueParams {

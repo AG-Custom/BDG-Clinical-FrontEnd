@@ -10,6 +10,7 @@ import { produtoService } from '@/services/produto.service';
 import { tipoProdutoService } from '@/services/tipo-produto.service';
 import type { Produto } from '@/types/entidades/produto';
 import type { TipoProduto } from '@/types/entidades/tipo-produto';
+import { formatarMoeda } from '@/types/entidades/pedido-fornecedor';
 
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -49,6 +50,13 @@ const colunas = [
     name: 'estoqueMinimo',
     label: 'Estoque mínimo',
     field: 'estoqueMinimo',
+    align: 'right' as const,
+    sortable: true,
+  },
+  {
+    name: 'valor',
+    label: 'Valor',
+    field: 'valor',
     align: 'right' as const,
     sortable: true,
   },
@@ -233,6 +241,12 @@ onMounted(async () => {
         <template #body-cell-estoqueMinimo="props">
           <q-td :props="props">
             {{ props.row.estoqueMinimo }} {{ props.row.unidadeMedidaSigla }}
+          </q-td>
+        </template>
+
+        <template #body-cell-valor="props">
+          <q-td :props="props">
+            {{ formatarMoeda(props.row.valor) }}
           </q-td>
         </template>
 

@@ -13,6 +13,10 @@ import type { Produto } from '@/types/entidades/produto';
 import type { TipoProduto } from '@/types/entidades/tipo-produto';
 import type { UnidadeMedida } from '@/types/entidades/unidade-medida';
 import { formatarUnidadeMedidaLabel } from '@/types/entidades/unidade-medida';
+import {
+  formatarMoedaParaInput,
+  parsearMoedaDoInput,
+} from '@/types/entidades/pedido-fornecedor';
 
 const LIMITE_BUSCA_UNIDADE = 20;
 const MIN_CARACTERES_BUSCA_UNIDADE = 2;
@@ -45,6 +49,7 @@ const form = reactive({
   unidadeMedidaId: null as string | null,
   nome: '',
   estoqueMinimo: null as number | null,
+  valor: null as number | null,
   controlaEstoque: true,
 });
 
@@ -73,6 +78,9 @@ const mostrarAlertaUnidadesMedida = computed(
 const ajudaEstoqueMinimo =
   'Valor de referência para o controle de estoque. Quando o saldo do produto ficar abaixo deste mínimo, a clínica receberá um aviso.';
 
+const ajudaValor =
+  'Preço de referência do produto na clínica. Usado em estoque e relatórios de valor.';
+
 const ajudaControlaEstoque =
   'Quando ativo, compras, aplicações e ajustes manuais geram movimentação de estoque para este produto. Desative para itens que não precisam de rastreio de saldo.';
 
@@ -94,6 +102,22 @@ function validarEstoqueMinimo(value: number | null): boolean | string {
   }
 
   return true;
+}
+
+function validarValor(value: number | null): boolean | string {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 'Informe o valor do produto';
+  }
+
+  if (value < 0) {
+    return 'O valor deve ser maior ou igual a zero';
+  }
+
+  return true;
+}
+
+function atualizarValor(texto: string): void {
+  form.valor = parsearMoedaDoInput(texto);
 }
 
 function mesclarUnidadeSelecionada(unidades: UnidadeMedida[]): UnidadeMedida[] {
@@ -177,6 +201,7 @@ function montarPayload() {
     unidadeMedidaId: form.unidadeMedidaId as string,
     nome: form.nome.trim(),
     estoqueMinimo: form.estoqueMinimo as number,
+    valor: form.valor as number,
     controlaEstoque: form.controlaEstoque,
   };
 
@@ -269,6 +294,7 @@ async function carregarProduto(): Promise<void> {
     form.unidadeMedidaId = produto.unidadeMedidaId;
     form.nome = produto.nome;
     form.estoqueMinimo = produto.estoqueMinimo;
+    form.valor = produto.valor;
     form.controlaEstoque = produto.controlaEstoque ?? true;
 
     await Promise.all([
@@ -429,6 +455,31 @@ onMounted(async () => {
               </q-input>
             </div>
           </div>
+
+          <q-input
+            :model-value="formatarMoedaParaInput(form.valor)"
+            class="form-field--required"
+            label="Valor"
+            outlined
+            inputmode="numeric"
+            prefix="R$"
+            :readonly="!podeSalvar"
+            :rules="[() => validarValor(form.valor)]"
+            @update:model-value="atualizarValor(String($event ?? ''))"
+          >
+            <template #append>
+              <q-icon name="info_outline" size="20px" class="form-field-input-hint">
+                <q-tooltip
+                  anchor="top middle"
+                  self="bottom middle"
+                  :offset="[0, 8]"
+                  max-width="280px"
+                >
+                  {{ ajudaValor }}
+                </q-tooltip>
+              </q-icon>
+            </template>
+          </q-input>
 
           <div class="controla-estoque-field">
             <div class="row items-center no-wrap">

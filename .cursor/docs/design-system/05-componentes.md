@@ -101,6 +101,12 @@ Card de indicador numérico para dashboards.
 
 ```vue
 <app-metric-card label="Pacientes" valor="128" icon="groups" />
+<app-metric-card
+  label="Valor total do estoque"
+  valor="R$ 12.500,00"
+  icon="payments"
+  hint="Soma do valor em estoque dos itens listados."
+/>
 ```
 
 | Prop | Tipo | Descrição |
@@ -108,6 +114,7 @@ Card de indicador numérico para dashboards.
 | `label` | string | Rótulo do indicador |
 | `valor` | string \| number | Valor exibido |
 | `icon` | string | Material icon name |
+| `hint` | string | Opcional. Exibe ícone de info com tooltip ao lado do rótulo |
 
 ## Componentes shared/
 

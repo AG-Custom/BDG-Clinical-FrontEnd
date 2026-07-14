@@ -22,6 +22,7 @@ import type { Produto } from '@/types/entidades/produto';
 import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
+  formatarMoeda,
 } from '@/types/entidades/pedido-fornecedor';
 import type { Unidade } from '@/types/entidades/unidade';
 import { normalizarLista } from '@/utils/normalizar-lista';
@@ -67,6 +68,7 @@ const colunasListagem = [
   { name: 'produto', label: 'Produto', field: 'produtoNome', align: 'left' as const },
   { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center' as const },
   { name: 'quantidade', label: 'Quantidade', field: 'quantidade', align: 'right' as const },
+  { name: 'valorTotal', label: 'Valor', field: 'valorTotal', align: 'right' as const },
   { name: 'origem', label: 'Origem', field: 'origem', align: 'left' as const },
   { name: 'observacao', label: 'Observação', field: 'observacao', align: 'left' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
@@ -116,6 +118,39 @@ const captionSaldo = computed(() => {
   }
 
   return undefined;
+});
+
+const produtoSelecionado = computed(() =>
+  form.produtoId ? (produtosPorId.value.get(form.produtoId) ?? null) : null,
+);
+
+const valorUnitarioProduto = computed(() => produtoSelecionado.value?.valor ?? null);
+
+const valorEstimadoMovimentacao = computed(() => {
+  if (
+    valorUnitarioProduto.value === null ||
+    form.quantidade === null ||
+    form.quantidade === undefined ||
+    Number.isNaN(form.quantidade)
+  ) {
+    return null;
+  }
+
+  return form.quantidade * valorUnitarioProduto.value;
+});
+
+const resumoValorMovimentacao = computed(() => {
+  if (valorUnitarioProduto.value === null) {
+    return null;
+  }
+
+  const unitario = formatarMoeda(valorUnitarioProduto.value);
+
+  if (valorEstimadoMovimentacao.value === null) {
+    return `Valor unitário: ${unitario}`;
+  }
+
+  return `Valor unitário: ${unitario} · Estimado: ${formatarMoeda(valorEstimadoMovimentacao.value)}`;
 });
 
 function validarUnidade(value: string | null): boolean | string {
@@ -379,6 +414,13 @@ onMounted(async () => {
                 :rules="[validarQuantidade]"
               />
 
+              <p
+                v-if="resumoValorMovimentacao"
+                class="movimentacao-estoque-valor text-caption q-ma-none"
+              >
+                {{ resumoValorMovimentacao }}
+              </p>
+
               <q-input
                 v-model="form.data"
                 class="form-field--required"
@@ -454,6 +496,12 @@ onMounted(async () => {
               </q-td>
             </template>
 
+            <template #body-cell-valorTotal="props">
+              <q-td :props="props">
+                {{ formatarMoeda(props.row.valorTotal ?? 0) }}
+              </q-td>
+            </template>
+
             <template #body-cell-origem="props">
               <q-td :props="props">
                 {{ formatarOrigemMovimentacao(props.row.origem) }}
@@ -504,5 +552,9 @@ onMounted(async () => {
 <style scoped lang="scss">
 .movimentacao-estoque-layout {
   align-items: flex-start;
+}
+
+.movimentacao-estoque-valor {
+  color: var(--ds-text-secondary);
 }
 </style>
