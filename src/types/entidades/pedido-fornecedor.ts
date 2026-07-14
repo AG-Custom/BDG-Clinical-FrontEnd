@@ -78,6 +78,7 @@ export interface ItemPedidoFormulario {
   modoValor: ModoValorPedidoItem;
   valorUnitario: number | null;
   valorTotal: number | null;
+  alterarValor: boolean;
 }
 
 export function criarItemPedidoVazio(): ItemPedidoFormulario {
@@ -87,6 +88,7 @@ export function criarItemPedidoVazio(): ItemPedidoFormulario {
     modoValor: 'unitario',
     valorUnitario: null,
     valorTotal: null,
+    alterarValor: false,
   };
 }
 

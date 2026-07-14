@@ -24,7 +24,6 @@ import {
   TAMANHO_MAX_ANEXO_PEDIDO,
   TIPOS_PEDIDO_FORNECEDOR,
   calcularValorTotalLinhaItem,
-  calcularValorUnitarioDerivado,
   criarItemPedidoVazio,
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
@@ -40,11 +39,6 @@ import type { Unidade } from '@/types/entidades/unidade';
 
 const LIMITE_BUSCA_FORNECEDOR = 20;
 const MIN_CARACTERES_BUSCA_FORNECEDOR = 2;
-
-const opcoesModoValor = [
-  { label: 'Valor por unidade', value: 'unitario' as const },
-  { label: 'Valor total', value: 'total' as const },
-];
 
 const route = useRoute();
 const router = useRouter();
@@ -187,76 +181,79 @@ function validarQuantidade(value: number | null): boolean | string {
   return true;
 }
 
-function validarValorUnitario(value: number | null): boolean | string {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return 'Informe o valor por unidade';
-  }
-
-  if (value < 0) {
-    return 'O valor por unidade deve ser maior ou igual a zero';
-  }
-
-  return true;
-}
-
-function validarValorTotal(value: number | null): boolean | string {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return 'Informe o valor total';
-  }
-
-  if (value < 0) {
-    return 'O valor total deve ser maior ou igual a zero';
-  }
-
-  return true;
-}
-
 function validarProduto(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o produto';
 }
 
 function obterSiglaUnidadeMedidaProduto(produtoId: string | null): string {
   if (!produtoId) {
+    return '';
+  }
+
+  return produtosPorId.value.get(produtoId)?.unidadeMedidaSigla ?? '';
+}
+
+function obterValorCadastroProduto(produtoId: string | null): number | null {
+  if (!produtoId) {
+    return null;
+  }
+
+  const valor = produtosPorId.value.get(produtoId)?.valor;
+
+  if (valor === null || valor === undefined || Number.isNaN(valor)) {
+    return null;
+  }
+
+  return valor;
+}
+
+function aplicarValorCadastroProduto(item: ItemPedidoFormulario): void {
+  item.modoValor = 'unitario';
+  item.valorUnitario = obterValorCadastroProduto(item.produtoId);
+  item.valorTotal = null;
+}
+
+function aoSelecionarProduto(item: ItemPedidoFormulario): void {
+  item.alterarValor = false;
+  aplicarValorCadastroProduto(item);
+}
+
+function aoAlternarAlterarValor(item: ItemPedidoFormulario, alterar: boolean): void {
+  item.alterarValor = alterar;
+
+  if (!alterar) {
+    aplicarValorCadastroProduto(item);
+  }
+}
+
+function atualizarValorUnitarioItem(item: ItemPedidoFormulario, texto: string): void {
+  item.modoValor = 'unitario';
+  item.valorUnitario = parsearMoedaDoInput(texto);
+  item.valorTotal = null;
+}
+
+function obterTotalLinhaFormatado(item: ItemPedidoFormulario): string {
+  const totalLinha = calcularValorTotalLinhaItem(item);
+
+  if (!item.quantidade || item.valorUnitario === null) {
     return '—';
   }
 
-  return produtosPorId.value.get(produtoId)?.unidadeMedidaSigla ?? '—';
+  return formatarMoeda(totalLinha);
 }
 
-function atualizarValorMoedaItem(
-  item: ItemPedidoFormulario,
-  campo: 'unitario' | 'total',
-  texto: string,
-): void {
-  const valor = parsearMoedaDoInput(texto);
+function validarValoresItens(): boolean | string {
+  for (const [indice, item] of itens.value.entries()) {
+    if (item.valorUnitario === null || Number.isNaN(item.valorUnitario)) {
+      return `Informe o valor do item ${indice + 1}`;
+    }
 
-  if (campo === 'unitario') {
-    item.valorUnitario = valor;
-    return;
+    if (item.valorUnitario < 0) {
+      return `O valor do item ${indice + 1} deve ser maior ou igual a zero`;
+    }
   }
 
-  item.valorTotal = valor;
-}
-
-function obterResumoValoresItem(item: ItemPedidoFormulario): string {
-  const totalLinha = calcularValorTotalLinhaItem(item);
-  const unitario =
-    item.modoValor === 'unitario'
-      ? item.valorUnitario
-      : calcularValorUnitarioDerivado(item);
-
-  const unitarioTexto =
-    unitario !== null && unitario !== undefined && !Number.isNaN(unitario)
-      ? formatarMoeda(unitario)
-      : '—';
-  const totalTexto =
-    totalLinha > 0 ||
-    item.valorTotal !== null ||
-    item.valorUnitario !== null
-      ? formatarMoeda(totalLinha)
-      : '—';
-
-  return `${unitarioTexto}/un · Total ${totalTexto}`;
+  return true;
 }
 
 function mesclarFornecedorSelecionado(fornecedores: Fornecedor[]): Fornecedor[] {
@@ -336,38 +333,6 @@ function atualizarFornecedorSelecionado(fornecedorId: string | null): void {
 
 function adicionarItem(): void {
   itens.value.push(criarItemPedidoVazio());
-}
-
-function alternarModoValor(item: ItemPedidoFormulario, modo: 'unitario' | 'total'): void {
-  if (item.modoValor === modo) {
-    return;
-  }
-
-  const quantidade = item.quantidade;
-
-  if (
-    modo === 'total' &&
-    quantidade &&
-    quantidade > 0 &&
-    item.valorUnitario !== null &&
-    item.valorUnitario !== undefined
-  ) {
-    item.valorTotal = item.valorUnitario * quantidade;
-  } else if (
-    modo === 'unitario' &&
-    quantidade &&
-    quantidade > 0 &&
-    item.valorTotal !== null &&
-    item.valorTotal !== undefined
-  ) {
-    item.valorUnitario = item.valorTotal / quantidade;
-  } else if (modo === 'total') {
-    item.valorUnitario = null;
-  } else {
-    item.valorTotal = null;
-  }
-
-  item.modoValor = modo;
 }
 
 function removerItem(indice: number): void {
@@ -484,6 +449,7 @@ async function carregarPedido(): Promise<void> {
       modoValor: 'unitario' as const,
       valorUnitario: item.valorUnitario,
       valorTotal: item.valorTotal,
+      alterarValor: false,
     }));
 
     await Promise.all([
@@ -503,6 +469,13 @@ async function salvar(): Promise<void> {
 
   if (typeof validacaoItens === 'string') {
     notificacao.erro(validacaoItens);
+    return;
+  }
+
+  const validacaoValores = validarValoresItens();
+
+  if (typeof validacaoValores === 'string') {
+    notificacao.erro(validacaoValores);
     return;
   }
 
@@ -647,258 +620,236 @@ onMounted(async () => {
         <q-inner-loading :showing="carregando" />
 
         <q-form class="form-stack" @submit.prevent="salvar">
-          <app-form-dependencia-alerta
-            v-if="mostrarAlertaFornecedores"
-            mensagem="Nenhum fornecedor cadastrado. Cadastre um fornecedor para registrar o pedido."
-            rotulo-acao="Cadastrar fornecedor"
-            :destino="{ name: 'fornecedores-novo' }"
-            @atualizar="recarregarDependencias"
-          />
+          <section class="pedido-secao">
+            <div class="text-subtitle1 text-weight-medium q-mb-sm">Dados do pedido</div>
 
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.fornecedorId"
-                class="form-field--required"
-                :options="opcoesFornecedores"
-                label="Fornecedor"
-                outlined
-                emit-value
-                map-options
-                use-input
-                input-debounce="300"
-                options-dense
-                :loading="buscandoFornecedor"
-                :rules="[validarFornecedor]"
-                :disable="!podeSalvar || somenteLeitura"
-                hint="Abra o select ou digite para buscar (mín. 2 caracteres)"
-                @filter="filtrarFornecedores"
-                @update:model-value="atualizarFornecedorSelecionado"
-              >
-                <template #no-option>
-                  <q-item>
-                    <q-item-section class="text-grey">
-                      {{
-                        buscandoFornecedor
-                          ? 'Buscando...'
-                          : 'Nenhum fornecedor encontrado. Digite ao menos 2 caracteres.'
-                      }}
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-            </div>
-            <div class="col-12 col-md-6">
-              <q-select
-                v-model="form.unidadeId"
-                class="form-field--required"
-                :options="opcoesUnidades"
-                label="Unidade"
-                outlined
-                emit-value
-                map-options
-                :rules="[validarUnidade]"
-                :disable="!podeSalvar || somenteLeitura || opcoesUnidades.length === 0"
-              />
-              <app-form-dependencia-alerta
-                v-if="mostrarAlertaUnidades"
-                mensagem="Nenhuma unidade cadastrada. Cadastre uma unidade para registrar o pedido."
-                rotulo-acao="Cadastrar unidade"
-                :destino="{ name: 'unidades-nova' }"
-                @atualizar="recarregarDependencias"
-              />
-            </div>
-          </div>
-
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-4">
-              <q-select
-                v-model="form.tipoPedido"
-                :options="opcoesTiposPedido"
-                label="Tipo do pedido"
-                outlined
-                emit-value
-                map-options
-                :disable="!podeSalvar || somenteLeitura"
-              />
-            </div>
-            <div class="col-12 col-md-4">
-              <q-input
-                v-model="form.dataPedido"
-                class="form-field--required"
-                label="Data do pedido"
-                outlined
-                type="datetime-local"
-                :readonly="!podeSalvar || somenteLeitura"
-                :rules="[validarDataPedido]"
-              />
-            </div>
-            <div class="col-12 col-md-4">
-              <q-select
-                v-model="form.status"
-                :options="opcoesStatus"
-                label="Status"
-                outlined
-                emit-value
-                map-options
-                :disable="!podeSalvar || somenteLeitura"
-              />
-            </div>
-          </div>
-
-          <q-input
-            v-model="form.observacao"
-            label="Observação"
-            outlined
-            type="textarea"
-            autogrow
-            :readonly="!podeSalvar || somenteLeitura"
-          />
-
-          <q-separator class="q-my-md" />
-
-          <app-form-dependencia-alerta
-            v-if="mostrarAlertaProdutos"
-            mensagem="Nenhum produto cadastrado. Cadastre produtos antes de adicionar itens ao pedido."
-            rotulo-acao="Cadastrar produto"
-            :destino="{ name: 'produtos-novo' }"
-            @atualizar="recarregarDependencias"
-          />
-
-          <div class="row items-center q-mb-md">
-            <div class="text-subtitle1 text-weight-medium">Itens do pedido</div>
-            <q-space />
-            <q-btn
-              v-if="!somenteLeitura"
-              flat
-              color="primary"
-              icon="add"
-              label="Adicionar item"
-              no-caps
-              :disable="!podeSalvar || opcoesProdutos.length === 0"
-              @click="adicionarItem"
+            <app-form-dependencia-alerta
+              v-if="mostrarAlertaFornecedores"
+              mensagem="Nenhum fornecedor cadastrado. Cadastre um fornecedor para registrar o pedido."
+              rotulo-acao="Cadastrar fornecedor"
+              :destino="{ name: 'fornecedores-novo' }"
+              @atualizar="recarregarDependencias"
             />
-          </div>
 
-          <div
-            v-for="(item, indice) in itens"
-            :key="indice"
-            class="pedido-item q-mb-md q-pa-md"
-          >
-            <div class="row q-col-gutter-md items-start">
-              <div class="col-12 col-md-5">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
                 <q-select
-                  v-model="item.produtoId"
+                  v-model="form.fornecedorId"
                   class="form-field--required"
-                  :options="opcoesProdutos"
-                  label="Produto"
+                  :options="opcoesFornecedores"
+                  label="Fornecedor"
                   outlined
-                  dense
                   emit-value
                   map-options
-                  :rules="[validarProduto]"
-                  :disable="!podeSalvar || somenteLeitura || opcoesProdutos.length === 0"
+                  use-input
+                  input-debounce="300"
+                  options-dense
+                  :loading="buscandoFornecedor"
+                  :rules="[validarFornecedor]"
+                  :disable="!podeSalvar || somenteLeitura"
+                  hint="Abra o select ou digite para buscar (mín. 2 caracteres)"
+                  @filter="filtrarFornecedores"
+                  @update:model-value="atualizarFornecedorSelecionado"
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">
+                        {{
+                          buscandoFornecedor
+                            ? 'Buscando...'
+                            : 'Nenhum fornecedor encontrado. Digite ao menos 2 caracteres.'
+                        }}
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
+              <div class="col-12 col-md-6">
+                <q-select
+                  v-model="form.unidadeId"
+                  class="form-field--required"
+                  :options="opcoesUnidades"
+                  label="Unidade"
+                  outlined
+                  emit-value
+                  map-options
+                  :rules="[validarUnidade]"
+                  :disable="!podeSalvar || somenteLeitura || opcoesUnidades.length === 0"
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaUnidades"
+                  mensagem="Nenhuma unidade cadastrada. Cadastre uma unidade para registrar o pedido."
+                  rotulo-acao="Cadastrar unidade"
+                  :destino="{ name: 'unidades-nova' }"
+                  @atualizar="recarregarDependencias"
                 />
               </div>
+            </div>
 
-              <div class="col-6 col-md-2">
-                <q-input
-                  v-model.number="item.quantidade"
-                  class="form-field--required"
-                  label="Quantidade"
-                  outlined
-                  dense
-                  type="number"
-                  min="1"
-                  step="1"
-                  :readonly="!podeSalvar || somenteLeitura"
-                  :rules="[validarQuantidade]"
-                >
-                  <template v-if="item.produtoId" #append>
-                    <span class="pedido-item__unidade-sigla">
-                      {{ obterSiglaUnidadeMedidaProduto(item.produtoId) }}
-                    </span>
-                  </template>
-                </q-input>
-              </div>
-
+            <div class="row q-col-gutter-md">
               <div class="col-12 col-md-4">
-                <template v-if="somenteLeitura">
+                <q-select
+                  v-model="form.tipoPedido"
+                  :options="opcoesTiposPedido"
+                  label="Tipo do pedido"
+                  outlined
+                  emit-value
+                  map-options
+                  :disable="!podeSalvar || somenteLeitura"
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="form.dataPedido"
+                  class="form-field--required"
+                  label="Data do pedido"
+                  outlined
+                  type="datetime-local"
+                  :readonly="!podeSalvar || somenteLeitura"
+                  :rules="[validarDataPedido]"
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-select
+                  v-model="form.status"
+                  :options="opcoesStatus"
+                  label="Status"
+                  outlined
+                  emit-value
+                  map-options
+                  :disable="!podeSalvar || somenteLeitura"
+                />
+              </div>
+            </div>
+
+            <q-input
+              v-model="form.observacao"
+              label="Observação"
+              outlined
+              type="textarea"
+              autogrow
+              :readonly="!podeSalvar || somenteLeitura"
+            />
+          </section>
+
+          <q-separator />
+
+          <section class="pedido-secao">
+            <div class="pedido-secao__cabecalho">
+              <div class="text-subtitle1 text-weight-medium">Itens do pedido</div>
+              <q-btn
+                v-if="!somenteLeitura"
+                flat
+                color="primary"
+                icon="add"
+                label="Adicionar item"
+                no-caps
+                :disable="!podeSalvar || opcoesProdutos.length === 0"
+                @click="adicionarItem"
+              />
+            </div>
+
+            <app-form-dependencia-alerta
+              v-if="mostrarAlertaProdutos"
+              mensagem="Nenhum produto cadastrado. Cadastre produtos antes de adicionar itens ao pedido."
+              rotulo-acao="Cadastrar produto"
+              :destino="{ name: 'produtos-novo' }"
+              @atualizar="recarregarDependencias"
+            />
+
+            <div
+              v-for="(item, indice) in itens"
+              :key="indice"
+              class="pedido-item"
+            >
+              <div class="row q-col-gutter-md items-start">
+                <div class="col-12 col-md-4">
+                  <q-select
+                    v-model="item.produtoId"
+                    class="form-field--required"
+                    :options="opcoesProdutos"
+                    label="Produto"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    options-dense
+                    :rules="[validarProduto]"
+                    :disable="!podeSalvar || somenteLeitura || opcoesProdutos.length === 0"
+                    @update:model-value="aoSelecionarProduto(item)"
+                  />
+                </div>
+
+                <div class="col-4 col-md-2">
                   <q-input
-                    :model-value="obterResumoValoresItem(item)"
-                    label="Valores"
+                    v-model.number="item.quantidade"
+                    class="form-field--required"
+                    label="Qtd"
+                    outlined
+                    dense
+                    type="number"
+                    min="1"
+                    step="1"
+                    :readonly="!podeSalvar || somenteLeitura"
+                    :rules="[validarQuantidade]"
+                    :suffix="obterSiglaUnidadeMedidaProduto(item.produtoId)"
+                  />
+                </div>
+
+                <div class="col-8 col-md-3">
+                  <q-input
+                    :model-value="formatarMoedaParaInput(item.valorUnitario)"
+                    label="Valor un."
+                    outlined
+                    dense
+                    inputmode="numeric"
+                    prefix="R$"
+                    :disable="somenteLeitura || !podeSalvar || !item.alterarValor"
+                    @update:model-value="atualizarValorUnitarioItem(item, String($event ?? ''))"
+                  />
+                  <q-checkbox
+                    v-if="!somenteLeitura"
+                    :model-value="item.alterarValor"
+                    class="pedido-item__alterar-valor"
+                    label="Alterar valor"
+                    dense
+                    size="xs"
+                    :disable="!podeSalvar || !item.produtoId"
+                    @update:model-value="aoAlternarAlterarValor(item, Boolean($event))"
+                  />
+                </div>
+
+                <div class="col-10 col-md-2">
+                  <q-input
+                    :model-value="obterTotalLinhaFormatado(item)"
+                    label="Total"
                     outlined
                     dense
                     readonly
                   />
-                </template>
+                </div>
 
-                <template v-else>
-                  <q-option-group
-                    :model-value="item.modoValor"
-                    :options="opcoesModoValor"
-                    type="radio"
-                    dense
-                    inline
-                    class="pedido-item__modo-opcoes"
+                <div class="col-2 col-md-1 flex items-start justify-end q-pt-sm">
+                  <app-table-action-button
+                    v-if="!somenteLeitura && itens.length > 1"
+                    acao="excluir"
+                    rotulo="Remover item"
                     :disable="!podeSalvar"
-                    @update:model-value="alternarModoValor(item, $event as 'unitario' | 'total')"
+                    @click="removerItem(indice)"
                   />
-
-                  <q-input
-                    v-if="item.modoValor === 'unitario'"
-                    :model-value="formatarMoedaParaInput(item.valorUnitario)"
-                    class="form-field--required q-mt-sm"
-                    label="Valor por unidade"
-                    outlined
-                    dense
-                    inputmode="numeric"
-                    prefix="R$"
-                    :readonly="!podeSalvar"
-                    :rules="[() => validarValorUnitario(item.valorUnitario)]"
-                    @update:model-value="atualizarValorMoedaItem(item, 'unitario', String($event ?? ''))"
-                  />
-                  <q-input
-                    v-else
-                    :model-value="formatarMoedaParaInput(item.valorTotal)"
-                    class="form-field--required q-mt-sm"
-                    label="Valor total"
-                    outlined
-                    dense
-                    inputmode="numeric"
-                    prefix="R$"
-                    :readonly="!podeSalvar"
-                    :rules="[() => validarValorTotal(item.valorTotal)]"
-                    @update:model-value="atualizarValorMoedaItem(item, 'total', String($event ?? ''))"
-                  />
-
-                  <div class="pedido-item__resumo-valores">
-                    {{ obterResumoValoresItem(item) }}
-                  </div>
-                </template>
-              </div>
-
-              <div class="col-6 col-md-1 flex items-center justify-end">
-                <app-table-action-button
-                  v-if="!somenteLeitura && itens.length > 1"
-                  acao="excluir"
-                  rotulo="Remover item"
-                  :disable="!podeSalvar"
-                  @click="removerItem(indice)"
-                />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="row justify-end q-mb-md">
-            <div class="text-h6">
-              Total: {{ formatarMoeda(valorTotalPedido) }}
+            <div class="pedido-total">
+              Total: <strong>{{ formatarMoeda(valorTotalPedido) }}</strong>
             </div>
-          </div>
+          </section>
 
-          <q-separator class="q-my-md" />
+          <q-separator />
 
-          <div class="text-subtitle1 text-weight-medium q-mb-md">Anexos</div>
+          <section class="pedido-secao">
+            <div class="text-subtitle1 text-weight-medium q-mb-sm">Anexos</div>
 
           <q-list
             v-if="anexos.length > 0"
@@ -1006,8 +957,9 @@ onMounted(async () => {
               }}
             </p>
           </div>
+          </section>
 
-          <div class="row q-gutter-sm">
+          <div class="pedido-acoes">
             <q-btn
               v-if="!somenteLeitura"
               color="primary"
@@ -1027,40 +979,53 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.pedido-secao {
+  display: grid;
+  gap: var(--ds-space-3);
+}
+
+.pedido-secao__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
 .pedido-item {
-  border: 1px solid var(--ds-border-default);
-  border-radius: var(--ds-radius-md);
+  padding-bottom: var(--ds-space-3);
+  border-bottom: 1px solid var(--ds-border-default);
 }
 
-.pedido-item__modo-opcoes {
-  :deep(.q-radio) {
-    margin-right: var(--ds-space-3);
-  }
-
-  :deep(.q-radio__label) {
-    color: var(--ds-text-primary);
-    font-size: var(--ds-font-size-sm, 0.8125rem);
-  }
+.pedido-item:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.pedido-item__resumo-valores {
+.pedido-item__alterar-valor {
   margin-top: var(--ds-space-1);
-  padding-left: var(--ds-space-1);
-  color: var(--ds-text-secondary);
-  font-size: var(--ds-font-size-sm, 0.8125rem);
 }
 
-.pedido-item__unidade-sigla {
-  padding-left: var(--ds-space-2);
-  border-left: 1px solid var(--ds-border-default);
+.pedido-total {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: var(--ds-space-2);
   color: var(--ds-text-secondary);
-  font-size: var(--ds-font-size-sm, 0.8125rem);
-  font-weight: var(--ds-font-weight-semibold);
-  line-height: 1;
-  user-select: none;
+}
+
+.pedido-total strong {
+  color: var(--ds-text-primary);
+  font-size: var(--ds-font-size-lg, 1.125rem);
+}
+
+.pedido-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
 }
 
 .pedido-anexos__vazio {
+  margin: 0;
   color: var(--ds-text-secondary);
 }
 
