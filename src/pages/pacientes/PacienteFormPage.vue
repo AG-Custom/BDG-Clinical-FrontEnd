@@ -22,6 +22,7 @@ const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const podeCriar = usePermissao(permissoes.pacientes.criar);
 const podeEditar = usePermissao(permissoes.pacientes.editar);
+const podeVerCompras = usePermissao(permissoes.comprasPaciente.visualizar);
 const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar.value));
 
 const carregando = ref(false);
@@ -207,6 +208,14 @@ function cancelar(): void {
   router.push({ name: 'pacientes' });
 }
 
+function irParaCompras(): void {
+  if (!pacienteId.value) {
+    return;
+  }
+
+  router.push({ name: 'compras', query: { pacienteId: pacienteId.value } });
+}
+
 onMounted(async () => {
   await carregarUnidades();
   await carregarPaciente();
@@ -222,7 +231,18 @@ onMounted(async () => {
           ? 'Atualize os dados do paciente.'
           : 'Cadastre um novo paciente vinculado às unidades da clínica.'
       "
-    />
+    >
+      <q-btn
+        v-if="isEdicao && podeVerCompras"
+        color="primary"
+        outline
+        label="Compras de pacotes"
+        icon="shopping_bag"
+        unelevated
+        no-caps
+        @click="irParaCompras"
+      />
+    </app-page-header>
 
     <q-card flat bordered>
       <q-card-section>

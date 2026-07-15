@@ -30,6 +30,17 @@ export const permissoes = {
     editar: 'procedimento.editar',
     desativar: 'procedimento.excluir',
   },
+  pacotes: {
+    visualizar: 'pacote.visualizar',
+    criar: 'pacote.criar',
+    editar: 'pacote.editar',
+    desativar: 'pacote.excluir',
+  },
+  comprasPaciente: {
+    visualizar: 'compra_paciente.visualizar',
+    criar: 'compra_paciente.criar',
+    cancelar: 'compra_paciente.cancelar',
+  },
   sintomas: {
     visualizar: 'sintoma.visualizar',
     criar: 'sintoma.criar',
@@ -96,6 +107,8 @@ export const permissoesMenu = {
   agenda: permissoes.agenda.visualizar,
   unidades: permissoes.unidades.visualizar,
   pacientes: permissoes.pacientes.visualizar,
+  pacotes: permissoes.pacotes.visualizar,
+  comprasPaciente: permissoes.comprasPaciente.visualizar,
   aplicacoes: permissoes.aplicacoes.visualizar,
   procedimentos: permissoes.procedimentos.visualizar,
   sintomas: permissoes.sintomas.visualizar,
@@ -119,6 +132,8 @@ export const permissoesMenuEmpresa = [
 export const modulosMenu = {
   atendimento: [
     permissoesMenu.pacientes,
+    permissoesMenu.pacotes,
+    permissoesMenu.comprasPaciente,
     permissoesMenu.aplicacoes,
     permissoesMenu.procedimentos,
     permissoesMenu.sintomas,

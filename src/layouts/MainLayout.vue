@@ -12,6 +12,12 @@ const ROTAS_SECAO_ATENDIMENTO = new Set([
   'pacientes',
   'pacientes-novo',
   'pacientes-editar',
+  'pacientes-compras',
+  'pacientes-compras-nova',
+  'compras',
+  'pacotes',
+  'pacotes-novo',
+  'pacotes-editar',
   'aplicacoes-paciente',
   'aplicacoes-paciente-nova',
   'aplicacoes-paciente-editar',
@@ -277,6 +283,30 @@ onMounted(() => {
               <q-icon name="people" size="20px" />
             </q-item-section>
             <q-item-section>Pacientes</q-item-section>
+          </q-item>
+          <q-item
+            v-if="possuiPermissao(menu.pacotes)"
+            clickable
+            v-ripple
+            :to="{ name: 'pacotes' }"
+            :inset-level="1"
+          >
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="inventory" size="20px" />
+            </q-item-section>
+            <q-item-section>Pacotes</q-item-section>
+          </q-item>
+          <q-item
+            v-if="possuiPermissao(menu.comprasPaciente)"
+            clickable
+            v-ripple
+            :to="{ name: 'compras' }"
+            :inset-level="1"
+          >
+            <q-item-section avatar class="drawer-menu__sub-icon">
+              <q-icon name="shopping_bag" size="20px" />
+            </q-item-section>
+            <q-item-section>Compras</q-item-section>
           </q-item>
           <q-item
             v-if="possuiPermissao(menu.aplicacoes)"

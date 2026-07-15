@@ -47,11 +47,11 @@ export interface CriarAplicacaoPacienteRequest {
   aplicadorId: string;
   unidadeId: string;
   dataAplicacao: string;
+  compraPacienteId: string;
   quantidadeUtilizada?: number | null;
   peso?: number | null;
   observacao?: string | null;
   sintomaIds?: string[] | null;
-  compraPacienteId?: string | null;
 }
 
 export interface AtualizarAplicacaoPacienteRequest {

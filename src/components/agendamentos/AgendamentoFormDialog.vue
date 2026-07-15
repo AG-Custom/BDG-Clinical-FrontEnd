@@ -7,6 +7,7 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
+import { compraPacienteService } from '@/services/compra-paciente.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
 import { procedimentoService } from '@/services/procedimento.service';
@@ -19,6 +20,11 @@ import {
   obterLabelTipoAgendamento,
   obterProcedimentosDoAgendamento,
 } from '@/types/entidades/agendamento';
+import type { CompraPaciente } from '@/types/entidades/compra-paciente';
+import {
+  formatarOpcaoCompraAtiva,
+  formatarResumoSaldoProdutos,
+} from '@/types/entidades/compra-paciente';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import type { Paciente } from '@/types/entidades/paciente';
 import type { Procedimento } from '@/types/entidades/procedimento';
@@ -47,6 +53,8 @@ const unidadesDisponiveis = ref<Unidade[]>([]);
 const pacientesDisponiveis = ref<Paciente[]>([]);
 const procedimentosDisponiveis = ref<Procedimento[]>([]);
 const funcionariosDisponiveis = ref<Funcionario[]>([]);
+const comprasAtivas = ref<CompraPaciente[]>([]);
+const carregandoCompras = ref(false);
 const dadosIniciaisCarregados = ref(false);
 
 const isEdicao = computed(() => Boolean(props.agendamento?.id));
@@ -59,6 +67,7 @@ const form = reactive({
   dataInicio: '',
   dataFim: '',
   procedimentoIds: [] as string[],
+  compraPacienteId: null as string | null,
   observacao: '',
 });
 
@@ -96,6 +105,27 @@ const opcoesTipos = computed(() =>
 );
 
 const exigeProcedimento = computed(() => form.tipo === 'Aplicacao');
+const exigeCompraPaciente = computed(() => form.tipo === 'Aplicacao');
+
+const opcoesComprasAtivas = computed(() =>
+  comprasAtivas.value.map((compra) => ({
+    label: formatarOpcaoCompraAtiva(compra),
+    value: compra.id,
+  })),
+);
+
+const compraSelecionada = computed(
+  () => comprasAtivas.value.find((compra) => compra.id === form.compraPacienteId) ?? null,
+);
+
+const mostrarAlertaCompras = computed(
+  () =>
+    exigeCompraPaciente.value &&
+    Boolean(form.pacienteId) &&
+    !carregandoCompras.value &&
+    !carregandoDados.value &&
+    comprasAtivas.value.length === 0,
+);
 
 const mostrarAlertaProcedimentos = computed(
   () =>
@@ -130,6 +160,7 @@ function preencherFormulario(): void {
     form.procedimentoIds = obterProcedimentosDoAgendamento(props.agendamento).map(
       (procedimento) => procedimento.id,
     );
+    form.compraPacienteId = props.agendamento.compraPacienteId;
     form.observacao = props.agendamento.observacao ?? '';
     return;
   }
@@ -139,7 +170,9 @@ function preencherFormulario(): void {
   form.funcionarioId = null;
   form.tipo = 'Consulta';
   form.procedimentoIds = [];
+  form.compraPacienteId = null;
   form.observacao = '';
+  comprasAtivas.value = [];
 
   if (props.intervaloInicial) {
     form.dataInicio = formatarDatetimeLocal(props.intervaloInicial.inicio);
@@ -164,6 +197,34 @@ async function carregarPacientesDaUnidade(): Promise<void> {
     );
   } catch (erro) {
     notificacao.erro(obterMensagem(erro));
+  }
+}
+
+async function carregarComprasAtivasDoPaciente(): Promise<void> {
+  if (!form.pacienteId || !exigeCompraPaciente.value) {
+    comprasAtivas.value = [];
+    return;
+  }
+
+  carregandoCompras.value = true;
+
+  try {
+    comprasAtivas.value = normalizarLista(
+      await compraPacienteService.listarAtivasPorPaciente(form.pacienteId),
+    );
+
+    if (
+      form.compraPacienteId &&
+      !comprasAtivas.value.some((compra) => compra.id === form.compraPacienteId)
+    ) {
+      const compra = await compraPacienteService.obter(form.compraPacienteId);
+      comprasAtivas.value = [compra, ...comprasAtivas.value];
+    }
+  } catch (erro) {
+    comprasAtivas.value = [];
+    notificacao.erro(obterMensagem(erro));
+  } finally {
+    carregandoCompras.value = false;
   }
 }
 
@@ -250,6 +311,11 @@ function aoPacienteCriado(paciente: Paciente): void {
   }
 
   form.pacienteId = paciente.id;
+  form.compraPacienteId = null;
+
+  if (exigeCompraPaciente.value) {
+    void carregarComprasAtivasDoPaciente();
+  }
 }
 
 function montarPayload() {
@@ -261,6 +327,7 @@ function montarPayload() {
     dataInicio: deInputDatetimeLocalParaIso(form.dataInicio),
     dataFim: deInputDatetimeLocalParaIso(form.dataFim),
     procedimentoIds: exigeProcedimento.value ? form.procedimentoIds : null,
+    compraPacienteId: exigeCompraPaciente.value ? form.compraPacienteId : null,
     observacao: form.observacao.trim() || null,
   };
 }
@@ -279,6 +346,11 @@ async function salvar(): Promise<void> {
 
   if (exigeProcedimento.value && form.procedimentoIds.length === 0) {
     notificacao.info('Selecione ao menos um procedimento para agendamentos de aplicação.');
+    return;
+  }
+
+  if (exigeCompraPaciente.value && !form.compraPacienteId) {
+    notificacao.info('Selecione a compra do pacote para agendamentos de aplicação.');
     return;
   }
 
@@ -330,6 +402,10 @@ watch(
     if (props.agendamento?.funcionarioId) {
       await garantirFuncionarioNaLista(props.agendamento.funcionarioId);
     }
+
+    if (exigeCompraPaciente.value && form.pacienteId) {
+      await carregarComprasAtivasDoPaciente();
+    }
   },
 );
 
@@ -337,6 +413,8 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
   if (unidadeAnterior && novaUnidade !== unidadeAnterior) {
     form.funcionarioId = null;
     form.pacienteId = null;
+    form.compraPacienteId = null;
+    comprasAtivas.value = [];
   }
 
   if (dadosIniciaisCarregados.value) {
@@ -345,10 +423,32 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
 });
 
 watch(
+  () => form.pacienteId,
+  async (novoPaciente, pacienteAnterior) => {
+    if (pacienteAnterior && novoPaciente !== pacienteAnterior) {
+      form.compraPacienteId = null;
+    }
+
+    if (exigeCompraPaciente.value && novoPaciente) {
+      await carregarComprasAtivasDoPaciente();
+    } else if (!exigeCompraPaciente.value) {
+      comprasAtivas.value = [];
+    }
+  },
+);
+
+watch(
   () => form.tipo,
-  (novoTipo) => {
+  async (novoTipo) => {
     if (novoTipo !== 'Aplicacao') {
       form.procedimentoIds = [];
+      form.compraPacienteId = null;
+      comprasAtivas.value = [];
+      return;
+    }
+
+    if (form.pacienteId) {
+      await carregarComprasAtivasDoPaciente();
     }
   },
 );
@@ -459,6 +559,39 @@ watch(
             />
           </div>
 
+          <div v-if="exigeCompraPaciente" class="form-field-stack">
+            <q-select
+              v-model="form.compraPacienteId"
+              :options="opcoesComprasAtivas"
+              label="Compra do pacote *"
+              outlined
+              emit-value
+              map-options
+              :loading="carregandoCompras"
+              :disable="salvando || !form.pacienteId || opcoesComprasAtivas.length === 0"
+              :rules="[(v) => Boolean(v) || 'Obrigatório para aplicação']"
+              hint="Compra ativa que será debitada na aplicação."
+            />
+            <div
+              v-if="compraSelecionada?.saldo"
+              class="text-caption text-grey-7"
+            >
+              Saldo: {{ formatarResumoSaldoProdutos(compraSelecionada.saldo) }}
+            </div>
+            <app-form-dependencia-alerta
+              v-if="mostrarAlertaCompras"
+              inline
+              mensagem="Nenhuma compra ativa para este paciente. Registre uma compra de pacote antes de agendar a aplicação."
+              rotulo-acao="Registrar compra"
+              :destino="
+                form.pacienteId
+                  ? { name: 'pacientes-compras-nova', params: { id: form.pacienteId } }
+                  : { name: 'pacientes' }
+              "
+              @atualizar="carregarComprasAtivasDoPaciente"
+            />
+          </div>
+
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
               <q-input
@@ -501,7 +634,10 @@ watch(
           color="primary"
           no-caps
           :loading="salvando"
-          :disable="exigeProcedimento && opcoesProcedimentos.length === 0"
+          :disable="
+            (exigeProcedimento && opcoesProcedimentos.length === 0) ||
+            (exigeCompraPaciente && opcoesComprasAtivas.length === 0)
+          "
           @click="salvar"
         />
       </q-card-actions>
