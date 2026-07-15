@@ -140,14 +140,9 @@ async function confirmarCancelar(): Promise<void> {
 }
 
 function novaCompra(): void {
-  if (!filtroPacienteId.value) {
-    notificacao.info('Selecione um paciente no filtro para registrar uma nova compra.');
-    return;
-  }
-
   void router.push({
-    name: 'pacientes-compras-nova',
-    params: { id: filtroPacienteId.value },
+    name: 'compras-nova',
+    query: filtroPacienteId.value ? { pacienteId: filtroPacienteId.value } : undefined,
   });
 }
 

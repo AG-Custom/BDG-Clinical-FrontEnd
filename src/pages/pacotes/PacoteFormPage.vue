@@ -12,7 +12,11 @@ import type {
   ItemPacoteFormulario,
   PacoteItemRequest,
 } from '@/types/entidades/pacote';
-import { criarItemPacoteVazio } from '@/types/entidades/pacote';
+import {
+  criarItemPacoteVazio,
+  formatarValorPacoteParaInput,
+  parsearValorPacoteDoInput,
+} from '@/types/entidades/pacote';
 import type { Produto } from '@/types/entidades/produto';
 
 const route = useRoute();
@@ -96,17 +100,26 @@ function obterSiglaUnidadeMedida(produtoId: string | null): string {
   return produtosPorId.value.get(produtoId)?.unidadeMedidaSigla ?? '';
 }
 
+function obterLabelUnidadeMedida(produtoId: string | null): string {
+  if (!produtoId) {
+    return '';
+  }
+
+  const produto = produtosPorId.value.get(produtoId);
+
+  if (!produto) {
+    return '';
+  }
+
+  return `${produto.unidadeMedidaNome} (${produto.unidadeMedidaSigla})`;
+}
+
+function atualizarValorPacote(texto: string): void {
+  form.valor = parsearValorPacoteDoInput(texto);
+}
+
 function onProdutoItemChange(item: ItemPacoteFormulario): void {
-  if (!item.produtoId) {
-    item.unidadeMedida = '';
-    return;
-  }
-
-  const sigla = obterSiglaUnidadeMedida(item.produtoId);
-
-  if (sigla && !item.unidadeMedida.trim()) {
-    item.unidadeMedida = sigla;
-  }
+  item.unidadeMedida = obterSiglaUnidadeMedida(item.produtoId);
 }
 
 function adicionarItem(): void {
@@ -221,6 +234,10 @@ async function carregarPacote(): Promise<void> {
         : [];
 
     await garantirProdutosDosItens(pacote.itens.map((item) => item.produtoId));
+
+    itens.value.forEach((item) => {
+      item.unidadeMedida = obterSiglaUnidadeMedida(item.produtoId);
+    });
   } catch (error) {
     notificacao.erro(obterMensagem(error));
     await router.push({ name: 'pacotes' });
@@ -313,15 +330,15 @@ onMounted(async () => {
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
               <q-input
-                v-model.number="form.valor"
+                :model-value="formatarValorPacoteParaInput(form.valor)"
                 class="form-field--required"
-                label="Valor (R$)"
+                label="Valor"
                 outlined
-                type="number"
-                min="0"
-                step="0.01"
+                inputmode="numeric"
+                prefix="R$"
                 :readonly="!podeSalvar"
-                :rules="[validarValor]"
+                :rules="[() => validarValor(form.valor)]"
+                @update:model-value="atualizarValorPacote(String($event ?? ''))"
               />
             </div>
           </div>
@@ -380,18 +397,14 @@ onMounted(async () => {
 
               <div class="col-6 col-md-3">
                 <q-input
-                  v-model="item.unidadeMedida"
+                  :model-value="obterLabelUnidadeMedida(item.produtoId) || item.unidadeMedida"
                   class="form-field--required"
                   label="Unidade de medida"
                   outlined
                   dense
-                  :readonly="!podeSalvar"
-                  :rules="[validarUnidadeMedida]"
-                  :hint="
-                    item.produtoId && obterSiglaUnidadeMedida(item.produtoId)
-                      ? `Sugestão: ${obterSiglaUnidadeMedida(item.produtoId)}`
-                      : undefined
-                  "
+                  readonly
+                  :rules="[() => validarUnidadeMedida(item.unidadeMedida)]"
+                  hint="Preenchida automaticamente pelo produto"
                 />
               </div>
 

@@ -10,6 +10,7 @@ import { compraPacienteService } from '@/services/compra-paciente.service';
 import { pacienteService } from '@/services/paciente.service';
 import { pacoteService } from '@/services/pacote.service';
 import { unidadeService } from '@/services/unidade.service';
+import type { Paciente } from '@/types/entidades/paciente';
 import { obterUnidadeIdsDoPaciente } from '@/types/entidades/paciente';
 import type { Pacote } from '@/types/entidades/pacote';
 import { formatarValorPacote } from '@/types/entidades/pacote';
@@ -25,7 +26,12 @@ const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const podeCriar = usePermissao(permissoes.comprasPaciente.criar);
 
-const pacienteId = computed(() => route.params.id as string);
+const pacienteFixoNaRota = computed(() => route.name === 'pacientes-compras-nova');
+const pacienteIdDaRota = computed(() =>
+  pacienteFixoNaRota.value ? (route.params.id as string | undefined) : undefined,
+);
+
+const pacientesDisponiveis = ref<Paciente[]>([]);
 const pacienteNome = ref('');
 const unidadesDoPaciente = ref<string[]>([]);
 const pacotesDisponiveis = ref<Pacote[]>([]);
@@ -34,10 +40,28 @@ const dadosIniciaisCarregados = ref(false);
 const salvando = ref(false);
 
 const form = reactive({
+  pacienteId: null as string | null,
   pacoteId: null as string | null,
   unidadeId: null as string | null,
   dataCompra: '',
   observacao: '',
+});
+
+const opcoesPacientes = computed(() => {
+  const ativos = pacientesDisponiveis.value.filter((paciente) => paciente.ativo);
+  const selecionado = form.pacienteId
+    ? pacientesDisponiveis.value.find((paciente) => paciente.id === form.pacienteId)
+    : null;
+
+  const lista =
+    selecionado && !ativos.some((paciente) => paciente.id === selecionado.id)
+      ? [selecionado, ...ativos]
+      : ativos;
+
+  return lista.map((paciente) => ({
+    label: paciente.nome,
+    value: paciente.id,
+  }));
 });
 
 const opcoesPacotes = computed(() =>
@@ -63,8 +87,15 @@ const opcoesUnidades = computed(() =>
     })),
 );
 
-const pacoteSelecionado = computed(() =>
-  pacotesDisponiveis.value.find((pacote) => pacote.id === form.pacoteId) ?? null,
+const pacoteSelecionado = computed(
+  () => pacotesDisponiveis.value.find((pacote) => pacote.id === form.pacoteId) ?? null,
+);
+
+const mostrarAlertaPacientes = computed(
+  () =>
+    !pacienteFixoNaRota.value &&
+    dadosIniciaisCarregados.value &&
+    opcoesPacientes.value.length === 0,
 );
 
 const mostrarAlertaPacotes = computed(
@@ -72,8 +103,26 @@ const mostrarAlertaPacotes = computed(
 );
 
 const mostrarAlertaUnidades = computed(
-  () => dadosIniciaisCarregados.value && opcoesUnidades.value.length === 0,
+  () =>
+    dadosIniciaisCarregados.value &&
+    Boolean(form.pacienteId) &&
+    opcoesUnidades.value.length === 0,
 );
+
+const rotaRetorno = computed(() => {
+  if (pacienteFixoNaRota.value) {
+    const id = form.pacienteId ?? pacienteIdDaRota.value;
+    if (id) {
+      return { name: 'pacientes-compras' as const, params: { id } };
+    }
+  }
+
+  return { name: 'compras' as const };
+});
+
+function validarPaciente(value: string | null): boolean | string {
+  return Boolean(value) || 'Selecione o paciente';
+}
 
 function validarPacote(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o pacote';
@@ -87,25 +136,85 @@ function validarDataCompra(value: string): boolean | string {
   return Boolean(value) || 'Informe a data da compra';
 }
 
+function aplicarPaciente(paciente: Paciente): void {
+  form.pacienteId = paciente.id;
+  pacienteNome.value = paciente.nome;
+  unidadesDoPaciente.value = obterUnidadeIdsDoPaciente(paciente);
+  form.unidadeId = null;
+
+  if (!pacientesDisponiveis.value.some((item) => item.id === paciente.id)) {
+    pacientesDisponiveis.value = [paciente, ...pacientesDisponiveis.value];
+  }
+
+  if (opcoesUnidades.value.length === 1) {
+    form.unidadeId = opcoesUnidades.value[0].value;
+  }
+}
+
+async function onPacienteChange(pacienteId: string | null): Promise<void> {
+  if (!pacienteId) {
+    form.pacienteId = null;
+    pacienteNome.value = '';
+    unidadesDoPaciente.value = [];
+    form.unidadeId = null;
+    return;
+  }
+
+  const pacienteLista = pacientesDisponiveis.value.find((paciente) => paciente.id === pacienteId);
+
+  if (pacienteLista) {
+    aplicarPaciente(pacienteLista);
+    return;
+  }
+
+  try {
+    const paciente = await pacienteService.obter(pacienteId);
+    aplicarPaciente(paciente);
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
 async function carregarDados(): Promise<void> {
   try {
-    const [paciente, pacotes, unidades] = await Promise.all([
-      pacienteService.obter(pacienteId.value),
+    const pacienteQuery =
+      typeof route.query.pacienteId === 'string' && route.query.pacienteId.trim()
+        ? route.query.pacienteId
+        : null;
+    const pacienteInicialId = pacienteIdDaRota.value ?? pacienteQuery;
+
+    if (pacienteFixoNaRota.value && pacienteInicialId) {
+      const [paciente, pacotes, unidades] = await Promise.all([
+        pacienteService.obter(pacienteInicialId),
+        pacoteService.listar(),
+        unidadeService.listar(),
+      ]);
+
+      pacotesDisponiveis.value = pacotes;
+      unidadesDisponiveis.value = unidades;
+      aplicarPaciente(paciente);
+      return;
+    }
+
+    const [pacientes, pacotes, unidades] = await Promise.all([
+      pacienteService.listar(),
       pacoteService.listar(),
       unidadeService.listar(),
     ]);
 
-    pacienteNome.value = paciente.nome;
-    unidadesDoPaciente.value = obterUnidadeIdsDoPaciente(paciente);
+    pacientesDisponiveis.value = pacientes;
     pacotesDisponiveis.value = pacotes;
     unidadesDisponiveis.value = unidades;
 
-    if (opcoesUnidades.value.length === 1) {
-      form.unidadeId = opcoesUnidades.value[0].value;
+    if (pacienteInicialId) {
+      const paciente =
+        pacientes.find((item) => item.id === pacienteInicialId) ??
+        (await pacienteService.obter(pacienteInicialId));
+      aplicarPaciente(paciente);
     }
   } catch (error) {
     notificacao.erro(obterMensagem(error));
-    await router.push({ name: 'pacientes' });
+    await router.push(rotaRetorno.value);
   } finally {
     dadosIniciaisCarregados.value = true;
   }
@@ -117,15 +226,15 @@ async function recarregarDependencias(): Promise<void> {
 }
 
 async function salvar(): Promise<void> {
-  if (!form.pacoteId || !form.unidadeId || !form.dataCompra) {
+  if (!form.pacienteId || !form.pacoteId || !form.unidadeId || !form.dataCompra) {
     return;
   }
 
   salvando.value = true;
 
   try {
-    await compraPacienteService.criar(pacienteId.value, {
-      pacienteId: pacienteId.value,
+    await compraPacienteService.criar(form.pacienteId, {
+      pacienteId: form.pacienteId,
       pacoteId: form.pacoteId,
       unidadeId: form.unidadeId,
       dataCompra: deInputDatetimeLocalParaIso(form.dataCompra),
@@ -133,7 +242,7 @@ async function salvar(): Promise<void> {
     });
 
     notificacao.sucesso('Compra registrada com sucesso.');
-    await router.push({ name: 'pacientes-compras', params: { id: pacienteId.value } });
+    await router.push(rotaRetorno.value);
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -142,7 +251,7 @@ async function salvar(): Promise<void> {
 }
 
 function cancelar(): void {
-  router.push({ name: 'pacientes-compras', params: { id: pacienteId.value } });
+  void router.push(rotaRetorno.value);
 }
 
 onMounted(async () => {
@@ -156,15 +265,42 @@ onMounted(async () => {
     <app-page-header
       titulo="Nova compra"
       :subtitulo="
-        pacienteNome
+        pacienteFixoNaRota && pacienteNome
           ? `Registrar compra de pacote para ${pacienteNome}.`
-          : 'Registrar compra de pacote para o paciente.'
+          : 'Registre a compra de um pacote informando o paciente.'
       "
     />
 
     <q-card flat bordered>
       <q-card-section>
         <q-form class="form-stack" @submit.prevent="salvar">
+          <div class="form-field-stack">
+            <q-select
+              v-model="form.pacienteId"
+              class="form-field--required"
+              :options="opcoesPacientes"
+              label="Paciente"
+              outlined
+              emit-value
+              map-options
+              :rules="[validarPaciente]"
+              :readonly="pacienteFixoNaRota || !podeCriar"
+              :disable="
+                !podeCriar ||
+                (!pacienteFixoNaRota && opcoesPacientes.length === 0)
+              "
+              @update:model-value="onPacienteChange"
+            />
+            <app-form-dependencia-alerta
+              v-if="mostrarAlertaPacientes"
+              inline
+              mensagem="Nenhum paciente cadastrado. Cadastre um paciente antes de registrar a compra."
+              rotulo-acao="Cadastrar paciente"
+              :destino="{ name: 'pacientes-novo' }"
+              @atualizar="recarregarDependencias"
+            />
+          </div>
+
           <div class="form-field-stack">
             <q-select
               v-model="form.pacoteId"
@@ -222,14 +358,14 @@ onMounted(async () => {
               emit-value
               map-options
               :rules="[validarUnidade]"
-              :disable="!podeCriar || opcoesUnidades.length === 0"
+              :disable="!podeCriar || !form.pacienteId || opcoesUnidades.length === 0"
             />
             <app-form-dependencia-alerta
               v-if="mostrarAlertaUnidades"
               inline
               mensagem="Nenhuma unidade disponível para este paciente."
               rotulo-acao="Editar paciente"
-              :destino="{ name: 'pacientes-editar', params: { id: pacienteId } }"
+              :destino="{ name: 'pacientes-editar', params: { id: form.pacienteId } }"
               @atualizar="recarregarDependencias"
             />
           </div>
@@ -261,7 +397,12 @@ onMounted(async () => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!podeCriar || opcoesPacotes.length === 0 || opcoesUnidades.length === 0"
+              :disable="
+                !podeCriar ||
+                !form.pacienteId ||
+                opcoesPacotes.length === 0 ||
+                opcoesUnidades.length === 0
+              "
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>

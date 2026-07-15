@@ -55,3 +55,24 @@ export function criarItemPacoteVazio(): ItemPacoteFormulario {
 export function formatarValorPacote(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
+
+export function formatarValorPacoteParaInput(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined || Number.isNaN(valor)) {
+    return '';
+  }
+
+  return valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function parsearValorPacoteDoInput(texto: string): number | null {
+  const digitos = texto.replace(/\D/g, '');
+
+  if (!digitos) {
+    return null;
+  }
+
+  return Number(digitos) / 100;
+}
