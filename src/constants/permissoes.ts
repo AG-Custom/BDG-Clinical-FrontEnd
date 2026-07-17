@@ -30,6 +30,17 @@ export const permissoes = {
     editar: 'procedimento.editar',
     desativar: 'procedimento.excluir',
   },
+  pacotes: {
+    visualizar: 'pacote.visualizar',
+    criar: 'pacote.criar',
+    editar: 'pacote.editar',
+    desativar: 'pacote.excluir',
+  },
+  comprasPaciente: {
+    visualizar: 'compra_paciente.visualizar',
+    criar: 'compra_paciente.criar',
+    cancelar: 'compra_paciente.cancelar',
+  },
   sintomas: {
     visualizar: 'sintoma.visualizar',
     criar: 'sintoma.criar',
@@ -96,6 +107,8 @@ export const permissoesMenu = {
   agenda: permissoes.agenda.visualizar,
   unidades: permissoes.unidades.visualizar,
   pacientes: permissoes.pacientes.visualizar,
+  pacotes: permissoes.pacotes.visualizar,
+  comprasPaciente: permissoes.comprasPaciente.visualizar,
   aplicacoes: permissoes.aplicacoes.visualizar,
   procedimentos: permissoes.procedimentos.visualizar,
   sintomas: permissoes.sintomas.visualizar,
@@ -109,6 +122,7 @@ export const permissoesMenu = {
   fornecedores: permissoes.fornecedores.visualizar,
   pedidosFornecedor: permissoes.pedidosFornecedor.visualizar,
   empresas: permissoes.empresas.visualizar,
+  financeiro: permissoes.financeiro.visualizar,
 } as const;
 
 export const permissoesMenuEmpresa = [
@@ -123,12 +137,17 @@ export const modulosMenu = {
     permissoesMenu.procedimentos,
     permissoesMenu.sintomas,
   ],
-  funcionarios: [permissoesMenu.funcionarios, permissoesMenu.cargos],
   produtos: [
     permissoesMenu.produtos,
     permissoesMenu.tiposProduto,
     permissoesMenu.unidadesMedida,
   ],
-  estoque: [permissoesMenu.estoque, permissoesMenu.movimentacoesEstoque],
-  compras: [permissoesMenu.fornecedores, permissoesMenu.pedidosFornecedor],
+  estoque: [
+    permissoesMenu.estoque,
+    permissoesMenu.movimentacoesEstoque,
+    permissoesMenu.fornecedores,
+    permissoesMenu.pedidosFornecedor,
+  ],
+  vendas: [permissoesMenu.pacotes, permissoesMenu.financeiro],
+  funcionarios: [permissoesMenu.funcionarios, permissoesMenu.cargos],
 } as const;

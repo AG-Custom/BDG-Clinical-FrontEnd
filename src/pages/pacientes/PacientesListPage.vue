@@ -24,6 +24,7 @@ const { obterMensagem } = useTratarErroFormulario();
 const podeCriar = usePermissao(permissoes.pacientes.criar);
 const podeEditar = usePermissao(permissoes.pacientes.editar);
 const podeDesativar = usePermissao(permissoes.pacientes.desativar);
+const podeVerCompras = usePermissao(permissoes.comprasPaciente.visualizar);
 
 const pacientes = ref<Paciente[]>([]);
 const unidades = ref<Unidade[]>([]);
@@ -163,6 +164,10 @@ function editarPaciente(id: string): void {
   router.push({ name: 'pacientes-editar', params: { id } });
 }
 
+function verComprasPaciente(id: string): void {
+  router.push({ name: 'compras', query: { pacienteId: id } });
+}
+
 onMounted(async () => {
   await carregarUnidades();
   await carregarPacientes();
@@ -266,7 +271,19 @@ onMounted(async () => {
               @editar="editarPaciente(cell.row.id)"
               @desabilitar="abrirDialogDesativar(cell.row)"
               @ativar="abrirDialogReativar(cell.row)"
-            />
+            >
+              <q-item
+                v-if="podeVerCompras"
+                clickable
+                v-close-popup
+                @click="verComprasPaciente(cell.row.id)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="shopping_bag" color="primary" />
+                </q-item-section>
+                <q-item-section>Compras</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
       </q-table>

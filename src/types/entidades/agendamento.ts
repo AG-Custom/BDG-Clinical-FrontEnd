@@ -66,6 +66,7 @@ export interface CriarAgendamentoRequest {
   dataFim: string;
   procedimentoId?: string | null;
   procedimentoIds?: string[] | null;
+  /** Obrigatório quando tipo = Aplicacao */
   compraPacienteId?: string | null;
   observacao?: string | null;
 }

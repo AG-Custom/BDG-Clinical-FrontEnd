@@ -7,6 +7,7 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
 import { cargoService } from '@/services/cargo.service';
+import { compraPacienteService } from '@/services/compra-paciente.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
 import { procedimentoService } from '@/services/procedimento.service';
@@ -19,6 +20,12 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
 } from '@/types/entidades/aplicacao-paciente';
+import type { CompraPaciente } from '@/types/entidades/compra-paciente';
+import {
+  formatarOpcaoCompraAtiva,
+  formatarQuantidadeProduto,
+  formatarResumoSaldoProdutos,
+} from '@/types/entidades/compra-paciente';
 import { isFuncionarioAplicador } from '@/types/entidades/funcionario';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import type { Cargo } from '@/types/entidades/cargo';
@@ -52,6 +59,8 @@ const dialogCancelar = ref(false);
 const aplicacaoCarregada = ref<AplicacaoPaciente | null>(null);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const pacientesDisponiveis = ref<Paciente[]>([]);
+const comprasAtivas = ref<CompraPaciente[]>([]);
+const carregandoCompras = ref(false);
 const produtosDisponiveis = ref<Produto[]>([]);
 const procedimentosDisponiveis = ref<Procedimento[]>([]);
 const procedimentoSelecionado = ref<Procedimento | null>(null);
@@ -76,6 +85,7 @@ const camposImutaveis = computed(
 const form = reactive({
   unidadeId: null as string | null,
   pacienteId: null as string | null,
+  compraPacienteId: null as string | null,
   procedimentoId: null as string | null,
   aplicadorId: null as string | null,
   quantidadeUtilizada: null as number | null,
@@ -103,6 +113,28 @@ const opcoesPacientes = computed(() =>
       label: paciente.nome,
       value: paciente.id,
     })),
+);
+
+const opcoesComprasAtivas = computed(() =>
+  comprasAtivas.value.map((compra) => ({
+    label: formatarOpcaoCompraAtiva(compra),
+    value: compra.id,
+  })),
+);
+
+const compraSelecionada = computed(
+  () => comprasAtivas.value.find((compra) => compra.id === form.compraPacienteId) ?? null,
+);
+
+const saldoCompraSelecionada = computed(() => compraSelecionada.value?.saldo ?? null);
+
+const mostrarAlertaCompras = computed(
+  () =>
+    !isEdicao.value &&
+    dadosIniciaisCarregados.value &&
+    Boolean(form.pacienteId) &&
+    !carregandoCompras.value &&
+    comprasAtivas.value.length === 0,
 );
 
 const opcoesProcedimentos = computed(() =>
@@ -239,6 +271,14 @@ function validarPaciente(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o paciente';
 }
 
+function validarCompraPaciente(value: string | null): boolean | string {
+  if (isEdicao.value) {
+    return true;
+  }
+
+  return Boolean(value) || 'Selecione a compra do pacote';
+}
+
 function validarProcedimento(value: string | null): boolean | string {
   if (isEdicao.value) {
     return true;
@@ -295,6 +335,26 @@ async function carregarPacientesDaUnidade(): Promise<void> {
     });
   } catch (error) {
     notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function carregarComprasAtivasDoPaciente(): Promise<void> {
+  if (!form.pacienteId || isEdicao.value) {
+    comprasAtivas.value = [];
+    return;
+  }
+
+  carregandoCompras.value = true;
+
+  try {
+    comprasAtivas.value = normalizarLista(
+      await compraPacienteService.listarAtivasPorPaciente(form.pacienteId),
+    );
+  } catch (error) {
+    comprasAtivas.value = [];
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    carregandoCompras.value = false;
   }
 }
 
@@ -406,6 +466,8 @@ async function onUnidadeChange(): Promise<void> {
 
   if (!camposImutaveis.value) {
     form.pacienteId = null;
+    form.compraPacienteId = null;
+    comprasAtivas.value = [];
 
     if (!aplicadoresDisponiveis.value.some((funcionario) => funcionario.id === form.aplicadorId)) {
       form.aplicadorId = null;
@@ -413,6 +475,21 @@ async function onUnidadeChange(): Promise<void> {
   }
 
   await carregarSaldosKit();
+}
+
+async function onPacienteChange(): Promise<void> {
+  if (!camposImutaveis.value) {
+    form.compraPacienteId = null;
+  }
+
+  await carregarComprasAtivasDoPaciente();
+
+  if (
+    form.compraPacienteId &&
+    !comprasAtivas.value.some((compra) => compra.id === form.compraPacienteId)
+  ) {
+    form.compraPacienteId = null;
+  }
 }
 
 async function garantirPacienteNaLista(pacienteId: string): Promise<void> {
@@ -492,6 +569,7 @@ async function carregarAplicacao(): Promise<void> {
 
     form.unidadeId = aplicacao.unidadeId;
     form.pacienteId = aplicacao.pacienteId;
+    form.compraPacienteId = aplicacao.compraPacienteId;
     form.procedimentoId = aplicacao.procedimentoId;
     form.aplicadorId = aplicacao.aplicadorId;
     form.quantidadeUtilizada = aplicacao.quantidadeUtilizada;
@@ -541,10 +619,10 @@ function montarPayloadCriacao() {
     aplicadorId: form.aplicadorId!,
     unidadeId: form.unidadeId!,
     dataAplicacao: deInputDatetimeLocalParaIso(form.dataAplicacao),
+    compraPacienteId: form.compraPacienteId!,
     peso: form.peso,
     observacao: form.observacao.trim() || null,
     sintomaIds: form.sintomaIds.length > 0 ? form.sintomaIds : null,
-    compraPacienteId: null,
   };
 
   if (exigeQuantidade.value && form.quantidadeUtilizada !== null) {
@@ -702,6 +780,7 @@ onMounted(async () => {
                   :rules="[validarPaciente]"
                   :readonly="!podeEditarCampos || camposImutaveis"
                   :disable="!podeEditarCampos || camposImutaveis || !form.unidadeId"
+                  @update:model-value="onPacienteChange"
                 />
                 <app-form-dependencia-alerta
                   v-if="mostrarAlertaPacientes"
@@ -712,6 +791,74 @@ onMounted(async () => {
                   @atualizar="recarregarDependencias"
                 />
               </div>
+            </div>
+          </div>
+
+          <div v-if="!isEdicao" class="row q-col-gutter-md">
+            <div class="col-12" :class="saldoCompraSelecionada ? 'col-md-6' : 'col-md-12'">
+              <div class="form-field-stack">
+                <q-select
+                  v-model="form.compraPacienteId"
+                  class="form-field--required"
+                  :options="opcoesComprasAtivas"
+                  label="Compra do pacote"
+                  outlined
+                  emit-value
+                  map-options
+                  :loading="carregandoCompras"
+                  :rules="[validarCompraPaciente]"
+                  :readonly="!podeEditarCampos"
+                  :disable="
+                    !podeEditarCampos || !form.pacienteId || opcoesComprasAtivas.length === 0
+                  "
+                  hint="Selecione a compra ativa que será debitada nesta aplicação."
+                />
+                <app-form-dependencia-alerta
+                  v-if="mostrarAlertaCompras"
+                  inline
+                  mensagem="Nenhuma compra ativa para este paciente. Registre uma compra de pacote antes de aplicar."
+                  rotulo-acao="Registrar compra"
+                  :destino="
+                    form.pacienteId
+                      ? { name: 'pacientes-compras-nova', params: { id: form.pacienteId } }
+                      : { name: 'pacientes' }
+                  "
+                  @atualizar="carregarComprasAtivasDoPaciente"
+                />
+              </div>
+            </div>
+            <div v-if="saldoCompraSelecionada" class="col-12 col-md-6">
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="text-subtitle2 q-mb-sm">Saldo da compra</div>
+                  <div
+                    v-if="saldoCompraSelecionada.produtos?.length"
+                    class="q-gutter-xs"
+                  >
+                    <div
+                      v-for="produto in saldoCompraSelecionada.produtos"
+                      :key="produto.produtoId"
+                      class="text-body2"
+                    >
+                      <strong>{{ produto.produtoNome }}:</strong>
+                      {{ formatarQuantidadeProduto(produto.quantidadeRestante, produto.unidadeMedida) }}
+                      restantes
+                      <span class="text-caption text-grey-7">
+                        (de
+                        {{
+                          formatarQuantidadeProduto(
+                            produto.quantidadeContratada,
+                            produto.unidadeMedida,
+                          )
+                        }})
+                      </span>
+                    </div>
+                  </div>
+                  <div v-else class="text-caption text-grey-7">
+                    {{ formatarResumoSaldoProdutos(saldoCompraSelecionada) }}
+                  </div>
+                </q-card-section>
+              </q-card>
             </div>
           </div>
 

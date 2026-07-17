@@ -10,6 +10,7 @@ const ROTAS_INICIAIS: RotaInicialCandidata[] = [
   { name: 'dashboard', permissao: permissoesMenu.agenda },
   { name: 'pacientes', permissao: permissoesMenu.pacientes },
   { name: 'unidades', permissao: permissoesMenu.unidades },
+  { name: 'pacotes', permissao: permissoesMenu.pacotes },
   { name: 'aplicacoes-paciente', permissao: permissoesMenu.aplicacoes },
   { name: 'procedimentos', permissao: permissoesMenu.procedimentos },
   { name: 'sintomas', permissao: permissoesMenu.sintomas },

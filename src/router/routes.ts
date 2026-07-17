@@ -94,6 +94,48 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.pacientes.editar },
       },
       {
+        path: 'pacientes/:id/compras',
+        name: 'pacientes-compras',
+        component: () => import('@/pages/pacientes/PacienteComprasListPage.vue'),
+        meta: { permissao: p.comprasPaciente.visualizar },
+      },
+      {
+        path: 'pacientes/:id/compras/nova',
+        name: 'pacientes-compras-nova',
+        component: () => import('@/pages/pacientes/PacienteCompraFormPage.vue'),
+        meta: { permissao: p.comprasPaciente.criar },
+      },
+      {
+        path: 'compras',
+        name: 'compras',
+        component: () => import('@/pages/compras/ComprasListPage.vue'),
+        meta: { permissao: p.comprasPaciente.visualizar },
+      },
+      {
+        path: 'compras/nova',
+        name: 'compras-nova',
+        component: () => import('@/pages/pacientes/PacienteCompraFormPage.vue'),
+        meta: { permissao: p.comprasPaciente.criar },
+      },
+      {
+        path: 'pacotes',
+        name: 'pacotes',
+        component: () => import('@/pages/pacotes/PacotesListPage.vue'),
+        meta: { permissao: p.pacotes.visualizar },
+      },
+      {
+        path: 'pacotes/novo',
+        name: 'pacotes-novo',
+        component: () => import('@/pages/pacotes/PacoteFormPage.vue'),
+        meta: { permissao: p.pacotes.criar },
+      },
+      {
+        path: 'pacotes/:id/editar',
+        name: 'pacotes-editar',
+        component: () => import('@/pages/pacotes/PacoteFormPage.vue'),
+        meta: { permissao: p.pacotes.editar },
+      },
+      {
         path: 'aplicacoes-paciente',
         name: 'aplicacoes-paciente',
         component: () => import('@/pages/aplicacoes-paciente/AplicacoesPacienteListPage.vue'),
