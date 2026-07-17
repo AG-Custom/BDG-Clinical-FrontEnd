@@ -122,6 +122,7 @@ export const permissoesMenu = {
   fornecedores: permissoes.fornecedores.visualizar,
   pedidosFornecedor: permissoes.pedidosFornecedor.visualizar,
   empresas: permissoes.empresas.visualizar,
+  financeiro: permissoes.financeiro.visualizar,
 } as const;
 
 export const permissoesMenuEmpresa = [
@@ -132,18 +133,21 @@ export const permissoesMenuEmpresa = [
 export const modulosMenu = {
   atendimento: [
     permissoesMenu.pacientes,
-    permissoesMenu.pacotes,
-    permissoesMenu.comprasPaciente,
     permissoesMenu.aplicacoes,
     permissoesMenu.procedimentos,
     permissoesMenu.sintomas,
   ],
-  funcionarios: [permissoesMenu.funcionarios, permissoesMenu.cargos],
   produtos: [
     permissoesMenu.produtos,
     permissoesMenu.tiposProduto,
     permissoesMenu.unidadesMedida,
   ],
-  estoque: [permissoesMenu.estoque, permissoesMenu.movimentacoesEstoque],
-  compras: [permissoesMenu.fornecedores, permissoesMenu.pedidosFornecedor],
+  estoque: [
+    permissoesMenu.estoque,
+    permissoesMenu.movimentacoesEstoque,
+    permissoesMenu.fornecedores,
+    permissoesMenu.pedidosFornecedor,
+  ],
+  vendas: [permissoesMenu.pacotes, permissoesMenu.financeiro],
+  funcionarios: [permissoesMenu.funcionarios, permissoesMenu.cargos],
 } as const;

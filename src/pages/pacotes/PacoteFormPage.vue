@@ -43,9 +43,21 @@ const form = reactive({
 
 const itens = ref<ItemPacoteFormulario[]>([]);
 
+const NOME_TIPO_MEDICAMENTO = 'Medicamento';
+
 const opcoesProdutos = computed(() =>
   produtosDisponiveis.value
-    .filter((produto) => produto.ativo)
+    .filter((produto) => {
+      if (!produto.ativo) {
+        return false;
+      }
+
+      const isMedicamento =
+        produto.tipoProdutoNome?.trim().toLowerCase() === NOME_TIPO_MEDICAMENTO.toLowerCase();
+      const estaSelecionado = itens.value.some((item) => item.produtoId === produto.id);
+
+      return isMedicamento || estaSelecionado;
+    })
     .map((produto) => ({
       label: produto.nome,
       value: produto.id,
@@ -303,7 +315,7 @@ onMounted(async () => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <app-form-dependencia-alerta
             v-if="mostrarAlertaProdutos"
-            mensagem="Nenhum produto cadastrado. Cadastre produtos antes de montar o pacote."
+            mensagem="Nenhum medicamento cadastrado. Cadastre produtos do tipo Medicamento antes de montar o pacote."
             rotulo-acao="Cadastrar produto"
             :destino="{ name: 'produtos-novo' }"
             @atualizar="recarregarDependencias"
@@ -370,12 +382,13 @@ onMounted(async () => {
                   v-model="item.produtoId"
                   class="form-field--required"
                   :options="opcoesProdutos"
-                  label="Produto"
+                  label="Medicamento"
                   outlined
                   dense
                   emit-value
                   map-options
                   :disable="!podeSalvar || opcoesProdutos.length === 0"
+                  hint="Somente produtos do tipo Medicamento"
                   @update:model-value="onProdutoItemChange(item)"
                 />
               </div>
