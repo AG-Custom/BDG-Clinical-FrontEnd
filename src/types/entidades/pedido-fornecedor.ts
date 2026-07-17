@@ -145,8 +145,18 @@ export interface ListarPedidosFornecedorParams {
   unidadeId?: string;
 }
 
-export function formatarMoeda(valor: number): string {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+export function formatarMoeda(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) {
+    return '—';
+  }
+
+  const numero = typeof valor === 'number' ? valor : Number(valor);
+
+  if (Number.isNaN(numero)) {
+    return '—';
+  }
+
+  return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 export function formatarMoedaParaInput(valor: number | null | undefined): string {

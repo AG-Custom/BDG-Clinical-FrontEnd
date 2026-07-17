@@ -10,7 +10,7 @@ export interface Produto {
   codigoInterno: string | null;
   codigoBarras: string | null;
   estoqueMinimo: number;
-  valor: number;
+  valor: number | null;
   controlaEstoque: boolean;
   ativo: boolean;
   criadoEm?: string;
