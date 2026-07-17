@@ -186,7 +186,7 @@ export function obterLabelNivelSaldo(nivel: NivelSaldoCompra): string {
     case 'sem_saldo':
       return 'Sem saldo';
     case 'baixo':
-      return 'Saldo baixo';
+      return 'Acabando';
     default:
       return 'Com saldo';
   }
@@ -217,7 +217,7 @@ export function formatarSaldoProduto(
   }
 
   if (nivel === 'baixo') {
-    return `${produto.produtoNome}: Saldo baixo (${quantidade})`;
+    return `${produto.produtoNome}: Acabando (${quantidade})`;
   }
 
   return `${produto.produtoNome}: ${quantidade}`;

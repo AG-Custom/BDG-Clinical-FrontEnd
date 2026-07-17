@@ -12,7 +12,6 @@ import type { CompraPaciente, StatusCompraPaciente } from '@/types/entidades/com
 import {
   STATUS_COMPRA_PACIENTE,
   formatarDataCompra,
-  formatarDetalheQuantidadesSaldo,
   formatarResumoSaldoProdutos,
   isCompraAtiva,
   obterCorNivelSaldo,
@@ -230,18 +229,10 @@ onMounted(async () => {
 
         <template #body-cell-saldo="props">
           <q-td :props="props">
-            <div class="row items-center q-gutter-xs no-wrap">
-              <q-badge
-                :color="obterCorNivelSaldo(obterNivelSaldoCompra(props.row.saldo))"
-                :label="obterLabelNivelSaldo(obterNivelSaldoCompra(props.row.saldo))"
-              />
-              <span
-                v-if="formatarDetalheQuantidadesSaldo(props.row.saldo)"
-                class="text-body2"
-              >
-                {{ formatarDetalheQuantidadesSaldo(props.row.saldo) }}
-              </span>
-            </div>
+            <q-badge
+              :color="obterCorNivelSaldo(obterNivelSaldoCompra(props.row.saldo))"
+              :label="obterLabelNivelSaldo(obterNivelSaldoCompra(props.row.saldo))"
+            />
           </q-td>
         </template>
 
