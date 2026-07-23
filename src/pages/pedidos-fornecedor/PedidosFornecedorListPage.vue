@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { fornecedorService } from '@/services/fornecedor.service';
 import { pedidoFornecedorService } from '@/services/pedido-fornecedor.service';
+import { produtoService } from '@/services/produto.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Fornecedor } from '@/types/entidades/fornecedor';
 import type { PedidoFornecedor, StatusPedidoFornecedor } from '@/types/entidades/pedido-fornecedor';
@@ -21,6 +23,7 @@ import {
   obterTooltipItensPedido,
   possuiTooltipItensPedido,
 } from '@/types/entidades/pedido-fornecedor';
+import type { Produto } from '@/types/entidades/produto';
 import type { Unidade } from '@/types/entidades/unidade';
 
 const router = useRouter();
@@ -33,6 +36,7 @@ const podeReceber = usePermissao(permissoes.pedidosFornecedor.receber);
 const pedidos = ref<PedidoFornecedor[]>([]);
 const fornecedores = ref<Fornecedor[]>([]);
 const unidades = ref<Unidade[]>([]);
+const produtosPorId = ref(new Map<string, Produto>());
 const carregando = ref(true);
 const filtroStatus = ref<StatusPedidoFornecedor | null>(null);
 const filtroFornecedorId = ref<string | null>(null);
@@ -43,6 +47,20 @@ const dialogReceber = ref(false);
 const pedidoSelecionado = ref<PedidoFornecedor | null>(null);
 const cancelando = ref(false);
 const recebendo = ref(false);
+const lotesRecebimento = ref<
+  Record<string, { loteCodigo: string; dataValidade: string; quantidadeEmbalagem: number | null }>
+>({});
+
+const itensMedicamentoRecebimento = computed(() => {
+  if (!pedidoSelecionado.value) {
+    return [];
+  }
+
+  return pedidoSelecionado.value.itens.filter((item) => {
+    const produto = produtosPorId.value.get(item.produtoId);
+    return produto?.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO;
+  });
+});
 
 const colunas = [
   { name: 'dataPedido', label: 'Data', field: 'dataPedido', align: 'left' as const, sortable: true },
@@ -123,9 +141,72 @@ function abrirDialogCancelar(pedido: PedidoFornecedor): void {
   dialogCancelar.value = true;
 }
 
-function abrirDialogReceber(pedido: PedidoFornecedor): void {
-  pedidoSelecionado.value = pedido;
-  dialogReceber.value = true;
+async function abrirDialogReceber(pedido: PedidoFornecedor): Promise<void> {
+  recebendo.value = false;
+
+  try {
+    const detalhe = await pedidoFornecedorService.obter(pedido.id);
+    pedidoSelecionado.value = detalhe;
+
+    const produtos = await produtoService.listar({ includeInactive: true });
+    produtosPorId.value = new Map(produtos.map((produto) => [produto.id, produto]));
+
+    const lotes: typeof lotesRecebimento.value = {};
+    for (const item of detalhe.itens) {
+      const produto = produtosPorId.value.get(item.produtoId);
+      if (produto?.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO) {
+        lotes[item.produtoId] = {
+          loteCodigo: '',
+          dataValidade: '',
+          quantidadeEmbalagem: item.quantidade,
+        };
+      }
+    }
+
+    lotesRecebimento.value = lotes;
+    dialogReceber.value = true;
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function confirmarReceber(): Promise<void> {
+  if (!pedidoSelecionado.value) {
+    return;
+  }
+
+  for (const item of itensMedicamentoRecebimento.value) {
+    const lote = lotesRecebimento.value[item.produtoId];
+    if (!lote?.loteCodigo?.trim() || !lote.dataValidade) {
+      notificacao.erro(`Informe lote e validade para ${item.produtoNome ?? 'o medicamento'}.`);
+      return;
+    }
+  }
+
+  recebendo.value = true;
+
+  try {
+    const itens = Object.entries(lotesRecebimento.value).map(([produtoId, lote]) => ({
+      produtoId,
+      loteCodigo: lote.loteCodigo.trim(),
+      dataValidade: lote.dataValidade,
+      quantidadeEmbalagem: lote.quantidadeEmbalagem,
+    }));
+
+    await pedidoFornecedorService.receber(
+      pedidoSelecionado.value.id,
+      itens.length > 0 ? { itens } : undefined,
+    );
+    notificacao.sucesso('Pedido recebido com sucesso. Estoque atualizado.');
+    dialogReceber.value = false;
+    pedidoSelecionado.value = null;
+    lotesRecebimento.value = {};
+    await carregarPedidos();
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    recebendo.value = false;
+  }
 }
 
 function abrirDialogVisualizar(pedido: PedidoFornecedor): void {
@@ -150,26 +231,6 @@ async function confirmarCancelar(): Promise<void> {
     notificacao.erro(obterMensagem(error));
   } finally {
     cancelando.value = false;
-  }
-}
-
-async function confirmarReceber(): Promise<void> {
-  if (!pedidoSelecionado.value) {
-    return;
-  }
-
-  recebendo.value = true;
-
-  try {
-    await pedidoFornecedorService.receber(pedidoSelecionado.value.id);
-    notificacao.sucesso('Pedido recebido com sucesso. Estoque atualizado.');
-    dialogReceber.value = false;
-    pedidoSelecionado.value = null;
-    await carregarPedidos();
-  } catch (error) {
-    notificacao.erro(obterMensagem(error));
-  } finally {
-    recebendo.value = false;
   }
 }
 
@@ -375,7 +436,7 @@ onMounted(async () => {
     </q-dialog>
 
     <q-dialog v-model="dialogReceber" persistent>
-      <q-card style="min-width: 320px">
+      <q-card style="min-width: 420px; max-width: 560px">
         <q-card-section>
           <div class="text-h6">Receber pedido</div>
         </q-card-section>
@@ -384,6 +445,39 @@ onMounted(async () => {
           Confirmar recebimento do pedido de
           <strong>{{ pedidoSelecionado?.fornecedorNome }}</strong>?
           Será gerada entrada de estoque para cada item.
+        </q-card-section>
+
+        <q-card-section v-if="itensMedicamentoRecebimento.length > 0" class="q-gutter-md">
+          <div class="text-subtitle2">Lotes dos medicamentos</div>
+          <div
+            v-for="item in itensMedicamentoRecebimento"
+            :key="item.produtoId"
+            class="q-gutter-sm"
+          >
+            <div class="text-body2">{{ item.produtoNome }}</div>
+            <q-input
+              v-model="lotesRecebimento[item.produtoId].loteCodigo"
+              label="Código do lote"
+              outlined
+              dense
+            />
+            <q-input
+              v-model="lotesRecebimento[item.produtoId].dataValidade"
+              label="Validade"
+              outlined
+              dense
+              type="date"
+            />
+            <q-input
+              v-model.number="lotesRecebimento[item.produtoId].quantidadeEmbalagem"
+              label="Quantidade (embalagens)"
+              outlined
+              dense
+              type="number"
+              min="0"
+              step="any"
+            />
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { QForm } from 'quasar';
 
 import { permissoes } from '@/constants/permissoes';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
@@ -59,7 +60,7 @@ const titulo = computed(() =>
 const subtitulo = computed(() =>
   isEntrada.value
     ? 'Inclua quantidade manualmente no estoque da unidade.'
-    : 'Remova quantidade manualmente do estoque da unidade.',
+    : 'Remova quantidade manualmente do estoque da unidade (FEFO automático para medicamentos).',
 );
 
 const colunasListagem = [
@@ -78,8 +79,43 @@ const form = reactive({
   unidadeId: null as string | null,
   produtoId: null as string | null,
   quantidade: null as number | null,
+  quantidadeEmbalagem: null as number | null,
+  loteCodigo: '',
+  dataValidade: '',
   data: '',
   observacao: '',
+});
+
+const produtosPorId = computed(
+  () => new Map(produtosDisponiveis.value.map((produto) => [produto.id, produto])),
+);
+
+const produtoSelecionado = computed(() =>
+  form.produtoId ? (produtosPorId.value.get(form.produtoId) ?? null) : null,
+);
+
+const isMedicamentoEntrada = computed(
+  () =>
+    isEntrada.value &&
+    produtoSelecionado.value?.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO,
+);
+
+const conversaoPreview = computed(() => {
+  if (
+    !isMedicamentoEntrada.value ||
+    !produtoSelecionado.value?.fatorEmbalagemParaEstoque ||
+    form.quantidadeEmbalagem == null ||
+    form.quantidadeEmbalagem <= 0
+  ) {
+    return null;
+  }
+
+  const total =
+    form.quantidadeEmbalagem * produtoSelecionado.value.fatorEmbalagemParaEstoque;
+  const emb = produtoSelecionado.value.unidadeEmbalagemSigla ?? 'emb.';
+  const est = produtoSelecionado.value.unidadeMedidaSigla ?? 'estoque';
+
+  return `${form.quantidadeEmbalagem} ${emb} = ${total.toLocaleString('pt-BR')} ${est}`;
 });
 
 const opcoesUnidades = computed(() =>
@@ -100,10 +136,6 @@ const opcoesProdutos = computed(() =>
     })),
 );
 
-const produtosPorId = computed(
-  () => new Map(produtosDisponiveis.value.map((produto) => [produto.id, produto])),
-);
-
 const mostrarAlertaUnidades = computed(
   () => dadosIniciaisCarregados.value && opcoesUnidades.value.length === 0,
 );
@@ -120,23 +152,24 @@ const captionSaldo = computed(() => {
   return undefined;
 });
 
-const produtoSelecionado = computed(() =>
-  form.produtoId ? (produtosPorId.value.get(form.produtoId) ?? null) : null,
-);
-
 const valorUnitarioProduto = computed(() => produtoSelecionado.value?.valor ?? null);
 
 const valorEstimadoMovimentacao = computed(() => {
+  const qtd = isMedicamentoEntrada.value
+    ? (form.quantidadeEmbalagem ?? 0) * (produtoSelecionado.value?.fatorEmbalagemParaEstoque ?? 0)
+    : form.quantidade;
+
   if (
     valorUnitarioProduto.value === null ||
-    form.quantidade === null ||
-    form.quantidade === undefined ||
-    Number.isNaN(form.quantidade)
+    qtd === null ||
+    qtd === undefined ||
+    Number.isNaN(qtd) ||
+    qtd <= 0
   ) {
     return null;
   }
 
-  return form.quantidade * valorUnitarioProduto.value;
+  return qtd * valorUnitarioProduto.value;
 });
 
 const resumoValorMovimentacao = computed(() => {
@@ -162,6 +195,10 @@ function validarProduto(value: string | null): boolean | string {
 }
 
 function validarQuantidade(value: number | null): boolean | string {
+  if (isMedicamentoEntrada.value) {
+    return true;
+  }
+
   if (value === null || value === undefined || Number.isNaN(value)) {
     return 'Informe a quantidade';
   }
@@ -179,6 +216,34 @@ function validarQuantidade(value: number | null): boolean | string {
   }
 
   return true;
+}
+
+function validarQuantidadeEmbalagem(value: number | null): boolean | string {
+  if (!isMedicamentoEntrada.value) {
+    return true;
+  }
+
+  if (value === null || value === undefined || Number.isNaN(value) || value <= 0) {
+    return 'Informe a quantidade de embalagens';
+  }
+
+  return true;
+}
+
+function validarLote(value: string): boolean | string {
+  if (!isMedicamentoEntrada.value) {
+    return true;
+  }
+
+  return Boolean(value?.trim()) || 'Informe o código do lote';
+}
+
+function validarValidade(value: string): boolean | string {
+  if (!isMedicamentoEntrada.value) {
+    return true;
+  }
+
+  return Boolean(value) || 'Informe a data de validade';
 }
 
 function validarData(value: string): boolean | string {
@@ -199,19 +264,51 @@ async function carregarSaldo(): Promise<void> {
     });
 
     const saldo = saldos[0];
-
-    if (saldo) {
-      saldoDisponivel.value = saldo.saldoAtual;
-      siglaSaldo.value = saldo.unidadeMedidaSigla;
-    } else {
-      saldoDisponivel.value = 0;
-      siglaSaldo.value =
-        produtosPorId.value.get(form.produtoId)?.unidadeMedidaSigla ?? '';
-    }
+    saldoDisponivel.value = saldo?.saldoAtual ?? 0;
+    siglaSaldo.value = saldo?.unidadeMedidaSigla
+      ?? produtoSelecionado.value?.unidadeMedidaSigla
+      ?? '';
   } catch {
     saldoDisponivel.value = null;
     siglaSaldo.value = '';
   }
+}
+
+function montarPayload(): RegistrarMovimentacaoManualRequest {
+  if (isMedicamentoEntrada.value) {
+    return {
+      unidadeId: form.unidadeId!,
+      produtoId: form.produtoId!,
+      data: deInputDatetimeLocalParaIso(form.data),
+      observacao: form.observacao.trim() || null,
+      quantidadeEmbalagem: form.quantidadeEmbalagem,
+      loteCodigo: form.loteCodigo.trim(),
+      dataValidade: form.dataValidade,
+    };
+  }
+
+  return {
+    unidadeId: form.unidadeId!,
+    produtoId: form.produtoId!,
+    quantidade: form.quantidade!,
+    data: deInputDatetimeLocalParaIso(form.data),
+    observacao: form.observacao.trim() || null,
+  };
+}
+
+async function limparCamposAposSalvar(): Promise<void> {
+  form.unidadeId = null;
+  form.produtoId = null;
+  form.quantidade = null;
+  form.quantidadeEmbalagem = null;
+  form.loteCodigo = '';
+  form.dataValidade = '';
+  form.observacao = '';
+  form.data = deIsoParaInputDatetimeLocal(new Date().toISOString());
+  saldoDisponivel.value = null;
+  siglaSaldo.value = '';
+  await nextTick();
+  formRef.value?.resetValidation();
 }
 
 async function carregarDadosIniciais(): Promise<void> {
@@ -258,26 +355,6 @@ function aplicarQueryInicial(): void {
   }
 }
 
-function montarPayload(): RegistrarMovimentacaoManualRequest {
-  return {
-    unidadeId: form.unidadeId!,
-    produtoId: form.produtoId!,
-    quantidade: form.quantidade!,
-    data: deInputDatetimeLocalParaIso(form.data),
-    observacao: form.observacao.trim() || null,
-  };
-}
-
-function limparCamposAposSalvar(): void {
-  form.unidadeId = null;
-  form.produtoId = null;
-  form.quantidade = null;
-  form.observacao = '';
-  saldoDisponivel.value = null;
-  siglaSaldo.value = '';
-  formRef.value?.resetValidation();
-}
-
 async function salvar(): Promise<void> {
   salvando.value = true;
 
@@ -290,7 +367,7 @@ async function salvar(): Promise<void> {
       notificacao.sucesso('Saída de estoque registrada com sucesso.');
     }
 
-    limparCamposAposSalvar();
+    await limparCamposAposSalvar();
     await carregarListagem();
   } catch (error) {
     notificacao.erro(obterMensagem(error));
@@ -349,7 +426,7 @@ onMounted(async () => {
           <q-card-section>
             <q-inner-loading :showing="carregando" />
 
-            <q-form ref="formRef" class="form-stack" @submit.prevent="salvar">
+            <q-form ref="formRef" class="form-stack" greedy lazy-rules @submit.prevent="salvar">
               <div class="row q-col-gutter-md">
                 <div class="col-12">
                   <div class="form-field-stack">
@@ -401,7 +478,41 @@ onMounted(async () => {
                 </div>
               </div>
 
+              <template v-if="isMedicamentoEntrada">
+                <q-input
+                  v-model.number="form.quantidadeEmbalagem"
+                  class="form-field--required"
+                  :label="`Quantidade (${produtoSelecionado?.unidadeEmbalagemSigla ?? 'emb.'})`"
+                  outlined
+                  type="number"
+                  step="any"
+                  min="0"
+                  :readonly="!podeMovimentar"
+                  :rules="[validarQuantidadeEmbalagem]"
+                />
+                <q-banner v-if="conversaoPreview" dense rounded class="bg-grey-2">
+                  {{ conversaoPreview }}
+                </q-banner>
+                <q-input
+                  v-model="form.loteCodigo"
+                  class="form-field--required"
+                  label="Código do lote"
+                  outlined
+                  :readonly="!podeMovimentar"
+                  :rules="[validarLote]"
+                />
+                <q-input
+                  v-model="form.dataValidade"
+                  class="form-field--required"
+                  label="Validade do lote"
+                  outlined
+                  type="date"
+                  :readonly="!podeMovimentar"
+                  :rules="[validarValidade]"
+                />
+              </template>
               <q-input
+                v-else
                 v-model.number="form.quantidade"
                 class="form-field--required"
                 label="Quantidade"
@@ -413,6 +524,14 @@ onMounted(async () => {
                 :readonly="!podeMovimentar"
                 :rules="[validarQuantidade]"
               />
+
+              <p
+                v-if="!isMedicamentoEntrada"
+                class="text-caption q-ma-none"
+                style="color: var(--ds-text-secondary)"
+              >
+                {{ captionSaldo }}
+              </p>
 
               <p
                 v-if="resumoValorMovimentacao"

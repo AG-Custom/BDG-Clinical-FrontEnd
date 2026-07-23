@@ -28,9 +28,14 @@ const reativando = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
+  { name: 'tipo', label: 'Tipo', field: 'codigo', align: 'left' as const },
   { name: 'status', label: 'Status', field: 'ativo', align: 'center' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
+
+function ehTipoSistema(tipo: TipoProduto): boolean {
+  return Boolean(tipo.codigo);
+}
 
 async function carregarTiposProduto(): Promise<void> {
   carregando.value = true;
@@ -146,6 +151,18 @@ onMounted(() => {
         :loading="carregando"
         :rows-per-page-options="[10, 25, 50]"
       >
+        <template #body-cell-tipo="props">
+          <q-td :props="props">
+            <q-badge
+              v-if="ehTipoSistema(props.row)"
+              color="primary"
+              outline
+              label="Padrão do sistema"
+            />
+            <span v-else class="text-body2" style="color: var(--ds-text-secondary)">Personalizado</span>
+          </q-td>
+        </template>
+
         <template #body-cell-status="props">
           <q-td :props="props">
             <q-badge
@@ -160,7 +177,7 @@ onMounted(() => {
             <app-table-actions-menu
               :ativo="cell.row.ativo"
               :pode-editar="podeEditar"
-              :pode-alterar-status="podeDesativar"
+              :pode-alterar-status="podeDesativar && !ehTipoSistema(cell.row)"
               @visualizar="abrirDialogVisualizar(cell.row)"
               @editar="editarTipo(cell.row.id)"
               @desabilitar="abrirDialogDesativar(cell.row)"

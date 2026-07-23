@@ -8,7 +8,7 @@ import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
 import { saldoEstoqueService } from '@/services/saldo-estoque.service';
 import { unidadeService } from '@/services/unidade.service';
-import type { SaldoEstoque } from '@/types/entidades/saldo-estoque';
+import type { SaldoEstoque, SaldoLoteEstoque } from '@/types/entidades/saldo-estoque';
 import {
   formatarSaldoComUnidade,
   obterChaveSaldoEstoque,
@@ -32,7 +32,10 @@ const filtroUnidadeId = ref<string | null>(null);
 const filtroProdutoId = ref<string | null>(null);
 const apenasAbaixoDoMinimo = ref(false);
 const dialogVisualizar = ref(false);
+const dialogLotes = ref(false);
 const saldoSelecionado = ref<SaldoEstoque | null>(null);
+const lotesSaldo = ref<SaldoLoteEstoque[]>([]);
+const carregandoLotes = ref(false);
 
 const colunas = [
   { name: 'unidade', label: 'Unidade', field: 'unidadeNome', align: 'left' as const, sortable: true },
@@ -151,6 +154,31 @@ function verMovimentacoes(saldo: SaldoEstoque): void {
 function abrirDialogVisualizar(saldo: SaldoEstoque): void {
   saldoSelecionado.value = saldo;
   dialogVisualizar.value = true;
+}
+
+async function abrirDialogLotes(saldo: SaldoEstoque): Promise<void> {
+  saldoSelecionado.value = saldo;
+  dialogLotes.value = true;
+  carregandoLotes.value = true;
+
+  try {
+    lotesSaldo.value = await saldoEstoqueService.listarLotes({
+      unidadeId: saldo.unidadeId,
+      produtoId: saldo.produtoId,
+    });
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+    lotesSaldo.value = [];
+  } finally {
+    carregandoLotes.value = false;
+  }
+}
+
+function validadeProxima(dataValidade: string): boolean {
+  const validade = new Date(`${dataValidade}T00:00:00`);
+  const limite = new Date();
+  limite.setDate(limite.getDate() + 60);
+  return validade <= limite;
 }
 
 function obterValorEstoque(saldo: SaldoEstoque): number {
@@ -352,6 +380,12 @@ onMounted(async () => {
                 </q-item-section>
                 <q-item-section>Ver movimentações</q-item-section>
               </q-item>
+              <q-item clickable v-close-popup @click="abrirDialogLotes(cell.row)">
+                <q-item-section avatar>
+                  <q-icon name="qr_code_2" color="primary" />
+                </q-item-section>
+                <q-item-section>Ver lotes</q-item-section>
+              </q-item>
             </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
@@ -375,6 +409,64 @@ onMounted(async () => {
       titulo="Detalhar saldo"
       :registro="saldoSelecionado"
     />
+
+    <q-dialog v-model="dialogLotes">
+      <q-card style="min-width: 480px; max-width: 640px">
+        <q-card-section>
+          <div class="text-h6">Lotes — {{ saldoSelecionado?.produtoNome }}</div>
+          <div class="text-caption" style="color: var(--ds-text-secondary)">
+            {{ saldoSelecionado?.unidadeNome }}
+          </div>
+        </q-card-section>
+
+        <q-card-section v-if="carregandoLotes">
+          Carregando lotes...
+        </q-card-section>
+
+        <q-card-section v-else-if="lotesSaldo.length === 0">
+          Nenhum lote com saldo para este produto na unidade.
+        </q-card-section>
+
+        <q-markup-table v-else flat bordered>
+          <thead>
+            <tr>
+              <th class="text-left">Lote</th>
+              <th class="text-left">Validade</th>
+              <th class="text-right">Saldo</th>
+              <th class="text-right">Embalagens</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="lote in lotesSaldo" :key="lote.loteProdutoId">
+              <td>{{ lote.codigo }}</td>
+              <td>
+                {{ lote.dataValidade }}
+                <q-badge
+                  v-if="validadeProxima(lote.dataValidade)"
+                  color="warning"
+                  label="Próximo"
+                  class="q-ml-sm"
+                />
+              </td>
+              <td class="text-right">
+                {{ formatarSaldoComUnidade(lote.saldoAtual, lote.unidadeMedidaSigla) }}
+              </td>
+              <td class="text-right">
+                {{
+                  lote.saldoEmbalagem != null
+                    ? lote.saldoEmbalagem.toLocaleString('pt-BR')
+                    : '—'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Fechar" color="primary" no-caps v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 

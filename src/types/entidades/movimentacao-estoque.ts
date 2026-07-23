@@ -28,11 +28,15 @@ export interface MovimentacaoEstoque {
   unidadeNome: string;
   produtoId: string;
   produtoNome: string;
+  loteProdutoId?: string | null;
+  loteCodigo?: string | null;
+  loteDataValidade?: string | null;
   tipo: TipoMovimentacaoEstoque;
   motivo: MotivoMovimentacaoEstoque | string;
   quantidade: number;
-  valorUnitario: number;
-  valorTotal: number;
+  quantidadeEmbalagem?: number | null;
+  valorUnitario?: number;
+  valorTotal?: number;
   data: string;
   origem: OrigemMovimentacaoEstoque | string;
   pedidoFornecedorId: string | null;
@@ -122,9 +126,12 @@ export function obterCorOrigemEntrada(origem: string): string {
 export interface RegistrarMovimentacaoManualRequest {
   unidadeId: string;
   produtoId: string;
-  quantidade: number;
   data: string;
+  quantidade?: number | null;
   observacao?: string | null;
+  quantidadeEmbalagem?: number | null;
+  loteCodigo?: string | null;
+  dataValidade?: string | null;
 }
 
 export function deDataParaInicioDiaIso(valor: string): string {

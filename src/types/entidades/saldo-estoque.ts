@@ -10,7 +10,21 @@ export interface SaldoEstoque {
   valorEstoque: number;
   abaixoDoMinimo: boolean;
   /** Origens das entradas que compõem o saldo (ex.: PEDIDO_FORNECEDOR, AJUSTE_MANUAL). */
-  origensEntrada: string[];
+  origensEntrada?: string[];
+}
+
+export interface SaldoLoteEstoque {
+  loteProdutoId: string;
+  unidadeId: string;
+  unidadeNome: string;
+  produtoId: string;
+  produtoNome: string;
+  codigo: string;
+  dataValidade: string;
+  saldoAtual: number;
+  unidadeMedidaSigla: string;
+  fatorEmbalagemParaEstoque: number | null;
+  saldoEmbalagem: number | null;
 }
 
 export interface ListarSaldosEstoqueParams {
@@ -20,6 +34,11 @@ export interface ListarSaldosEstoqueParams {
   search?: string;
   limit?: number;
   signal?: AbortSignal;
+}
+
+export interface ListarSaldosLoteParams {
+  unidadeId?: string;
+  produtoId?: string;
 }
 
 export function formatarSaldoComUnidade(saldo: number, sigla: string): string {

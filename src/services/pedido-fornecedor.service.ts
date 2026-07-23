@@ -78,9 +78,20 @@ export const pedidoFornecedorService = {
     return data.data;
   },
 
-  async receber(id: string): Promise<PedidoFornecedor> {
+  async receber(
+    id: string,
+    payload?: {
+      itens?: Array<{
+        produtoId: string;
+        loteCodigo?: string | null;
+        dataValidade?: string | null;
+        quantidadeEmbalagem?: number | null;
+      }>;
+    },
+  ): Promise<PedidoFornecedor> {
     const { data } = await api.patch<ApiResponse<PedidoFornecedor>>(
       `/api/supplier-orders/${id}/receive`,
+      payload ?? {},
     );
 
     return data.data;

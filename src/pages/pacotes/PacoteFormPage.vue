@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
@@ -43,8 +44,6 @@ const form = reactive({
 
 const itens = ref<ItemPacoteFormulario[]>([]);
 
-const NOME_TIPO_MEDICAMENTO = 'Medicamento';
-
 const opcoesProdutos = computed(() =>
   produtosDisponiveis.value
     .filter((produto) => {
@@ -53,7 +52,7 @@ const opcoesProdutos = computed(() =>
       }
 
       const isMedicamento =
-        produto.tipoProdutoNome?.trim().toLowerCase() === NOME_TIPO_MEDICAMENTO.toLowerCase();
+        produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO;
       const estaSelecionado = itens.value.some((item) => item.produtoId === produto.id);
 
       return isMedicamento || estaSelecionado;
@@ -315,7 +314,7 @@ onMounted(async () => {
         <q-form class="form-stack" @submit.prevent="salvar">
           <app-form-dependencia-alerta
             v-if="mostrarAlertaProdutos"
-            mensagem="Nenhum medicamento cadastrado. Cadastre produtos do tipo Medicamento antes de montar o pacote."
+            mensagem="Nenhum medicamento cadastrado. Cadastre produtos do tipo medicamento (sistema) antes de montar o pacote."
             rotulo-acao="Cadastrar produto"
             :destino="{ name: 'produtos-novo' }"
             @atualizar="recarregarDependencias"
@@ -388,7 +387,7 @@ onMounted(async () => {
                   emit-value
                   map-options
                   :disable="!podeSalvar || opcoesProdutos.length === 0"
-                  hint="Somente produtos do tipo Medicamento"
+                  hint="Somente produtos do tipo medicamento (sistema)"
                   @update:model-value="onProdutoItemChange(item)"
                 />
               </div>

@@ -18,9 +18,11 @@ const podeSalvar = computed(() => (isEdicao.value ? podeEditar.value : podeCriar
 
 const carregando = ref(false);
 const salvando = ref(false);
+const codigoSistema = ref<string | null>(null);
 
 const isEdicao = computed(() => route.name === 'tipos-produto-editar');
 const tipoProdutoId = computed(() => route.params.id as string | undefined);
+const ehTipoSistema = computed(() => Boolean(codigoSistema.value));
 
 const form = reactive({
   nome: '',
@@ -36,6 +38,7 @@ async function carregarTipoProduto(): Promise<void> {
   try {
     const tipo = await tipoProdutoService.obter(tipoProdutoId.value);
     form.nome = tipo.nome;
+    codigoSistema.value = tipo.codigo;
   } catch (error) {
     notificacao.erro(obterMensagem(error));
     await router.push({ name: 'tipos-produto' });
@@ -90,7 +93,14 @@ onMounted(() => {
 
     <q-card flat bordered>
       <q-card-section>
-        <q-inner-loading :showing="carregando" />
+        <q-banner
+          v-if="ehTipoSistema"
+          dense
+          rounded
+          class="bg-primary text-white q-mb-md"
+        >
+          Tipo padrão do sistema. O nome pode ser editado, mas este tipo não pode ser excluído.
+        </q-banner>
 
         <q-form class="form-stack" @submit.prevent="salvar">
           <q-input
@@ -98,7 +108,8 @@ onMounted(() => {
             class="form-field--required"
             label="Nome"
             outlined
-            :readonly="!podeSalvar"
+            :readonly="carregando || !podeSalvar"
+            :disable="carregando"
             :rules="[(value: string) => Boolean(value?.trim()) || 'Informe o nome do tipo']"
           />
 
@@ -110,7 +121,7 @@ onMounted(() => {
               unelevated
               no-caps
               :loading="salvando"
-              :disable="!podeSalvar"
+              :disable="carregando || !podeSalvar"
             />
             <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
           </div>
