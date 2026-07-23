@@ -68,7 +68,7 @@ const valorTotalEstoque = computed(() =>
 const valorTotalEstoqueFormatado = computed(() => formatarMoeda(valorTotalEstoque.value));
 
 const ajudaValorTotalEstoque =
-  'Soma do valor em estoque de cada item da listagem (saldo atual × valor unitário). O valor unitário prioriza o último pedido ao fornecedor recebido; se não houver compra, usa o valor cadastrado no produto. Os filtros da tela entram no cálculo.';
+  'Soma do valor de todos os itens listados. Usa o preço da última compra recebida; se ainda não houver compra, usa o valor cadastrado no produto. Em medicamentos, o preço é o da embalagem (como o frasco) e o sistema calcula o valor do estoque a partir disso. Os filtros da tela entram no total.';
 
 async function buscarSaldos(termo: string, signal?: AbortSignal): Promise<void> {
   const termoNormalizado = termo.trim();

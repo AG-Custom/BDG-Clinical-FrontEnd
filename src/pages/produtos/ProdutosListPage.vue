@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
@@ -69,6 +70,23 @@ const colunas = [
   { name: 'status', label: 'Status', field: 'ativo', align: 'center' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'right' as const },
 ];
+
+function descricaoValorProduto(produto: Produto): string {
+  if (
+    produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO
+    && produto.unidadeEmbalagemNome
+  ) {
+    return `Valor do ${produto.unidadeEmbalagemNome}`;
+  }
+
+  if (produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO) {
+    return 'Valor da embalagem';
+  }
+
+  return produto.unidadeMedidaSigla
+    ? `Valor por ${produto.unidadeMedidaSigla}`
+    : 'Valor unitário';
+}
 
 const opcoesTiposFiltro = ref<{ label: string; value: string | null }[]>([
   { label: 'Todos os tipos', value: null },
@@ -244,9 +262,19 @@ onMounted(async () => {
           </q-td>
         </template>
 
+        <template #header-cell-valor="props">
+          <q-th :props="props">
+            Valor
+            <q-tooltip max-width="260px">
+              Medicamento: preço da embalagem. Demais: preço da unidade de estoque.
+            </q-tooltip>
+          </q-th>
+        </template>
+
         <template #body-cell-valor="props">
           <q-td :props="props">
             {{ formatarMoeda(props.row.valor) }}
+            <q-tooltip>{{ descricaoValorProduto(props.row) }}</q-tooltip>
           </q-td>
         </template>
 

@@ -152,38 +152,83 @@ const captionSaldo = computed(() => {
   return undefined;
 });
 
-const valorUnitarioProduto = computed(() => produtoSelecionado.value?.valor ?? null);
+const valorEmbalagemOuCadastro = computed(() => produtoSelecionado.value?.valor ?? null);
 
-const valorEstimadoMovimentacao = computed(() => {
-  const qtd = isMedicamentoEntrada.value
-    ? (form.quantidadeEmbalagem ?? 0) * (produtoSelecionado.value?.fatorEmbalagemParaEstoque ?? 0)
-    : form.quantidade;
+const fatorConversaoProduto = computed(() => {
+  const fator = produtoSelecionado.value?.fatorEmbalagemParaEstoque;
 
-  if (
-    valorUnitarioProduto.value === null ||
-    qtd === null ||
-    qtd === undefined ||
-    Number.isNaN(qtd) ||
-    qtd <= 0
-  ) {
+  return fator != null && fator > 0 ? fator : null;
+});
+
+const valorPorUnidadeEstoque = computed(() => {
+  if (valorEmbalagemOuCadastro.value === null) {
     return null;
   }
 
-  return qtd * valorUnitarioProduto.value;
+  if (fatorConversaoProduto.value == null) {
+    return valorEmbalagemOuCadastro.value;
+  }
+
+  return valorEmbalagemOuCadastro.value / fatorConversaoProduto.value;
+});
+
+const valorEstimadoMovimentacao = computed(() => {
+  if (valorEmbalagemOuCadastro.value === null) {
+    return null;
+  }
+
+  if (isMedicamentoEntrada.value) {
+    const qtdEmbalagem = form.quantidadeEmbalagem;
+
+    if (qtdEmbalagem == null || Number.isNaN(qtdEmbalagem) || qtdEmbalagem <= 0) {
+      return null;
+    }
+
+    return qtdEmbalagem * valorEmbalagemOuCadastro.value;
+  }
+
+  const qtd = form.quantidade;
+
+  if (qtd == null || Number.isNaN(qtd) || qtd <= 0) {
+    return null;
+  }
+
+  if (fatorConversaoProduto.value != null) {
+    return (qtd / fatorConversaoProduto.value) * valorEmbalagemOuCadastro.value;
+  }
+
+  return qtd * valorEmbalagemOuCadastro.value;
 });
 
 const resumoValorMovimentacao = computed(() => {
-  if (valorUnitarioProduto.value === null) {
+  if (valorEmbalagemOuCadastro.value === null) {
     return null;
   }
 
-  const unitario = formatarMoeda(valorUnitarioProduto.value);
+  const partes: string[] = [];
 
-  if (valorEstimadoMovimentacao.value === null) {
-    return `Valor unitário: ${unitario}`;
+  if (fatorConversaoProduto.value != null) {
+    const nomeEmb = produtoSelecionado.value?.unidadeEmbalagemNome
+      ?? produtoSelecionado.value?.unidadeEmbalagemSigla
+      ?? 'embalagem';
+    const siglaEstoque = produtoSelecionado.value?.unidadeMedidaSigla ?? 'estoque';
+
+    partes.push(`Valor do ${nomeEmb}: ${formatarMoeda(valorEmbalagemOuCadastro.value)}`);
+
+    if (valorPorUnidadeEstoque.value !== null) {
+      partes.push(
+        `Unitário estoque: ${formatarMoeda(valorPorUnidadeEstoque.value)}/${siglaEstoque}`,
+      );
+    }
+  } else {
+    partes.push(`Valor unitário: ${formatarMoeda(valorEmbalagemOuCadastro.value)}`);
   }
 
-  return `Valor unitário: ${unitario} · Estimado: ${formatarMoeda(valorEstimadoMovimentacao.value)}`;
+  if (valorEstimadoMovimentacao.value !== null) {
+    partes.push(`Estimado: ${formatarMoeda(valorEstimadoMovimentacao.value)}`);
+  }
+
+  return partes.join(' · ');
 });
 
 function validarUnidade(value: string | null): boolean | string {

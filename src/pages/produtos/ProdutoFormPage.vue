@@ -175,8 +175,27 @@ const mostrarAlertaUnidadesMedida = computed(
 const ajudaEstoqueMinimo =
   'Valor de referência para o controle de estoque. Quando o saldo do produto ficar abaixo deste mínimo, a clínica receberá um aviso.';
 
-const ajudaValor =
-  'Preço de referência do produto na clínica. Usado em estoque e relatórios de valor.';
+const rotuloValorProduto = computed(() => {
+  if (!isMedicamento.value) {
+    return 'Valor';
+  }
+
+  const nomeEmbalagem = obterNomeUnidade(form.unidadeEmbalagemId);
+
+  return nomeEmbalagem ? `Valor do ${nomeEmbalagem}` : 'Valor da embalagem';
+});
+
+const ajudaValor = computed(() => {
+  if (isMedicamento.value) {
+    const nomeEmbalagem = obterNomeUnidade(form.unidadeEmbalagemId) ?? 'embalagem';
+
+    return `Preço de uma unidade de ${nomeEmbalagem}. O estoque converte esse valor para a unidade de estoque pelo fator de conversão.`;
+  }
+
+  const nomeEstoque = obterNomeUnidade(form.unidadeMedidaId) ?? 'estoque';
+
+  return `Preço de referência por unidade de ${nomeEstoque}. Usado em estoque e relatórios de valor.`;
+});
 
 const ajudaControlaEstoque =
   'Quando ativo, compras, aplicações e ajustes manuais geram movimentação de estoque para este produto. Desative para itens que não precisam de rastreio de saldo.';
@@ -722,7 +741,7 @@ onMounted(async () => {
           <q-input
             :model-value="formatarMoedaParaInput(form.valor)"
             class="form-field--required"
-            label="Valor"
+            :label="rotuloValorProduto"
             outlined
             inputmode="numeric"
             prefix="R$"
