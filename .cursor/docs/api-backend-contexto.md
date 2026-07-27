@@ -2018,42 +2018,13 @@ Registro de aplicações realizadas. **Sempre** informe `procedimentoId` — o p
 
 Retorna uma aplicação com nomes resolvidos (paciente, produto, aplicador, unidade, sintomas).
 
-### POST `/api/patient-applications` — procedimento com medicamento
+### POST `/api/patient-applications`
 
-```json
-{
-  "pacienteId": "uuid",
-  "procedimentoId": "uuid",
-  "aplicadorId": "uuid",
-  "unidadeId": "uuid",
-  "quantidadeUtilizada": 2.5,
-  "dataAplicacao": "2026-06-25T14:00:00Z"
-}
-```
+Um procedimento (legado) ou vários via `procedimentos[]`. `compraPacienteId` é opcional.
 
-### POST `/api/patient-applications` — procedimento só insumos (ex.: Curativo)
+**Response 201:** `{ "aplicacoes": [ ... ] }` — uma entrada por procedimento.
 
-```json
-{
-  "pacienteId": "uuid",
-  "procedimentoId": "uuid",
-  "aplicadorId": "uuid",
-  "unidadeId": "uuid",
-  "dataAplicacao": "2026-06-25T14:00:00Z"
-}
-```
-
-| Campo | Obrigatório | Regra |
-|-------|-------------|-------|
-| `pacienteId` | Sim | Paciente ativo no tenant |
-| `procedimentoId` | Sim | Procedimento ativo |
-| `quantidadeUtilizada` | Se o procedimento tem produto aplicado | &gt; 0; omitir em procedimento só com insumos |
-| `aplicadorId` | Sim | Funcionário aplicador ativo na unidade |
-| `unidadeId` | Sim | Unidade ativa |
-| `dataAplicacao` | Sim | Data/hora |
-| `compraPacienteId` | Não | Só quando o procedimento tem produto aplicado |
-
-**Response 201** — inclui `procedimentoId`, `procedimentoNome`, `itensConsumidos[]`. Gera N saídas (`motivo: Aplicacao`) para produtos com `controlaEstoque = true`.
+Ver contrato completo em `ClinicalBackEnd/.../docs/api-rotas-frontend.md` seção 19.
 
 ### PUT `/api/patient-applications/{id}`
 

@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
@@ -49,11 +50,46 @@ const opcoesProdutos = computed(() =>
 );
 
 const opcoesProdutosInsumos = computed(() =>
-  opcoesProdutos.value.filter((opcao) => opcao.value !== form.produtoAplicadoId),
+  produtosDisponiveis.value
+    .filter((produto) => {
+      const estaSelecionadoNoKit = itens.value.some((item) => item.produtoId === produto.id);
+
+      if (produto.id === form.produtoAplicadoId) {
+        return false;
+      }
+
+      if (estaSelecionadoNoKit) {
+        return true;
+      }
+
+      if (!produto.ativo) {
+        return false;
+      }
+
+      return produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.INSUMO;
+    })
+    .map((produto) => ({
+      label: produto.nome,
+      value: produto.id,
+    })),
 );
 
 const mostrarAlertaProdutos = computed(
   () => dadosIniciaisCarregados.value && opcoesProdutos.value.length === 0,
+);
+
+const possuiInsumosAtivos = computed(() =>
+  produtosDisponiveis.value.some(
+    (produto) =>
+      produto.ativo && produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.INSUMO,
+  ),
+);
+
+const mostrarAlertaInsumos = computed(
+  () =>
+    dadosIniciaisCarregados.value &&
+    opcoesProdutos.value.length > 0 &&
+    !possuiInsumosAtivos.value,
 );
 
 const produtosPorId = computed(
@@ -326,6 +362,16 @@ onMounted(async () => {
               @click="adicionarItem"
             />
           </div>
+
+          <app-form-dependencia-alerta
+            v-if="mostrarAlertaInsumos"
+            inline
+            class="q-mb-md"
+            mensagem="Nenhum insumo cadastrado. Cadastre produtos do tipo insumo antes de adicionar itens ao kit."
+            rotulo-acao="Cadastrar produto"
+            :destino="{ name: 'produtos-novo' }"
+            @atualizar="recarregarDependencias"
+          />
 
           <div
             v-for="(item, indice) in itens"

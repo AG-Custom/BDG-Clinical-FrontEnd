@@ -41,17 +41,27 @@ export interface AplicacaoPaciente {
   atualizadoEm: string | null;
 }
 
+export interface CriarAplicacaoProcedimentoRequest {
+  procedimentoId: string;
+  quantidadeUtilizada?: number | null;
+}
+
 export interface CriarAplicacaoPacienteRequest {
   pacienteId: string;
-  procedimentoId: string;
   aplicadorId: string;
   unidadeId: string;
   dataAplicacao: string;
-  compraPacienteId: string;
+  compraPacienteId?: string | null;
+  procedimentoId?: string | null;
   quantidadeUtilizada?: number | null;
+  procedimentos?: CriarAplicacaoProcedimentoRequest[] | null;
   peso?: number | null;
   observacao?: string | null;
   sintomaIds?: string[] | null;
+}
+
+export interface CriarAplicacoesPacienteResult {
+  aplicacoes: AplicacaoPaciente[];
 }
 
 export interface AtualizarAplicacaoPacienteRequest {

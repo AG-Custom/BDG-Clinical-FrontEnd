@@ -4,6 +4,7 @@ import type {
   AplicacaoPaciente,
   AtualizarAplicacaoPacienteRequest,
   CriarAplicacaoPacienteRequest,
+  CriarAplicacoesPacienteResult,
   ListarAplicacoesPacienteParams,
 } from '@/types/entidades/aplicacao-paciente';
 
@@ -65,8 +66,8 @@ export const aplicacaoPacienteService = {
     return data.data;
   },
 
-  async criar(payload: CriarAplicacaoPacienteRequest): Promise<AplicacaoPaciente> {
-    const { data } = await api.post<ApiResponse<AplicacaoPaciente>>(
+  async criar(payload: CriarAplicacaoPacienteRequest): Promise<CriarAplicacoesPacienteResult> {
+    const { data } = await api.post<ApiResponse<CriarAplicacoesPacienteResult>>(
       '/api/patient-applications',
       payload,
     );

@@ -46,6 +46,15 @@ interface SaldoKitItem {
   controlaEstoque: boolean;
 }
 
+interface ProcedimentoNaFormulario {
+  procedimentoId: string;
+  nome: string;
+  exigeQuantidade: boolean;
+  quantidadeUtilizada: number | null;
+  procedimento: Procedimento | null;
+  saldosKit: SaldoKitItem[];
+}
+
 const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -63,8 +72,7 @@ const comprasAtivas = ref<CompraPaciente[]>([]);
 const carregandoCompras = ref(false);
 const produtosDisponiveis = ref<Produto[]>([]);
 const procedimentosDisponiveis = ref<Procedimento[]>([]);
-const procedimentoSelecionado = ref<Procedimento | null>(null);
-const saldosKit = ref<SaldoKitItem[]>([]);
+const procedimentosNaFormulario = ref<ProcedimentoNaFormulario[]>([]);
 const aplicadoresDisponiveis = ref<Funcionario[]>([]);
 const cargosDisponiveis = ref<Cargo[]>([]);
 const existemAplicadoresNaEmpresa = ref(false);
@@ -86,9 +94,8 @@ const form = reactive({
   unidadeId: null as string | null,
   pacienteId: null as string | null,
   compraPacienteId: null as string | null,
-  procedimentoId: null as string | null,
+  procedimentoIds: [] as string[],
   aplicadorId: null as string | null,
-  quantidadeUtilizada: null as number | null,
   dataAplicacao: '',
   peso: null as number | null,
   sintomaIds: [] as string[],
@@ -196,16 +203,17 @@ const mostrarAlertaProcedimentos = computed(
     procedimentosDisponiveis.value.length === 0,
 );
 
-const procedimentoTemProdutoAplicado = computed(
-  () => Boolean(procedimentoSelecionado.value?.produtoAplicadoId),
+const exigeQuantidadeEmAlgumProcedimento = computed(
+  () => !isEdicao.value && procedimentosNaFormulario.value.some((item) => item.exigeQuantidade),
 );
+
 
 const exigeQuantidade = computed(() => {
   if (isEdicao.value) {
     return aplicacaoCarregada.value?.quantidadeUtilizada !== null;
   }
 
-  return procedimentoTemProdutoAplicado.value;
+  return exigeQuantidadeEmAlgumProcedimento.value;
 });
 
 const itensConsumidosExibicao = computed(
@@ -235,17 +243,6 @@ const hintAplicador = computed(() => {
   return undefined;
 });
 
-const hintQuantidade = computed(() => {
-  if (!exigeQuantidade.value || !procedimentoSelecionado.value?.produtoAplicadoId) {
-    return undefined;
-  }
-
-  const sigla =
-    produtosPorId.value.get(procedimentoSelecionado.value.produtoAplicadoId)?.unidadeMedidaSigla ??
-    '';
-
-  return sigla ? `Unidade de medida: ${sigla}` : undefined;
-});
 
 const temAplicadoresNaEmpresa = computed(() => existemAplicadoresNaEmpresa.value);
 
@@ -271,31 +268,30 @@ function validarPaciente(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o paciente';
 }
 
-function validarCompraPaciente(value: string | null): boolean | string {
-  if (isEdicao.value) {
-    return true;
-  }
-
-  return Boolean(value) || 'Selecione a compra do pacote';
+function validarCompraPaciente(): boolean | string {
+  return true;
 }
 
-function validarProcedimento(value: string | null): boolean | string {
+function validarProcedimentos(value: string[]): boolean | string {
   if (isEdicao.value) {
     return true;
   }
 
-  return Boolean(value) || 'Selecione o procedimento';
+  return (Array.isArray(value) && value.length > 0) || 'Selecione ao menos um procedimento';
 }
 
 function validarAplicador(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o aplicador';
 }
 
-function validarQuantidade(value: number | null): boolean | string {
-  if (!exigeQuantidade.value) {
+function validarQuantidadeProcedimento(
+  procedimento: ProcedimentoNaFormulario,
+): boolean | string {
+  if (!procedimento.exigeQuantidade) {
     return true;
   }
 
+  const value = procedimento.quantidadeUtilizada;
   if (value === null || value === undefined || Number.isNaN(value)) {
     return 'Informe a quantidade utilizada';
   }
@@ -358,43 +354,21 @@ async function carregarComprasAtivasDoPaciente(): Promise<void> {
   }
 }
 
-async function carregarProcedimentoDetalhe(): Promise<void> {
-  if (!form.procedimentoId) {
-    procedimentoSelecionado.value = null;
-    saldosKit.value = [];
-    return;
+async function carregarSaldosKitParaProcedimento(
+  procedimento: Procedimento,
+  quantidadeUtilizada: number | null,
+): Promise<SaldoKitItem[]> {
+  if (!form.unidadeId) {
+    return [];
   }
 
-  try {
-    const procedimento = await procedimentoService.obter(form.procedimentoId);
-    procedimentoSelecionado.value = procedimento;
-
-    if (!procedimento.produtoAplicadoId) {
-      form.quantidadeUtilizada = null;
-    }
-
-    await carregarSaldosKit();
-  } catch (error) {
-    notificacao.erro(obterMensagem(error));
-    procedimentoSelecionado.value = null;
-    saldosKit.value = [];
-  }
-}
-
-async function carregarSaldosKit(): Promise<void> {
-  if (!form.unidadeId || !procedimentoSelecionado.value) {
-    saldosKit.value = [];
-    return;
-  }
-
-  const procedimento = procedimentoSelecionado.value;
   const produtosKit: { produtoId: string; produtoNome: string; quantidade: number }[] = [];
 
   if (procedimento.produtoAplicadoId) {
     produtosKit.push({
       produtoId: procedimento.produtoAplicadoId,
       produtoNome: procedimento.produtoAplicadoNome ?? 'Produto aplicado',
-      quantidade: form.quantidadeUtilizada ?? 0,
+      quantidade: quantidadeUtilizada ?? 0,
     });
   }
 
@@ -412,8 +386,7 @@ async function carregarSaldosKit(): Promise<void> {
   });
 
   if (itensComEstoque.length === 0) {
-    saldosKit.value = [];
-    return;
+    return [];
   }
 
   try {
@@ -438,10 +411,58 @@ async function carregarSaldosKit(): Promise<void> {
       }),
     );
 
-    saldosKit.value = resultados;
+    return resultados;
   } catch {
-    saldosKit.value = [];
+    return [];
   }
+}
+
+async function sincronizarProcedimentosFormulario(): Promise<void> {
+  if (isEdicao.value) {
+    return;
+  }
+
+  const idsAtuais = new Set(form.procedimentoIds);
+  const anteriores = new Map(
+    procedimentosNaFormulario.value.map((item) => [item.procedimentoId, item]),
+  );
+
+  const proximos: ProcedimentoNaFormulario[] = [];
+
+  for (const procedimentoId of form.procedimentoIds) {
+    const existente = anteriores.get(procedimentoId);
+    if (existente) {
+      proximos.push(existente);
+      continue;
+    }
+
+    try {
+      const procedimento = await procedimentoService.obter(procedimentoId);
+      proximos.push({
+        procedimentoId,
+        nome: procedimento.nome,
+        exigeQuantidade: Boolean(procedimento.produtoAplicadoId),
+        quantidadeUtilizada: null,
+        procedimento,
+        saldosKit: await carregarSaldosKitParaProcedimento(procedimento, null),
+      });
+    } catch (error) {
+      notificacao.erro(obterMensagem(error));
+    }
+  }
+
+  procedimentosNaFormulario.value = proximos.filter((item) => idsAtuais.has(item.procedimentoId));
+}
+
+async function atualizarSaldosProcedimento(item: ProcedimentoNaFormulario): Promise<void> {
+  if (!item.procedimento) {
+    return;
+  }
+
+  item.saldosKit = await carregarSaldosKitParaProcedimento(
+    item.procedimento,
+    item.quantidadeUtilizada,
+  );
 }
 
 async function carregarAplicadoresDaUnidade(): Promise<void> {
@@ -474,7 +495,11 @@ async function onUnidadeChange(): Promise<void> {
     }
   }
 
-  await carregarSaldosKit();
+  await carregarSaldosTodosProcedimentos();
+}
+
+async function carregarSaldosTodosProcedimentos(): Promise<void> {
+  await Promise.all(procedimentosNaFormulario.value.map((item) => atualizarSaldosProcedimento(item)));
 }
 
 async function onPacienteChange(): Promise<void> {
@@ -546,6 +571,33 @@ async function carregarDadosIniciais(): Promise<void> {
   }
 }
 
+async function carregarProcedimentoEdicao(procedimentoId: string | null): Promise<void> {
+  if (!procedimentoId) {
+    procedimentosNaFormulario.value = [];
+    form.procedimentoIds = [];
+    return;
+  }
+
+  form.procedimentoIds = [procedimentoId];
+
+  try {
+    const procedimento = await procedimentoService.obter(procedimentoId);
+    procedimentosNaFormulario.value = [
+      {
+        procedimentoId,
+        nome: procedimento.nome,
+        exigeQuantidade: Boolean(procedimento.produtoAplicadoId),
+        quantidadeUtilizada: aplicacaoCarregada.value?.quantidadeUtilizada ?? null,
+        procedimento,
+        saldosKit: [],
+      },
+    ];
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+    procedimentosNaFormulario.value = [];
+  }
+}
+
 async function recarregarDependencias(): Promise<void> {
   await carregarDadosIniciais();
 
@@ -553,7 +605,11 @@ async function recarregarDependencias(): Promise<void> {
     await Promise.all([carregarPacientesDaUnidade(), carregarAplicadoresDaUnidade()]);
   }
 
-  await carregarProcedimentoDetalhe();
+  if (isEdicao.value && aplicacaoCarregada.value?.procedimentoId) {
+    await carregarProcedimentoEdicao(aplicacaoCarregada.value.procedimentoId);
+  } else {
+    await sincronizarProcedimentosFormulario();
+  }
 }
 
 async function carregarAplicacao(): Promise<void> {
@@ -570,9 +626,7 @@ async function carregarAplicacao(): Promise<void> {
     form.unidadeId = aplicacao.unidadeId;
     form.pacienteId = aplicacao.pacienteId;
     form.compraPacienteId = aplicacao.compraPacienteId;
-    form.procedimentoId = aplicacao.procedimentoId;
     form.aplicadorId = aplicacao.aplicadorId;
-    form.quantidadeUtilizada = aplicacao.quantidadeUtilizada;
     form.dataAplicacao = deIsoParaInputDatetimeLocal(aplicacao.dataAplicacao);
     form.peso = aplicacao.peso;
     form.sintomaIds = aplicacao.sintomas.map((s) => s.id);
@@ -599,9 +653,7 @@ async function carregarAplicacao(): Promise<void> {
 
     await Promise.all(garantias);
 
-    if (aplicacao.procedimentoId) {
-      await carregarProcedimentoDetalhe();
-    }
+    await carregarProcedimentoEdicao(aplicacao.procedimentoId);
 
     await Promise.all([carregarPacientesDaUnidade(), carregarAplicadoresDaUnidade()]);
   } catch (error) {
@@ -615,24 +667,37 @@ async function carregarAplicacao(): Promise<void> {
 function montarPayloadCriacao() {
   const base = {
     pacienteId: form.pacienteId!,
-    procedimentoId: form.procedimentoId!,
     aplicadorId: form.aplicadorId!,
     unidadeId: form.unidadeId!,
     dataAplicacao: deInputDatetimeLocalParaIso(form.dataAplicacao),
-    compraPacienteId: form.compraPacienteId!,
+    compraPacienteId: form.compraPacienteId,
     peso: form.peso,
     observacao: form.observacao.trim() || null,
     sintomaIds: form.sintomaIds.length > 0 ? form.sintomaIds : null,
   };
 
-  if (exigeQuantidade.value && form.quantidadeUtilizada !== null) {
+  const itens = procedimentosNaFormulario.value;
+
+  if (itens.length === 1) {
+    const unico = itens[0];
     return {
       ...base,
-      quantidadeUtilizada: form.quantidadeUtilizada,
+      procedimentoId: unico.procedimentoId,
+      ...(unico.exigeQuantidade && unico.quantidadeUtilizada !== null
+        ? { quantidadeUtilizada: unico.quantidadeUtilizada }
+        : {}),
     };
   }
 
-  return base;
+  return {
+    ...base,
+    procedimentos: itens.map((item) => ({
+      procedimentoId: item.procedimentoId,
+      ...(item.exigeQuantidade && item.quantidadeUtilizada !== null
+        ? { quantidadeUtilizada: item.quantidadeUtilizada }
+        : {}),
+    })),
+  };
 }
 
 function montarPayloadAtualizacao() {
@@ -645,6 +710,19 @@ function montarPayloadAtualizacao() {
 }
 
 async function salvar(): Promise<void> {
+  if (!isEdicao.value) {
+    const procedimentoInvalido = procedimentosNaFormulario.value.find(
+      (procedimento) => validarQuantidadeProcedimento(procedimento) !== true,
+    );
+
+    if (procedimentoInvalido) {
+      notificacao.info(
+        'Informe a quantidade do produto para todos os procedimentos com medicamento.',
+      );
+      return;
+    }
+  }
+
   salvando.value = true;
 
   try {
@@ -652,8 +730,13 @@ async function salvar(): Promise<void> {
       await aplicacaoPacienteService.atualizar(aplicacaoId.value, montarPayloadAtualizacao());
       notificacao.sucesso('Aplicação atualizada com sucesso.');
     } else {
-      await aplicacaoPacienteService.criar(montarPayloadCriacao());
-      notificacao.sucesso('Aplicação registrada com sucesso.');
+      const resultado = await aplicacaoPacienteService.criar(montarPayloadCriacao());
+      const quantidade = resultado.aplicacoes.length;
+      notificacao.sucesso(
+        quantidade > 1
+          ? `${quantidade} aplicações registradas com sucesso.`
+          : 'Aplicação registrada com sucesso.',
+      );
     }
 
     await router.push({ name: 'aplicacoes-paciente' });
@@ -692,18 +775,15 @@ function voltar(): void {
 }
 
 watch(
-  () => form.procedimentoId,
+  () => [...form.procedimentoIds],
   () => {
-    void carregarProcedimentoDetalhe();
+    void sincronizarProcedimentosFormulario();
   },
 );
 
-watch(
-  () => form.quantidadeUtilizada,
-  () => {
-    void carregarSaldosKit();
-  },
-);
+function aoAlterarQuantidadeProcedimento(item: ProcedimentoNaFormulario): void {
+  void atualizarSaldosProcedimento(item);
+}
 
 onMounted(async () => {
   await carregarDadosIniciais();
@@ -725,7 +805,7 @@ onMounted(async () => {
           ? 'Esta aplicação foi cancelada e não pode ser alterada.'
           : isEdicao
             ? 'Atualize peso, data, sintomas ou observações.'
-            : 'Registre uma aplicação selecionando o procedimento realizado.'
+            : 'Registre uma ou mais aplicações selecionando os procedimentos realizados.'
       "
     >
       <q-badge
@@ -799,24 +879,23 @@ onMounted(async () => {
               <div class="form-field-stack">
                 <q-select
                   v-model="form.compraPacienteId"
-                  class="form-field--required"
                   :options="opcoesComprasAtivas"
-                  label="Compra do pacote"
+                  label="Compra do pacote (opcional)"
                   outlined
                   emit-value
                   map-options
+                  clearable
                   :loading="carregandoCompras"
                   :rules="[validarCompraPaciente]"
                   :readonly="!podeEditarCampos"
                   :disable="
                     !podeEditarCampos || !form.pacienteId || opcoesComprasAtivas.length === 0
                   "
-                  hint="Selecione a compra ativa que será debitada nesta aplicação."
                 />
                 <app-form-dependencia-alerta
                   v-if="mostrarAlertaCompras"
                   inline
-                  mensagem="Nenhuma compra ativa para este paciente. Registre uma compra de pacote antes de aplicar."
+                  mensagem="Nenhuma compra ativa para este paciente. Você pode registrar a aplicação sem pacote ou cadastrar uma compra."
                   rotulo-acao="Registrar compra"
                   :destino="
                     form.pacienteId
@@ -876,19 +955,33 @@ onMounted(async () => {
             v-if="!aplicacaoLegadaSemProcedimento"
             class="row q-col-gutter-md"
           >
-            <div class="col-12" :class="exigeQuantidade && !isEdicao ? 'col-md-6' : 'col-md-12'">
+            <div class="col-12">
               <div class="form-field-stack">
                 <q-select
-                  v-model="form.procedimentoId"
+                  v-if="!isEdicao"
+                  v-model="form.procedimentoIds"
                   class="form-field--required"
+                  :options="opcoesProcedimentos"
+                  label="Procedimentos"
+                  outlined
+                  multiple
+                  use-chips
+                  emit-value
+                  map-options
+                  :rules="[validarProcedimentos]"
+                  :readonly="!podeEditarCampos || camposImutaveis"
+                  :disable="!podeEditarCampos || camposImutaveis"
+                />
+                <q-select
+                  v-else-if="procedimentosNaFormulario[0]"
+                  :model-value="procedimentosNaFormulario[0].procedimentoId"
                   :options="opcoesProcedimentos"
                   label="Procedimento"
                   outlined
                   emit-value
                   map-options
-                  :rules="[validarProcedimento]"
-                  :readonly="!podeEditarCampos || camposImutaveis"
-                  :disable="!podeEditarCampos || camposImutaveis || isEdicao"
+                  readonly
+                  disable
                 />
                 <app-form-dependencia-alerta
                   v-if="mostrarAlertaProcedimentos"
@@ -900,91 +993,113 @@ onMounted(async () => {
                 />
               </div>
             </div>
-            <div v-if="exigeQuantidade && !isEdicao" class="col-12 col-md-6">
+          </div>
+
+          <div
+            v-if="!isEdicao && procedimentosNaFormulario.length > 0"
+            class="q-gutter-md q-mb-md"
+          >
+            <q-card
+              v-for="procedimentoItem in procedimentosNaFormulario"
+              :key="procedimentoItem.procedimentoId"
+              flat
+              bordered
+            >
+              <q-card-section>
+                <div class="text-subtitle2 q-mb-sm">{{ procedimentoItem.nome }}</div>
+
+                <q-input
+                  v-if="procedimentoItem.exigeQuantidade"
+                  v-model.number="procedimentoItem.quantidadeUtilizada"
+                  class="form-field--required q-mb-md"
+                  label="Quantidade do produto aplicado"
+                  outlined
+                  type="number"
+                  step="any"
+                  min="0"
+                  :rules="[() => validarQuantidadeProcedimento(procedimentoItem)]"
+                  :readonly="!podeEditarCampos || camposImutaveis"
+                  @update:model-value="aoAlterarQuantidadeProcedimento(procedimentoItem)"
+                />
+
+                <template v-if="procedimentoItem.procedimento">
+                  <div
+                    v-if="procedimentoItem.procedimento.produtoAplicadoId"
+                    class="q-mb-sm text-body2"
+                  >
+                    <span class="text-weight-medium">Produto aplicado:</span>
+                    {{ procedimentoItem.procedimento.produtoAplicadoNome || '—' }}
+                  </div>
+
+                  <div v-if="procedimentoItem.procedimento.itens.length > 0" class="q-mb-sm">
+                    <div class="text-weight-medium q-mb-xs">Insumos</div>
+                    <q-markup-table flat bordered dense>
+                      <thead>
+                        <tr>
+                          <th class="text-left">Produto</th>
+                          <th class="text-right">Quantidade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="item in procedimentoItem.procedimento.itens"
+                          :key="item.produtoId"
+                        >
+                          <td>{{ item.produtoNome || item.produtoId }}</td>
+                          <td class="text-right">{{ item.quantidade }}</td>
+                        </tr>
+                      </tbody>
+                    </q-markup-table>
+                  </div>
+
+                  <div v-if="procedimentoItem.saldosKit.length > 0">
+                    <div class="text-weight-medium q-mb-xs">Saldo na unidade</div>
+                    <q-markup-table flat bordered dense>
+                      <thead>
+                        <tr>
+                          <th class="text-left">Produto</th>
+                          <th class="text-right">Necessário</th>
+                          <th class="text-right">Disponível</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="item in procedimentoItem.saldosKit"
+                          :key="item.produtoId"
+                        >
+                          <td>{{ item.produtoNome }}</td>
+                          <td class="text-right">
+                            {{ formatarSaldoComUnidade(item.quantidadeNecessaria, item.sigla) }}
+                          </td>
+                          <td class="text-right">
+                            {{
+                              item.saldoAtual !== null
+                                ? formatarSaldoComUnidade(item.saldoAtual, item.sigla)
+                                : '—'
+                            }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </q-markup-table>
+                  </div>
+                </template>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <div
+            v-if="isEdicao && exigeQuantidade && procedimentosNaFormulario[0]"
+            class="row q-col-gutter-md q-mb-md"
+          >
+            <div class="col-12 col-md-6">
               <q-input
-                v-model.number="form.quantidadeUtilizada"
-                class="form-field--required"
-                label="Quantidade do produto aplicado"
-                outlined
-                type="number"
-                step="any"
-                min="0"
-                :hint="hintQuantidade"
-                :rules="[validarQuantidade]"
-                :readonly="!podeEditarCampos || camposImutaveis"
-              />
-            </div>
-            <div v-if="isEdicao && exigeQuantidade" class="col-12 col-md-6">
-              <q-input
-                :model-value="form.quantidadeUtilizada ?? undefined"
+                :model-value="procedimentosNaFormulario[0].quantidadeUtilizada ?? undefined"
                 label="Quantidade utilizada"
                 outlined
                 readonly
               />
             </div>
           </div>
-
-          <q-card
-            v-if="!isEdicao && procedimentoSelecionado"
-            flat
-            bordered
-            class="q-mb-md"
-          >
-            <q-card-section>
-              <div class="text-subtitle2 q-mb-sm">Preview do kit</div>
-
-              <div v-if="procedimentoSelecionado.produtoAplicadoId" class="q-mb-sm">
-                <span class="text-weight-medium">Produto aplicado:</span>
-                {{ procedimentoSelecionado.produtoAplicadoNome || '—' }}
-              </div>
-
-              <div v-if="procedimentoSelecionado.itens.length > 0" class="q-mb-sm">
-                <div class="text-weight-medium q-mb-xs">Insumos</div>
-                <q-markup-table flat bordered dense>
-                  <thead>
-                    <tr>
-                      <th class="text-left">Produto</th>
-                      <th class="text-right">Quantidade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in procedimentoSelecionado.itens" :key="item.produtoId">
-                      <td>{{ item.produtoNome || item.produtoId }}</td>
-                      <td class="text-right">{{ item.quantidade }}</td>
-                    </tr>
-                  </tbody>
-                </q-markup-table>
-              </div>
-
-              <div v-if="saldosKit.length > 0">
-                <div class="text-weight-medium q-mb-xs">Saldo na unidade</div>
-                <q-markup-table flat bordered dense>
-                  <thead>
-                    <tr>
-                      <th class="text-left">Produto</th>
-                      <th class="text-right">Necessário</th>
-                      <th class="text-right">Disponível</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in saldosKit" :key="item.produtoId">
-                      <td>{{ item.produtoNome }}</td>
-                      <td class="text-right">
-                        {{ formatarSaldoComUnidade(item.quantidadeNecessaria, item.sigla) }}
-                      </td>
-                      <td class="text-right">
-                        {{
-                          item.saldoAtual !== null
-                            ? formatarSaldoComUnidade(item.saldoAtual, item.sigla)
-                            : '—'
-                        }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </q-markup-table>
-              </div>
-            </q-card-section>
-          </q-card>
 
           <q-card
             v-if="isEdicao && itensConsumidosExibicao.length > 0"
