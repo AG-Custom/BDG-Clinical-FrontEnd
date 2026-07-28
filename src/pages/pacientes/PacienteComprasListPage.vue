@@ -327,6 +327,17 @@ onMounted(async () => {
           </div>
         </q-card-section>
 
+        <q-card-section v-if="compraSelecionada">
+          <app-entity-audit-section
+            :ativo="dialogVisualizar"
+            :registro-id="compraSelecionada.id"
+            entidade-auditoria="CompraPaciente"
+            :criado-em="compraSelecionada.criadoEm"
+            :atualizado-em="compraSelecionada.atualizadoEm"
+            mostrar-titulo-secao
+          />
+        </q-card-section>
+
         <q-card-actions align="right">
           <q-btn flat label="Fechar" color="primary" no-caps v-close-popup />
         </q-card-actions>

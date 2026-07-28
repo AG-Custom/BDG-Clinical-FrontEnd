@@ -223,6 +223,7 @@ onMounted(() => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar procedimento"
+      entidade-auditoria="Procedimento"
       :registro="procedimentoSelecionado"
     />
 

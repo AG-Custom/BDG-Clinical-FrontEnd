@@ -209,6 +209,7 @@ onMounted(() => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar unidade"
+      entidade-auditoria="Unidade"
       :registro="unidadeSelecionada"
     />
 

@@ -281,6 +281,7 @@ onMounted(() => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar fornecedor"
+      entidade-auditoria="Fornecedor"
       :registro="fornecedorSelecionado"
     />
 

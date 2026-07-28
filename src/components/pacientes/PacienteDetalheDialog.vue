@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import AppEntityAuditSection from '@/components/shared/AppEntityAuditSection.vue';
 import type { Paciente } from '@/types/entidades/paciente';
 import {
   formatarCep,
@@ -11,7 +12,6 @@ import {
   possuiEnderecoPaciente,
   textoOuTraco,
 } from '@/types/entidades/paciente';
-import { formatarDataHoraBrasil } from '@/utils/data-hora';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -42,14 +42,6 @@ const temEndereco = computed(() => possuiEnderecoPaciente(paciente.value?.endere
 
 function fechar(): void {
   emit('update:modelValue', false);
-}
-
-function formatarAuditoria(valor: string | null | undefined): string {
-  if (!valor) {
-    return '—';
-  }
-
-  return formatarDataHoraBrasil(valor);
 }
 </script>
 
@@ -147,26 +139,14 @@ function formatarAuditoria(valor: string | null | undefined): string {
         </section>
 
         <section class="paciente-detalhe__secao">
-          <div class="paciente-detalhe__secao-titulo">Auditoria</div>
-          <div class="paciente-detalhe__auditoria">
-            <div class="paciente-detalhe__auditoria-linha paciente-detalhe__auditoria-linha--criado">
-              <strong>Criado em</strong>
-              <span>
-                <q-icon name="schedule" />
-                {{ formatarAuditoria(paciente.criadoEm) }}
-              </span>
-            </div>
-            <div
-              v-if="paciente.atualizadoEm"
-              class="paciente-detalhe__auditoria-linha paciente-detalhe__auditoria-linha--atualizado"
-            >
-              <strong>Atualizado em</strong>
-              <span>
-                <q-icon name="update" />
-                {{ formatarAuditoria(paciente.atualizadoEm) }}
-              </span>
-            </div>
-          </div>
+          <app-entity-audit-section
+            :ativo="aberto"
+            :registro-id="paciente.id"
+            entidade-auditoria="Paciente"
+            :criado-em="paciente.criadoEm"
+            :atualizado-em="paciente.atualizadoEm"
+            mostrar-titulo-secao
+          />
         </section>
       </q-card-section>
 
@@ -283,11 +263,17 @@ function formatarAuditoria(valor: string | null | undefined): string {
 
     span {
       display: inline-flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: var(--ds-space-2);
       color: var(--ds-text-primary);
       font-size: var(--ds-font-size-sm);
     }
+  }
+
+  &__auditoria-usuario {
+    color: var(--ds-text-secondary);
+    font-size: var(--ds-font-size-sm);
   }
 
   &__auditoria-linha--criado {

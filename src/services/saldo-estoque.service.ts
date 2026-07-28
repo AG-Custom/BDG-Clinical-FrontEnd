@@ -19,6 +19,10 @@ export const saldoEstoqueService = {
       query.produtoId = params.produtoId;
     }
 
+    if (params.tipoProdutoId) {
+      query.tipoProdutoId = params.tipoProdutoId;
+    }
+
     if (params.abaixoDoMinimo) {
       query.abaixoDoMinimo = true;
     }

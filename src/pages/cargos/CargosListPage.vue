@@ -207,6 +207,7 @@ onMounted(() => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar cargo"
+      entidade-auditoria="Cargo"
       :registro="cargoSelecionado"
     />
 

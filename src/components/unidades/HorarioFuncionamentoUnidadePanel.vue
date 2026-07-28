@@ -450,6 +450,7 @@ defineExpose({
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar horário"
+      entidade-auditoria="HorarioFuncionamentoUnidade"
       :registro="horarioVisualizacao"
     />
   </div>

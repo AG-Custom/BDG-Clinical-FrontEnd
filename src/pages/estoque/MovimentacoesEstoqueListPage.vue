@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { movimentacaoEstoqueService } from '@/services/movimentacao-estoque.service';
 import { produtoService } from '@/services/produto.service';
+import { saldoEstoqueService } from '@/services/saldo-estoque.service';
 import { unidadeService } from '@/services/unidade.service';
 import type {
   MovimentacaoEstoque,
@@ -20,8 +21,11 @@ import {
   obterCorTipoMovimentacao,
 } from '@/types/entidades/movimentacao-estoque';
 import type { Produto } from '@/types/entidades/produto';
+import type { SaldoEstoque } from '@/types/entidades/saldo-estoque';
+import { formatarSaldoComUnidade } from '@/types/entidades/saldo-estoque';
 import type { Unidade } from '@/types/entidades/unidade';
 import { formatarMoeda } from '@/types/entidades/pedido-fornecedor';
+import { ordenarPorUnidadeNome } from '@/utils/ordenar-listagem';
 
 const LIMITE_PADRAO = 50;
 
@@ -31,6 +35,7 @@ const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 
 const movimentacoes = ref<MovimentacaoEstoque[]>([]);
+const saldosContexto = ref<SaldoEstoque[]>([]);
 const carregando = ref(true);
 const filtroUnidadeId = ref<string | null>(null);
 const filtroProdutoId = ref<string | null>(null);
@@ -40,9 +45,75 @@ const filtroDataFim = ref('');
 const dialogVisualizar = ref(false);
 const movimentacaoSelecionada = ref<MovimentacaoEstoque | null>(null);
 
+const mostrarInsights = computed(
+  () => Boolean(filtroProdutoId.value || filtroUnidadeId.value),
+);
+
+const valorTotalEstoque = computed(() =>
+  saldosContexto.value.reduce((total, saldo) => total + obterValorEstoque(saldo), 0),
+);
+
+const valorTotalEstoqueFormatado = computed(() => formatarMoeda(valorTotalEstoque.value));
+
+const saldoAtualTotal = computed(() =>
+  saldosContexto.value.reduce((total, saldo) => total + saldo.saldoAtual, 0),
+);
+
+const saldoAtualFormatado = computed(() => {
+  const sigla = saldosContexto.value[0]?.unidadeMedidaSigla ?? '';
+  return formatarSaldoComUnidade(saldoAtualTotal.value, sigla);
+});
+
+const valorUnitarioFormatado = computed(() => {
+  if (saldosContexto.value.length === 0) {
+    return '—';
+  }
+
+  const valores = [
+    ...new Set(
+      saldosContexto.value.map((saldo) =>
+        saldo.valorUnitario != null ? saldo.valorUnitario.toFixed(2) : 'null',
+      ),
+    ),
+  ];
+
+  if (valores.length !== 1 || valores[0] === 'null') {
+    return valores.length > 1 ? 'Variado' : '—';
+  }
+
+  return formatarMoeda(Number(valores[0]));
+});
+
+const totalItensInsight = computed(
+  () => new Set(saldosContexto.value.map((saldo) => saldo.produtoId)).size,
+);
+
+const itensSemPreco = computed(
+  () => saldosContexto.value.filter((saldo) => !saldo.valorUnitario || saldo.valorUnitario <= 0).length,
+);
+
+const itensAbaixoDoMinimo = computed(
+  () => saldosContexto.value.filter((saldo) => saldo.abaixoDoMinimo).length,
+);
+
+const abaixoDoMinimo = computed(() => itensAbaixoDoMinimo.value > 0);
+
+const situacaoEstoque = computed(() => {
+  if (saldosContexto.value.length === 0) {
+    return 'Sem saldo';
+  }
+
+  return abaixoDoMinimo.value ? 'Abaixo do mínimo' : 'OK';
+});
+
+const insightComProduto = computed(() => Boolean(filtroProdutoId.value));
+
+const ajudaValorEstoque =
+  'Usa o preço da última compra recebida; se ainda não houver compra, usa o valor cadastrado no produto. Em medicamentos, o preço é o da embalagem e o sistema calcula o valor do estoque a partir disso.';
+
 const colunas = [
   { name: 'data', label: 'Data', field: 'data', align: 'left' as const, sortable: true },
-  { name: 'unidade', label: 'Unidade', field: 'unidadeNome', align: 'left' as const },
+  { name: 'unidade', label: 'Unidade', field: 'unidadeNome', align: 'left' as const, sortable: true },
   { name: 'produto', label: 'Produto', field: 'produtoNome', align: 'left' as const },
   { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'center' as const },
   { name: 'quantidade', label: 'Quantidade', field: 'quantidade', align: 'right' as const },
@@ -100,23 +171,55 @@ async function carregarFiltros(): Promise<void> {
   }
 }
 
+function obterValorEstoque(saldo: SaldoEstoque): number {
+  if (Number.isFinite(saldo.valorEstoque)) {
+    return saldo.valorEstoque;
+  }
+
+  return saldo.saldoAtual * (saldo.valorUnitario ?? 0);
+}
+
+async function carregarInsights(): Promise<void> {
+  if (!mostrarInsights.value) {
+    saldosContexto.value = [];
+    return;
+  }
+
+  try {
+    saldosContexto.value = await saldoEstoqueService.listar({
+      unidadeId: filtroUnidadeId.value ?? undefined,
+      produtoId: filtroProdutoId.value ?? undefined,
+    });
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+    saldosContexto.value = [];
+  }
+}
+
 async function carregarMovimentacoes(): Promise<void> {
   carregando.value = true;
 
   try {
-    movimentacoes.value = await movimentacaoEstoqueService.listar({
-      unidadeId: filtroUnidadeId.value ?? undefined,
-      produtoId: filtroProdutoId.value ?? undefined,
-      tipo: filtroTipo.value ?? undefined,
-      dataInicio: filtroDataInicio.value ? deDataParaInicioDiaIso(filtroDataInicio.value) : undefined,
-      dataFim: filtroDataFim.value ? deDataParaFimDiaIso(filtroDataFim.value) : undefined,
-      limit: LIMITE_PADRAO,
-    });
+    movimentacoes.value = ordenarPorUnidadeNome(
+      await movimentacaoEstoqueService.listar({
+        unidadeId: filtroUnidadeId.value ?? undefined,
+        produtoId: filtroProdutoId.value ?? undefined,
+        tipo: filtroTipo.value ?? undefined,
+        dataInicio: filtroDataInicio.value ? deDataParaInicioDiaIso(filtroDataInicio.value) : undefined,
+        dataFim: filtroDataFim.value ? deDataParaFimDiaIso(filtroDataFim.value) : undefined,
+        limit: LIMITE_PADRAO,
+      }),
+      (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
+    );
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
     carregando.value = false;
   }
+}
+
+async function aoAlterarFiltroContexto(): Promise<void> {
+  await Promise.all([carregarMovimentacoes(), carregarInsights()]);
 }
 
 function limparFiltros(): void {
@@ -125,6 +228,7 @@ function limparFiltros(): void {
   filtroTipo.value = null;
   filtroDataInicio.value = '';
   filtroDataFim.value = '';
+  saldosContexto.value = [];
 
   if (route.query.unidadeId || route.query.produtoId) {
     void router.replace({ name: 'movimentacoes-estoque' });
@@ -150,14 +254,14 @@ watch(
   () => route.query,
   () => {
     aplicarFiltrosDaUrl();
-    void carregarMovimentacoes();
+    void aoAlterarFiltroContexto();
   },
 );
 
 onMounted(async () => {
   aplicarFiltrosDaUrl();
   await carregarFiltros();
-  await carregarMovimentacoes();
+  await aoAlterarFiltroContexto();
 });
 </script>
 
@@ -167,6 +271,80 @@ onMounted(async () => {
       titulo="Movimentações de estoque"
       subtitulo="Histórico de entradas, saídas, ajustes e perdas."
     />
+
+    <section
+      v-if="mostrarInsights"
+      class="estoque-summary q-mb-md"
+    >
+      <div class="col-summary">
+        <app-metric-card
+          label="Valor em estoque"
+          icon="payments"
+          :valor="valorTotalEstoqueFormatado"
+          :hint="ajudaValorEstoque"
+        />
+      </div>
+      <div
+        v-if="insightComProduto"
+        class="col-summary"
+      >
+        <app-metric-card
+          label="Saldo atual"
+          icon="inventory_2"
+          :valor="saldosContexto.length > 0 ? saldoAtualFormatado : '—'"
+        />
+      </div>
+      <div
+        v-if="insightComProduto"
+        class="col-summary"
+      >
+        <app-metric-card
+          label="Valor unitário"
+          icon="sell"
+          :valor="valorUnitarioFormatado"
+        />
+      </div>
+      <div
+        v-if="insightComProduto"
+        class="col-summary"
+      >
+        <app-metric-card
+          label="Situação"
+          :icon="abaixoDoMinimo ? 'warning' : 'check_circle'"
+          :valor="situacaoEstoque"
+        />
+      </div>
+      <div
+        v-if="!insightComProduto"
+        class="col-summary"
+      >
+        <app-metric-card
+          label="Itens"
+          icon="inventory_2"
+          :valor="totalItensInsight.toLocaleString('pt-BR')"
+        />
+      </div>
+      <div
+        v-if="!insightComProduto"
+        class="col-summary"
+      >
+        <app-metric-card
+          label="Sem preço"
+          icon="money_off"
+          :valor="itensSemPreco.toLocaleString('pt-BR')"
+        />
+      </div>
+      <div
+        v-if="!insightComProduto"
+        class="col-summary"
+      >
+        <app-metric-card
+          label="Abaixo do mínimo"
+          icon="warning"
+          :valor="itensAbaixoDoMinimo.toLocaleString('pt-BR')"
+        />
+      </div>
+    </section>
 
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
@@ -180,7 +358,7 @@ onMounted(async () => {
               dense
               emit-value
               map-options
-              @update:model-value="carregarMovimentacoes"
+              @update:model-value="aoAlterarFiltroContexto"
             />
           </div>
           <div class="col-12 col-md-3">
@@ -192,7 +370,7 @@ onMounted(async () => {
               dense
               emit-value
               map-options
-              @update:model-value="carregarMovimentacoes"
+              @update:model-value="aoAlterarFiltroContexto"
             />
           </div>
           <div class="col-12 col-md-2">
@@ -342,7 +520,33 @@ onMounted(async () => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar movimentação"
+      entidade-auditoria="MovimentacaoEstoque"
       :registro="movimentacaoSelecionada"
     />
   </q-page>
 </template>
+
+<style scoped lang="scss">
+.estoque-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+  align-items: stretch;
+}
+
+.col-summary {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .estoque-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .estoque-summary {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

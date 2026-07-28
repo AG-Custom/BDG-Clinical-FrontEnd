@@ -197,6 +197,7 @@ onMounted(() => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar sintoma"
+      entidade-auditoria="Sintoma"
       :registro="sintomaSelecionado"
     />
 

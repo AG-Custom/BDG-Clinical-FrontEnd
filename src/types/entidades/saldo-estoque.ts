@@ -25,11 +25,14 @@ export interface SaldoLoteEstoque {
   unidadeMedidaSigla: string;
   fatorEmbalagemParaEstoque: number | null;
   saldoEmbalagem: number | null;
+  unidadeEmbalagemNome?: string | null;
+  unidadeEmbalagemSigla?: string | null;
 }
 
 export interface ListarSaldosEstoqueParams {
   unidadeId?: string;
   produtoId?: string;
+  tipoProdutoId?: string;
   abaixoDoMinimo?: boolean;
   search?: string;
   limit?: number;

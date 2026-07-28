@@ -18,6 +18,10 @@ export const movimentacaoEstoqueService = {
       query.produtoId = params.produtoId;
     }
 
+    if (params.loteProdutoId) {
+      query.loteProdutoId = params.loteProdutoId;
+    }
+
     if (params.tipo) {
       query.tipo = params.tipo;
     }

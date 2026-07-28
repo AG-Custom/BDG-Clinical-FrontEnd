@@ -143,6 +143,16 @@ q-page.page-content (padding)
 
 ---
 
+## Modal Visualizar (listagem CRUD)
+
+Ação **Visualizar** na tabela → dialog de detalhes (não navega para outra rota).
+
+- Componente padrão: `AppEntityDetailsDialog` + prop `entidade-auditoria` (ver `.cursor/rules/22-auditoria-visualizar.mdc`).
+- Modais dedicados: incluir `AppEntityAuditSection` com as mesmas props.
+- Auditoria obrigatória: data + `· por {usuário}`.
+
+---
+
 ## Erro 404
 
 ```
@@ -182,3 +192,4 @@ q-page (centralizado)
 5. Consumir tokens — zero hex hardcoded
 6. Reutilizar componentes App* existentes
 7. Validar responsividade nos breakpoints sm e md
+8. Se houver Visualizar: auditoria com usuário conforme regra `22-auditoria-visualizar.mdc`

@@ -22,6 +22,7 @@ import {
   obterNivelSaldoCompra,
 } from '@/types/entidades/compra-paciente';
 import type { Paciente } from '@/types/entidades/paciente';
+import { ordenarPorUnidadeNome } from '@/utils/ordenar-listagem';
 
 const route = useRoute();
 const router = useRouter();
@@ -88,10 +89,13 @@ async function carregarCompras(): Promise<void> {
   carregando.value = true;
 
   try {
-    compras.value = await compraPacienteService.listar({
-      pacienteId: filtroPacienteId.value ?? undefined,
-      status: filtroStatus.value ?? undefined,
-    });
+    compras.value = ordenarPorUnidadeNome(
+      await compraPacienteService.listar({
+        pacienteId: filtroPacienteId.value ?? undefined,
+        status: filtroStatus.value ?? undefined,
+      }),
+      (a, b) => new Date(b.dataCompra).getTime() - new Date(a.dataCompra).getTime(),
+    );
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -372,6 +376,17 @@ onMounted(async () => {
               </tbody>
             </q-markup-table>
           </div>
+        </q-card-section>
+
+        <q-card-section v-if="compraSelecionada">
+          <app-entity-audit-section
+            :ativo="dialogVisualizar"
+            :registro-id="compraSelecionada.id"
+            entidade-auditoria="CompraPaciente"
+            :criado-em="compraSelecionada.criadoEm"
+            :atualizado-em="compraSelecionada.atualizadoEm"
+            mostrar-titulo-secao
+          />
         </q-card-section>
 
         <q-card-actions align="right">

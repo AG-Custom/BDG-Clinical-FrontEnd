@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import AppEntityAuditSection from '@/components/shared/AppEntityAuditSection.vue';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
@@ -487,14 +488,16 @@ watch(
 
       <q-separator />
 
-      <q-card-section class="agendamento-detalhe__meta">
-        <span>Criado por {{ agendamento.criadoPorNome }}</span>
-        <span class="agendamento-detalhe__meta-sep" aria-hidden="true">·</span>
-        <span>{{ formatarDataHoraAgendamento(agendamento.criadoEm) }}</span>
-        <template v-if="agendamento.atualizadoEm">
-          <span class="agendamento-detalhe__meta-sep" aria-hidden="true">·</span>
-          <span>Atualizado em {{ formatarDataHoraAgendamento(agendamento.atualizadoEm) }}</span>
-        </template>
+      <q-card-section v-if="agendamento" class="agendamento-detalhe__auditoria">
+        <app-entity-audit-section
+          :ativo="modelValue"
+          :registro-id="agendamento.id"
+          entidade-auditoria="Agendamento"
+          :criado-em="agendamento.criadoEm"
+          :atualizado-em="agendamento.atualizadoEm"
+          :id-usuario-criacao-fallback="agendamento.criadoPorId"
+          mostrar-titulo-secao
+        />
       </q-card-section>
 
       <q-card-actions v-if="podeEditar" class="agendamento-detalhe__acoes">

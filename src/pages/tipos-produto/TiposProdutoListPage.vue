@@ -214,6 +214,7 @@ onMounted(() => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar tipo de produto"
+      entidade-auditoria="TipoProduto"
       :registro="tipoSelecionado"
     />
 

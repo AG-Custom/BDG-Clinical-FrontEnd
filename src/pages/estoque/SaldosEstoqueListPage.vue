@@ -6,20 +6,30 @@ import { isRequisicaoCancelada, useBuscaRemota } from '@/composables/useBuscaRem
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
+import { movimentacaoEstoqueService } from '@/services/movimentacao-estoque.service';
 import { saldoEstoqueService } from '@/services/saldo-estoque.service';
+import { tipoProdutoService } from '@/services/tipo-produto.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { SaldoEstoque, SaldoLoteEstoque } from '@/types/entidades/saldo-estoque';
 import {
   formatarSaldoComUnidade,
   obterChaveSaldoEstoque,
 } from '@/types/entidades/saldo-estoque';
+import type { MovimentacaoEstoque } from '@/types/entidades/movimentacao-estoque';
 import {
+  formatarDataMovimentacao,
+  formatarMotivoMovimentacao,
   formatarOrigemMovimentacao,
   obterCorOrigemEntrada,
+  obterCorTipoMovimentacao,
 } from '@/types/entidades/movimentacao-estoque';
+import { compararTextoPt, ordenarPorUnidadeNome } from '@/utils/ordenar-listagem';
 
 const LIMITE_BUSCA = 20;
 const MIN_CARACTERES_BUSCA = 2;
+const LIMITE_MOVIMENTACOES_LOTE = 200;
+
+type VisaoLotes = 'lista' | 'detalhe';
 
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -30,12 +40,19 @@ const carregando = ref(true);
 const termoBusca = ref('');
 const filtroUnidadeId = ref<string | null>(null);
 const filtroProdutoId = ref<string | null>(null);
+const filtroTipoProdutoId = ref<string | null>(null);
 const apenasAbaixoDoMinimo = ref(false);
+const tipoProdutoPorProdutoId = ref(new Map<string, string>());
+const embalagemPorProdutoId = ref(new Map<string, string>());
 const dialogVisualizar = ref(false);
 const dialogLotes = ref(false);
 const saldoSelecionado = ref<SaldoEstoque | null>(null);
 const lotesSaldo = ref<SaldoLoteEstoque[]>([]);
 const carregandoLotes = ref(false);
+const visaoLotes = ref<VisaoLotes>('lista');
+const loteSelecionado = ref<SaldoLoteEstoque | null>(null);
+const movimentacoesLote = ref<MovimentacaoEstoque[]>([]);
+const carregandoMovimentacoesLote = ref(false);
 
 const colunas = [
   { name: 'unidade', label: 'Unidade', field: 'unidadeNome', align: 'left' as const, sortable: true },
@@ -57,6 +74,10 @@ const opcoesProdutosFiltro = ref<{ label: string; value: string | null }[]>([
   { label: 'Todos os produtos', value: null },
 ]);
 
+const opcoesTiposFiltro = ref<{ label: string; value: string | null }[]>([
+  { label: 'Todos os tipos', value: null },
+]);
+
 const totalProdutos = computed(() => new Set(saldos.value.map((saldo) => saldo.produtoId)).size);
 const totalUnidades = computed(() => new Set(saldos.value.map((saldo) => saldo.unidadeId)).size);
 const itensSemPreco = computed(
@@ -73,15 +94,28 @@ const ajudaValorTotalEstoque =
 async function buscarSaldos(termo: string, signal?: AbortSignal): Promise<void> {
   const termoNormalizado = termo.trim();
   const usarBusca = termoNormalizado.length >= MIN_CARACTERES_BUSCA;
+  const tipoSelecionado = filtroTipoProdutoId.value;
 
-  saldos.value = await saldoEstoqueService.listar({
+  const lista = await saldoEstoqueService.listar({
     unidadeId: filtroUnidadeId.value ?? undefined,
     produtoId: filtroProdutoId.value ?? undefined,
+    tipoProdutoId: tipoSelecionado ?? undefined,
     abaixoDoMinimo: apenasAbaixoDoMinimo.value || undefined,
     search: usarBusca ? termoNormalizado : undefined,
     limit: usarBusca ? LIMITE_BUSCA : undefined,
     signal,
   });
+
+  const filtrada =
+    !tipoSelecionado || tipoProdutoPorProdutoId.value.size === 0
+      ? lista
+      : lista.filter(
+          (saldo) => tipoProdutoPorProdutoId.value.get(saldo.produtoId) === tipoSelecionado,
+        );
+
+  saldos.value = ordenarPorUnidadeNome(filtrada, (a, b) =>
+    compararTextoPt(a.produtoNome, b.produtoNome),
+  );
 }
 
 async function carregarSaldos(): Promise<void> {
@@ -116,9 +150,10 @@ useBuscaRemota(
 
 async function carregarFiltros(): Promise<void> {
   try {
-    const [listaUnidades, listaProdutos] = await Promise.all([
+    const [listaUnidades, listaProdutos, listaTipos] = await Promise.all([
       unidadeService.listar(true),
       produtoService.listar({ includeInactive: true }),
+      tipoProdutoService.listar(true),
     ]);
 
     opcoesUnidadesFiltro.value = [
@@ -129,11 +164,32 @@ async function carregarFiltros(): Promise<void> {
       })),
     ];
 
+    tipoProdutoPorProdutoId.value = new Map(
+      listaProdutos.map((produto) => [produto.id, produto.tipoProdutoId]),
+    );
+
+    embalagemPorProdutoId.value = new Map(
+      listaProdutos
+        .filter((produto) => produto.unidadeEmbalagemNome || produto.unidadeEmbalagemSigla)
+        .map((produto) => [
+          produto.id,
+          (produto.unidadeEmbalagemNome ?? produto.unidadeEmbalagemSigla) as string,
+        ]),
+    );
+
     opcoesProdutosFiltro.value = [
       { label: 'Todos os produtos', value: null },
       ...listaProdutos.map((produto) => ({
         label: produto.ativo ? produto.nome : `${produto.nome} (inativo)`,
         value: produto.id,
+      })),
+    ];
+
+    opcoesTiposFiltro.value = [
+      { label: 'Todos os tipos', value: null },
+      ...listaTipos.map((tipo) => ({
+        label: tipo.ativo ? tipo.nome : `${tipo.nome} (inativo)`,
+        value: tipo.id,
       })),
     ];
   } catch (error) {
@@ -158,6 +214,9 @@ function abrirDialogVisualizar(saldo: SaldoEstoque): void {
 
 async function abrirDialogLotes(saldo: SaldoEstoque): Promise<void> {
   saldoSelecionado.value = saldo;
+  visaoLotes.value = 'lista';
+  loteSelecionado.value = null;
+  movimentacoesLote.value = [];
   dialogLotes.value = true;
   carregandoLotes.value = true;
 
@@ -174,11 +233,103 @@ async function abrirDialogLotes(saldo: SaldoEstoque): Promise<void> {
   }
 }
 
+function filtrarMovimentacoesDoLote(
+  movimentacoes: MovimentacaoEstoque[],
+  lote: SaldoLoteEstoque,
+): MovimentacaoEstoque[] {
+  return movimentacoes.filter((movimentacao) => {
+    if (movimentacao.loteProdutoId) {
+      return movimentacao.loteProdutoId === lote.loteProdutoId;
+    }
+
+    return Boolean(movimentacao.loteCodigo) && movimentacao.loteCodigo === lote.codigo;
+  });
+}
+
+async function abrirLoteCompleto(lote: SaldoLoteEstoque): Promise<void> {
+  loteSelecionado.value = lote;
+  visaoLotes.value = 'detalhe';
+  carregandoMovimentacoesLote.value = true;
+  movimentacoesLote.value = [];
+
+  try {
+    const movimentacoes = await movimentacaoEstoqueService.listar({
+      unidadeId: lote.unidadeId,
+      produtoId: lote.produtoId,
+      loteProdutoId: lote.loteProdutoId,
+      limit: LIMITE_MOVIMENTACOES_LOTE,
+    });
+
+    movimentacoesLote.value = filtrarMovimentacoesDoLote(movimentacoes, lote);
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+    movimentacoesLote.value = [];
+  } finally {
+    carregandoMovimentacoesLote.value = false;
+  }
+}
+
+function voltarListaLotes(): void {
+  visaoLotes.value = 'lista';
+  loteSelecionado.value = null;
+  movimentacoesLote.value = [];
+}
+
+function formatarQuantidadeEmbalagemMovimentacao(movimentacao: MovimentacaoEstoque): string {
+  if (movimentacao.quantidadeEmbalagem == null || !loteSelecionado.value) {
+    return '—';
+  }
+
+  const quantidade = movimentacao.quantidadeEmbalagem.toLocaleString('pt-BR');
+  const rotulo = obterRotuloEmbalagem(loteSelecionado.value);
+
+  if (!rotulo) {
+    return quantidade;
+  }
+
+  const rotuloPlural =
+    Math.abs(movimentacao.quantidadeEmbalagem) === 1 || rotulo.endsWith('s')
+      ? rotulo
+      : `${rotulo}s`;
+
+  return `${quantidade} ${rotuloPlural}`;
+}
+
 function validadeProxima(dataValidade: string): boolean {
   const validade = new Date(`${dataValidade}T00:00:00`);
   const limite = new Date();
   limite.setDate(limite.getDate() + 60);
   return validade <= limite;
+}
+
+function obterRotuloEmbalagem(lote: SaldoLoteEstoque): string {
+  const rotulo =
+    lote.unidadeEmbalagemNome?.trim()
+    || lote.unidadeEmbalagemSigla?.trim()
+    || embalagemPorProdutoId.value.get(lote.produtoId)?.trim()
+    || '';
+
+  return rotulo.toLowerCase();
+}
+
+function formatarSaldoEmbalagem(lote: SaldoLoteEstoque): string {
+  if (lote.saldoEmbalagem == null) {
+    return '—';
+  }
+
+  const quantidade = lote.saldoEmbalagem.toLocaleString('pt-BR');
+  const rotulo = obterRotuloEmbalagem(lote);
+
+  if (!rotulo) {
+    return quantidade;
+  }
+
+  const rotuloPlural =
+    Math.abs(lote.saldoEmbalagem) === 1 || rotulo.endsWith('s')
+      ? rotulo
+      : `${rotulo}s`;
+
+  return `${quantidade} ${rotuloPlural}`;
 }
 
 function obterValorEstoque(saldo: SaldoEstoque): number {
@@ -244,7 +395,7 @@ onMounted(async () => {
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-3">
             <q-input
               v-model="termoBusca"
               label="Buscar por produto"
@@ -258,11 +409,23 @@ onMounted(async () => {
               </template>
             </q-input>
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <q-select
               v-model="filtroUnidadeId"
               :options="opcoesUnidadesFiltro"
               label="Unidade"
+              outlined
+              dense
+              emit-value
+              map-options
+              @update:model-value="carregarSaldos"
+            />
+          </div>
+          <div class="col-12 col-md-2">
+            <q-select
+              v-model="filtroTipoProdutoId"
+              :options="opcoesTiposFiltro"
+              label="Tipo de produto"
               outlined
               dense
               emit-value
@@ -410,61 +573,178 @@ onMounted(async () => {
       :registro="saldoSelecionado"
     />
 
-    <q-dialog v-model="dialogLotes">
-      <q-card style="min-width: 480px; max-width: 640px">
-        <q-card-section>
-          <div class="text-h6">Lotes — {{ saldoSelecionado?.produtoNome }}</div>
-          <div class="text-caption" style="color: var(--ds-text-secondary)">
-            {{ saldoSelecionado?.unidadeNome }}
-          </div>
-        </q-card-section>
+    <q-dialog v-model="dialogLotes" @hide="voltarListaLotes">
+      <q-card
+        :style="
+          visaoLotes === 'detalhe'
+            ? 'min-width: 640px; max-width: 900px; width: 90vw'
+            : 'min-width: 480px; max-width: 720px'
+        "
+      >
+        <template v-if="visaoLotes === 'lista'">
+          <q-card-section>
+            <div class="text-h6">Lotes — {{ saldoSelecionado?.produtoNome }}</div>
+            <div class="text-caption" style="color: var(--ds-text-secondary)">
+              {{ saldoSelecionado?.unidadeNome }}
+            </div>
+          </q-card-section>
 
-        <q-card-section v-if="carregandoLotes">
-          Carregando lotes...
-        </q-card-section>
+          <q-card-section v-if="carregandoLotes">
+            Carregando lotes...
+          </q-card-section>
 
-        <q-card-section v-else-if="lotesSaldo.length === 0">
-          Nenhum lote com saldo para este produto na unidade.
-        </q-card-section>
+          <q-card-section v-else-if="lotesSaldo.length === 0">
+            Nenhum lote com saldo para este produto na unidade.
+          </q-card-section>
 
-        <q-markup-table v-else flat bordered>
-          <thead>
-            <tr>
-              <th class="text-left">Lote</th>
-              <th class="text-left">Validade</th>
-              <th class="text-right">Saldo</th>
-              <th class="text-right">Embalagens</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="lote in lotesSaldo" :key="lote.loteProdutoId">
-              <td>{{ lote.codigo }}</td>
-              <td>
-                {{ lote.dataValidade }}
-                <q-badge
-                  v-if="validadeProxima(lote.dataValidade)"
-                  color="warning"
-                  label="Próximo"
-                  class="q-ml-sm"
-                />
-              </td>
-              <td class="text-right">
-                {{ formatarSaldoComUnidade(lote.saldoAtual, lote.unidadeMedidaSigla) }}
-              </td>
-              <td class="text-right">
-                {{
-                  lote.saldoEmbalagem != null
-                    ? lote.saldoEmbalagem.toLocaleString('pt-BR')
-                    : '—'
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </q-markup-table>
+          <q-markup-table v-else flat bordered>
+            <thead>
+              <tr>
+                <th class="text-left">Lote</th>
+                <th class="text-left">Validade</th>
+                <th class="text-right">Saldo</th>
+                <th class="text-right">Embalagens</th>
+                <th class="text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="lote in lotesSaldo" :key="lote.loteProdutoId">
+                <td>{{ lote.codigo }}</td>
+                <td>
+                  {{ lote.dataValidade }}
+                  <q-badge
+                    v-if="validadeProxima(lote.dataValidade)"
+                    color="warning"
+                    label="Próximo"
+                    class="q-ml-sm"
+                  />
+                </td>
+                <td class="text-right">
+                  {{ formatarSaldoComUnidade(lote.saldoAtual, lote.unidadeMedidaSigla) }}
+                </td>
+                <td class="text-right">
+                  {{ formatarSaldoEmbalagem(lote) }}
+                </td>
+                <td class="text-right">
+                  <q-btn
+                    flat
+                    dense
+                    color="primary"
+                    label="Visualizar lote completo"
+                    no-caps
+                    @click="abrirLoteCompleto(lote)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Fechar" color="primary" no-caps v-close-popup />
-        </q-card-actions>
+          <q-card-actions align="right">
+            <q-btn flat label="Fechar" color="primary" no-caps v-close-popup />
+          </q-card-actions>
+        </template>
+
+        <template v-else-if="loteSelecionado">
+          <q-card-section>
+            <div class="text-h6">Lote {{ loteSelecionado.codigo }}</div>
+            <div class="text-caption" style="color: var(--ds-text-secondary)">
+              {{ loteSelecionado.produtoNome }} — {{ loteSelecionado.unidadeNome }}
+            </div>
+          </q-card-section>
+
+          <q-card-section class="q-pt-none">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-sm-4">
+                <div class="text-caption" style="color: var(--ds-text-secondary)">Validade</div>
+                <div>
+                  {{ loteSelecionado.dataValidade }}
+                  <q-badge
+                    v-if="validadeProxima(loteSelecionado.dataValidade)"
+                    color="warning"
+                    label="Próximo"
+                    class="q-ml-sm"
+                  />
+                </div>
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="text-caption" style="color: var(--ds-text-secondary)">Saldo</div>
+                <div>
+                  {{
+                    formatarSaldoComUnidade(
+                      loteSelecionado.saldoAtual,
+                      loteSelecionado.unidadeMedidaSigla,
+                    )
+                  }}
+                </div>
+              </div>
+              <div class="col-12 col-sm-4">
+                <div class="text-caption" style="color: var(--ds-text-secondary)">Embalagens</div>
+                <div>{{ formatarSaldoEmbalagem(loteSelecionado) }}</div>
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section>
+            <div class="text-subtitle2 q-mb-sm">Movimentações vinculadas</div>
+
+            <div v-if="carregandoMovimentacoesLote">
+              Carregando movimentações...
+            </div>
+
+            <div v-else-if="movimentacoesLote.length === 0">
+              Nenhuma movimentação vinculada a este lote.
+            </div>
+
+            <q-markup-table v-else flat bordered>
+              <thead>
+                <tr>
+                  <th class="text-left">Data</th>
+                  <th class="text-left">Tipo</th>
+                  <th class="text-left">Motivo</th>
+                  <th class="text-right">Quantidade</th>
+                  <th class="text-right">Embalagens</th>
+                  <th class="text-left">Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="movimentacao in movimentacoesLote"
+                  :key="movimentacao.id"
+                >
+                  <td>{{ formatarDataMovimentacao(movimentacao.data) }}</td>
+                  <td>
+                    <q-badge
+                      :color="obterCorTipoMovimentacao(movimentacao.tipo)"
+                      :label="movimentacao.tipo"
+                    />
+                  </td>
+                  <td>
+                    {{ formatarMotivoMovimentacao(movimentacao.motivo, movimentacao.origem) }}
+                  </td>
+                  <td class="text-right">
+                    {{
+                      formatarSaldoComUnidade(
+                        movimentacao.quantidade,
+                        loteSelecionado.unidadeMedidaSigla,
+                      )
+                    }}
+                  </td>
+                  <td class="text-right">
+                    {{ formatarQuantidadeEmbalagemMovimentacao(movimentacao) }}
+                  </td>
+                  <td>{{ movimentacao.observacao || '—' }}</td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card-section>
+
+          <q-card-actions align="right">
+            <q-btn flat label="Voltar" color="primary" no-caps @click="voltarListaLotes" />
+            <q-btn flat label="Fechar" color="primary" no-caps v-close-popup />
+          </q-card-actions>
+        </template>
       </q-card>
     </q-dialog>
   </q-page>

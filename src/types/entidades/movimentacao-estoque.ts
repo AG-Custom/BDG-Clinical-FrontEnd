@@ -48,6 +48,7 @@ export interface MovimentacaoEstoque {
 export interface ListarMovimentacoesEstoqueParams {
   unidadeId?: string;
   produtoId?: string;
+  loteProdutoId?: string;
   tipo?: TipoMovimentacaoEstoque;
   dataInicio?: string;
   dataFim?: string;

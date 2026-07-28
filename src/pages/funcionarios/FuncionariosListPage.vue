@@ -295,6 +295,7 @@ onMounted(async () => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar funcionário"
+      entidade-auditoria="Funcionario"
       :registro="funcionarioSelecionado"
     />
 

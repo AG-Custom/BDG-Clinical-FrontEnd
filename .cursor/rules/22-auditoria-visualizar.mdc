@@ -1,0 +1,61 @@
+---
+description: Auditoria nos modais Visualizar — usuário de criação e alteração em tempo real
+alwaysApply: true
+---
+
+# Auditoria em modais “Visualizar”
+
+## Objetivo
+
+Todo fluxo **Visualizar** / **Detalhar** deve permitir identificar **quem criou** e **quem alterou** o registro, com nome do usuário **resolvido em tempo real** (não usar snapshot de nome no DTO).
+
+## Regra obrigatória
+
+1. A seção **Auditoria** exibe:
+   - **Criado em** + `· por {nome}` quando houver usuário no log.
+   - **Atualizado em** + `· por {nome}` quando houver `atualizadoEm` e log de mutação.
+2. IDs vêm de `GET /api/audit/summary` (`idUsuarioCriacao`, `idUsuarioAtualizacao`).
+3. Nomes vêm de `POST /api/users/display-names` (consulta atual em `Usuario.Nome`).
+4. A prop `entidadeAuditoria` deve ser o **`nameof` da entidade no backend** (ex.: `Produto`, `Paciente`, `CompraPaciente`).
+
+## Como implementar no front
+
+| Cenário | O que usar |
+|--------|------------|
+| Listagem CRUD genérica | [`AppEntityDetailsDialog`](src/components/shared/AppEntityDetailsDialog.vue) com `entidade-auditoria` + registro com `id`, `criadoEm`, `atualizadoEm`. |
+| Modal dedicado (paciente, agendamento, compra, etc.) | [`AppEntityAuditSection`](src/components/shared/AppEntityAuditSection.vue) com `:ativo` do dialog, `registro-id`, `entidade-auditoria`, datas do DTO. |
+| Lógica reutilizável | Composable [`useAuditoriaUsuariosEntidade`](src/composables/useAuditoriaUsuariosEntidade.ts) (já usado pelo `AppEntityAuditSection`). |
+
+### Props mínimas do `AppEntityAuditSection`
+
+- `ativo` — dialog aberto.
+- `registro-id` — GUID do registro.
+- `entidade-auditoria` — string do domínio (tabela de mapeamento em `.cursor/docs/auditoria-visualizar.md`).
+- `criado-em` / `atualizado-em` — do DTO da listagem.
+- `id-usuario-criacao-fallback` — opcional (ex.: `criadoPorId` em `Agendamento`).
+
+## UX e performance
+
+- Sem spinner na seção; sufixo `· carregando…` só no nome.
+- `transition-show="none"` no dialog (já padrão do projeto).
+- Abort da request ao fechar o modal.
+- **Não** cachear nomes de usuário no cliente (renomeação deve refletir ao reabrir).
+
+## Exceções documentadas
+
+| Tela | Motivo |
+|------|--------|
+| Saldo de estoque (agregado) | Sem `id` de entidade nem `LogAuditoria` por linha; só datas se existirem no payload. |
+| Horário de funcionamento | Sem `RegisterEntityChange` no backend hoje; manter `entidade-auditoria` para quando houver log. |
+
+## Checklist de merge (Visualizar)
+
+- [ ] Seção Auditoria com datas **e** usuário (ou `· —` se ID sem usuário no tenant).
+- [ ] `entidade-auditoria` alinhada ao backend.
+- [ ] Modal novo usa `AppEntityAuditSection` ou `AppEntityDetailsDialog` — não duplicar HTML de auditoria.
+- [ ] Backend com API de auditoria publicada (`/api/audit/summary`, `/api/users/display-names`).
+
+## Referência
+
+- Detalhes e tabela entidade → tela: [`.cursor/docs/auditoria-visualizar.md`](.cursor/docs/auditoria-visualizar.md)
+- Backend: `LogAuditoria` + regra `21-soft-delete-auditoria.mdc` no repositório BDG-Clinical.

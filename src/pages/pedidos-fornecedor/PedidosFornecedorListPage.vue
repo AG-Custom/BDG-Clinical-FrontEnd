@@ -25,6 +25,7 @@ import {
 } from '@/types/entidades/pedido-fornecedor';
 import type { Produto } from '@/types/entidades/produto';
 import type { Unidade } from '@/types/entidades/unidade';
+import { ordenarPorUnidadeNome } from '@/utils/ordenar-listagem';
 
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -124,11 +125,14 @@ async function carregarPedidos(): Promise<void> {
   carregando.value = true;
 
   try {
-    pedidos.value = await pedidoFornecedorService.listar({
-      status: filtroStatus.value ?? undefined,
-      fornecedorId: filtroFornecedorId.value ?? undefined,
-      unidadeId: filtroUnidadeId.value ?? undefined,
-    });
+    pedidos.value = ordenarPorUnidadeNome(
+      await pedidoFornecedorService.listar({
+        status: filtroStatus.value ?? undefined,
+        fornecedorId: filtroFornecedorId.value ?? undefined,
+        unidadeId: filtroUnidadeId.value ?? undefined,
+      }),
+      (a, b) => new Date(b.dataPedido).getTime() - new Date(a.dataPedido).getTime(),
+    );
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {
@@ -407,6 +411,7 @@ onMounted(async () => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar pedido"
+      entidade-auditoria="PedidoFornecedor"
       :registro="pedidoSelecionado"
     />
 

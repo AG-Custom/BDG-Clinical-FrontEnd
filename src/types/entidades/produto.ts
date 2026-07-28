@@ -62,4 +62,7 @@ export interface AtualizarProdutoRequest {
 export interface ListarProdutosParams {
   tipoProdutoId?: string;
   includeInactive?: boolean;
+  search?: string;
+  limit?: number;
+  signal?: AbortSignal;
 }

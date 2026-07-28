@@ -9,7 +9,7 @@ import type {
 
 export const produtoService = {
   async listar(params: ListarProdutosParams = {}): Promise<Produto[]> {
-    const query: Record<string, string | boolean> = {};
+    const query: Record<string, string | boolean | number> = {};
 
     if (params.tipoProdutoId) {
       query.tipoProdutoId = params.tipoProdutoId;
@@ -19,8 +19,17 @@ export const produtoService = {
       query.includeInactive = true;
     }
 
+    if (params.search?.trim()) {
+      query.search = params.search.trim();
+    }
+
+    if (params.limit) {
+      query.limit = params.limit;
+    }
+
     const { data } = await api.get<ApiResponse<Produto[]>>('/api/products', {
       params: Object.keys(query).length > 0 ? query : undefined,
+      signal: params.signal,
     });
 
     return data.data ?? [];

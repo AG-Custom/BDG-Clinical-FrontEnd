@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { permissoes } from '@/constants/permissoes';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
+import { isRequisicaoCancelada, useBuscaRemota } from '@/composables/useBuscaRemota';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
@@ -12,6 +13,9 @@ import { tipoProdutoService } from '@/services/tipo-produto.service';
 import type { Produto } from '@/types/entidades/produto';
 import type { TipoProduto } from '@/types/entidades/tipo-produto';
 import { formatarMoeda } from '@/types/entidades/pedido-fornecedor';
+
+const LIMITE_BUSCA = 20;
+const MIN_CARACTERES_BUSCA = 2;
 
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -25,6 +29,7 @@ const tiposProduto = ref<TipoProduto[]>([]);
 const carregando = ref(true);
 const incluirInativos = ref(false);
 const filtroTipoProdutoId = ref<string | null>(null);
+const termoBusca = ref('');
 const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
@@ -107,20 +112,60 @@ async function carregarTiposProduto(): Promise<void> {
   }
 }
 
+async function buscarProdutos(termo: string, signal?: AbortSignal): Promise<void> {
+  const termoNormalizado = termo.trim();
+  const usarBusca = termoNormalizado.length >= MIN_CARACTERES_BUSCA;
+
+  const lista = await produtoService.listar({
+    tipoProdutoId: filtroTipoProdutoId.value ?? undefined,
+    includeInactive: incluirInativos.value,
+    search: usarBusca ? termoNormalizado : undefined,
+    limit: usarBusca ? LIMITE_BUSCA : undefined,
+    signal,
+  });
+
+  if (!usarBusca) {
+    produtos.value = lista;
+    return;
+  }
+
+  const termoLower = termoNormalizado.toLocaleLowerCase('pt-BR');
+  produtos.value = lista.filter((produto) =>
+    produto.nome.toLocaleLowerCase('pt-BR').includes(termoLower),
+  );
+}
+
 async function carregarProdutos(): Promise<void> {
   carregando.value = true;
 
   try {
-    produtos.value = await produtoService.listar({
-      tipoProdutoId: filtroTipoProdutoId.value ?? undefined,
-      includeInactive: incluirInativos.value,
-    });
+    await buscarProdutos(termoBusca.value);
   } catch (error) {
-    notificacao.erro(obterMensagem(error));
+    if (!isRequisicaoCancelada(error)) {
+      notificacao.erro(obterMensagem(error));
+    }
   } finally {
     carregando.value = false;
   }
 }
+
+useBuscaRemota(
+  termoBusca,
+  async (termo, signal) => {
+    carregando.value = true;
+
+    try {
+      await buscarProdutos(termo, signal);
+    } catch (error) {
+      if (!isRequisicaoCancelada(error)) {
+        notificacao.erro(obterMensagem(error));
+      }
+    } finally {
+      carregando.value = false;
+    }
+  },
+  { minCaracteres: MIN_CARACTERES_BUSCA, debounceMs: 300 },
+);
 
 function abrirDialogVisualizar(produto: Produto): void {
   produtoSelecionado.value = produto;
@@ -207,7 +252,21 @@ onMounted(async () => {
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
+            <q-input
+              v-model="termoBusca"
+              label="Buscar por produto"
+              outlined
+              dense
+              clearable
+              :loading="carregando"
+            >
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 col-md-4">
             <q-select
               v-model="filtroTipoProdutoId"
               :options="opcoesTiposFiltro"
@@ -219,7 +278,7 @@ onMounted(async () => {
               @update:model-value="carregarProdutos"
             />
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
             <q-toggle
               v-model="incluirInativos"
               label="Incluir inativos"
@@ -338,6 +397,7 @@ onMounted(async () => {
     <app-entity-details-dialog
       v-model="dialogVisualizar"
       titulo="Detalhar produto"
+      entidade-auditoria="Produto"
       :registro="produtoSelecionado"
     />
 
