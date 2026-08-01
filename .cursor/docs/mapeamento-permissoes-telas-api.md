@@ -1,4 +1,4 @@
-# Mapeamento de permissões — Telas × APIs (BGD Clinical Frontend)
+# Mapeamento de permissões — Telas × APIs (AG Clinical Frontend)
 
 Documento gerado a partir da análise do código em `src/router`, páginas, services, `MainLayout`, boot e `.cursor/docs/api-backend-contexto.md`.
 
@@ -903,4 +903,4 @@ Ao implementar uma feature nova, já documentar no mesmo formato:
 - Telas só em modal (agenda) aparecem como subseção da rota pai.
 - Módulo licenciado (AGENDAMENTOS, PACIENTES, etc.) assumido como checagem server-side; front só vê 403 genérico.
 
-**Última varredura completa:** rotas e services do front BGD Clinical, estado do repositório em jun/2026.
+**Última varredura completa:** rotas e services do front AG Clinical, estado do repositório em jun/2026.

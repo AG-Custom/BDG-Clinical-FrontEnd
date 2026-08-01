@@ -1,4 +1,4 @@
-# Changelog — Design System Front-end BGD Clinical
+# Changelog — Design System Front-end AG Clinical
 
 ## 2025-06-21 (c)
 

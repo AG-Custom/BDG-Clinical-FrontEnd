@@ -47,7 +47,7 @@ metric-label         → 14px / regular  → Rótulo do indicador
 ### Páginas de auth
 
 ```
-h1 (brand)           → 24px / bold     → "BGD Clinical"
+h1 (brand)           → 24px / bold     → "AG Clinical"
 p (brand subtítulo)  → 16px / regular  → "Ambiente administrativo"
 ```
 

@@ -1,6 +1,6 @@
 # 06 — Padrões de página
 
-Templates visuais para os tipos de tela do BGD Clinical.
+Templates visuais para os tipos de tela do AG Clinical.
 
 ## Auth (Login / Cadastro)
 

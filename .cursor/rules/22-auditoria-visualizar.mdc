@@ -58,4 +58,4 @@ Todo fluxo **Visualizar** / **Detalhar** deve permitir identificar **quem criou*
 ## Referência
 
 - Detalhes e tabela entidade → tela: [`.cursor/docs/auditoria-visualizar.md`](.cursor/docs/auditoria-visualizar.md)
-- Backend: `LogAuditoria` + regra `21-soft-delete-auditoria.mdc` no repositório BDG-Clinical.
+- Backend: `LogAuditoria` + regra `21-soft-delete-auditoria.mdc` no repositório AG-Clinical.
