@@ -115,7 +115,7 @@ export const DesignSystemShadow = {
 } as const;
 
 export const DesignSystemBrand = {
-  nome: 'BGD Clinical',
+  nome: 'AG Clinical',
   icone: 'health_and_safety',
   taglinePadrao: 'Gestão clínica inteligente',
 } as const;

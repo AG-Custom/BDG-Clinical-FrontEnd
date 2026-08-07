@@ -1,4 +1,4 @@
-# BGD Clinical — Referência de API para o Frontend
+# AG Clinical — Referência de API para o Frontend
 
 Documento de contrato HTTP entre o backend (`BGD.CLINICAL.WebApi`) e o frontend.
 
@@ -2685,4 +2685,4 @@ interface CompleteAppointmentRequest {
 
 ---
 
-*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (… + Appointments / Agendamentos).*
+*Última atualização: junho/2026 — alinhado ao backend AG Clinical (… + Appointments / Agendamentos).*

@@ -2,7 +2,7 @@
 
 ## Paleta de marca
 
-As cores principais do BGD Clinical são **verde** e **branco**. Toda a paleta (neutros, bordas, fundos, semânticas) deriva dessas duas cores.
+As cores principais do AG Clinical são **verde** e **branco**. Toda a paleta (neutros, bordas, fundos, semânticas) deriva dessas duas cores.
 
 ### Primária — Verde clínico
 

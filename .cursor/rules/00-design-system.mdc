@@ -1,9 +1,9 @@
 ---
-description: Design system BGD Clinical — tokens, cores, layout e componentes obrigatórios
+description: Design system AG Clinical — tokens, cores, layout e componentes obrigatórios
 alwaysApply: true
 ---
 
-# Design System — Front-end BGD Clinical
+# Design System — Front-end AG Clinical
 
 Stack: **Vue 3 + Quasar 2 + TypeScript + SCSS**.
 

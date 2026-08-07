@@ -1,4 +1,4 @@
-# Front-end BGD Clinical — Guia para IA
+# Front-end AG Clinical — Guia para IA
 
 Documentação de arquitetura visual, design system e convenções do front-end. Leia antes de implementar telas ou componentes.
 

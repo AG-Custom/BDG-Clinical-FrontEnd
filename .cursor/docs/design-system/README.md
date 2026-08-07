@@ -1,4 +1,4 @@
-# Design System — BGD Clinical
+# Design System — AG Clinical
 
 Sistema visual unificado para o front-end administrativo clínico. Objetivo: consistência, acessibilidade e suporte futuro a whitelabel.
 
@@ -32,7 +32,7 @@ src/
 
 ## Identidade visual
 
-- **Nome:** BGD Clinical
+- **Nome:** AG Clinical
 - **Ícone:** `health_and_safety` (Material Icons)
 - **Tom:** Profissional, clínico, confiável — limpo e funcional
 - **Primária:** Verde clínico `#059669`
