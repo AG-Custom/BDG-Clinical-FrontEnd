@@ -301,7 +301,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'movimentacoes-estoque/entrada',
         name: 'movimentacoes-estoque-entrada',
         component: () => import('@/pages/estoque/MovimentacaoEstoqueFormPage.vue'),
-        meta: { permissao: p.estoque.movimentar },
+        meta: { permissao: p.estoque.ajustar },
       },
       {
         path: 'movimentacoes-estoque/saida',

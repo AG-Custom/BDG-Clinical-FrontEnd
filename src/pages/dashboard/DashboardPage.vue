@@ -2,7 +2,9 @@
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 import { useNotificacao } from '@/composables/useNotificacao';
+import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { permissoes } from '@/constants/permissoes';
 import { agendamentoService } from '@/services/agendamento.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { horarioFuncionamentoUnidadeService } from '@/services/horario-funcionamento-unidade.service';
@@ -30,6 +32,7 @@ const auth = useAuth();
 const { usuario } = auth;
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
+const podeCriarAgendamento = usePermissao(permissoes.agendamento.criar);
 
 const calendarRef = ref<InstanceType<typeof AgendaCalendar> | null>(null);
 const agendamentos = ref<Agendamento[]>([]);
@@ -240,6 +243,10 @@ function aoAlterarPeriodo(inicio: Date, fim: Date): void {
 }
 
 function aoSelecionarIntervalo(inicio: Date, fim: Date): void {
+  if (!podeCriarAgendamento.value) {
+    return;
+  }
+
   agendamentoEdicao.value = null;
   intervaloNovo.value = { inicio, fim };
   dialogForm.value = true;
@@ -251,6 +258,10 @@ function aoClicarEvento(agendamento: Agendamento): void {
 }
 
 function abrirNovoAgendamento(): void {
+  if (!podeCriarAgendamento.value) {
+    return;
+  }
+
   agendamentoEdicao.value = null;
   intervaloNovo.value = null;
   dialogForm.value = true;
@@ -310,6 +321,7 @@ onMounted(async () => {
         <app-empresa-marca variant="contexto" />
       </template>
       <q-btn
+        v-if="podeCriarAgendamento"
         unelevated
         color="primary"
         icon="add"

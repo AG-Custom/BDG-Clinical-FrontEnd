@@ -35,6 +35,7 @@ const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const podeMovimentar = usePermissao(permissoes.estoque.movimentar);
+const podeAjustar = usePermissao(permissoes.estoque.ajustar);
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -48,6 +49,7 @@ const dadosIniciaisCarregados = ref(false);
 const formRef = ref<QForm | null>(null);
 
 const isEntrada = computed(() => route.name === 'movimentacoes-estoque-entrada');
+const podeRegistrar = computed(() => (isEntrada.value ? podeAjustar.value : podeMovimentar.value));
 
 const tipoListagem = computed((): 'Entrada' | 'Saida' =>
   isEntrada.value ? 'Entrada' : 'Saida',
@@ -484,8 +486,8 @@ onMounted(async () => {
                       emit-value
                       map-options
                       :rules="[validarUnidade]"
-                      :readonly="!podeMovimentar"
-                      :disable="!podeMovimentar"
+                      :readonly="!podeRegistrar"
+                      :disable="!podeRegistrar"
                     />
                     <app-form-dependencia-alerta
                       v-if="mostrarAlertaUnidades"
@@ -508,8 +510,8 @@ onMounted(async () => {
                       emit-value
                       map-options
                       :rules="[validarProduto]"
-                      :readonly="!podeMovimentar"
-                      :disable="!podeMovimentar"
+                      :readonly="!podeRegistrar"
+                      :disable="!podeRegistrar"
                     />
                     <app-form-dependencia-alerta
                       v-if="mostrarAlertaProdutos"
@@ -532,7 +534,7 @@ onMounted(async () => {
                   type="number"
                   step="any"
                   min="0"
-                  :readonly="!podeMovimentar"
+                  :readonly="!podeRegistrar"
                   :rules="[validarQuantidadeEmbalagem]"
                 />
                 <q-banner v-if="conversaoPreview" dense rounded class="bg-grey-2">
@@ -543,7 +545,7 @@ onMounted(async () => {
                   class="form-field--required"
                   label="Código do lote"
                   outlined
-                  :readonly="!podeMovimentar"
+                  :readonly="!podeRegistrar"
                   :rules="[validarLote]"
                 />
                 <q-input
@@ -552,7 +554,7 @@ onMounted(async () => {
                   label="Validade do lote"
                   outlined
                   type="date"
-                  :readonly="!podeMovimentar"
+                  :readonly="!podeRegistrar"
                   :rules="[validarValidade]"
                 />
               </template>
@@ -566,7 +568,7 @@ onMounted(async () => {
                 step="any"
                 min="0"
                 :caption="captionSaldo"
-                :readonly="!podeMovimentar"
+                :readonly="!podeRegistrar"
                 :rules="[validarQuantidade]"
               />
 
@@ -591,7 +593,7 @@ onMounted(async () => {
                 label="Data da movimentação"
                 outlined
                 type="datetime-local"
-                :readonly="!podeMovimentar"
+                :readonly="!podeRegistrar"
                 :rules="[validarData]"
               />
 
@@ -603,7 +605,7 @@ onMounted(async () => {
                 autogrow
                 maxlength="2000"
                 counter
-                :readonly="!podeMovimentar"
+                :readonly="!podeRegistrar"
                 :hint="
                   isEntrada
                     ? 'Ex.: inventário físico, correção de saldo.'
@@ -619,7 +621,7 @@ onMounted(async () => {
                   unelevated
                   no-caps
                   :loading="salvando"
-                  :disable="!podeMovimentar || opcoesUnidades.length === 0 || opcoesProdutos.length === 0"
+                  :disable="!podeRegistrar || opcoesUnidades.length === 0 || opcoesProdutos.length === 0"
                 />
                 <q-btn flat label="Cancelar" color="primary" no-caps @click="cancelar" />
               </div>

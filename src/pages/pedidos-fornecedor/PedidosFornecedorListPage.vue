@@ -32,6 +32,7 @@ const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const podeCriar = usePermissao(permissoes.pedidosFornecedor.criar);
 const podeEditar = usePermissao(permissoes.pedidosFornecedor.editar);
+const podeCancelar = usePermissao(permissoes.pedidosFornecedor.cancelar);
 const podeReceber = usePermissao(permissoes.pedidosFornecedor.receber);
 
 const pedidos = ref<PedidoFornecedor[]>([]);
@@ -361,7 +362,7 @@ onMounted(async () => {
             <app-table-actions-menu
               :mostrar-status="podeEditarPedido(cell.row)"
               :pode-editar="podeEditar"
-              :pode-alterar-status="podeEditar"
+              :pode-alterar-status="podeCancelar"
               desabilitar-label="Cancelar"
               @visualizar="abrirDialogVisualizar(cell.row)"
               @editar="editarPedido(cell.row.id)"
