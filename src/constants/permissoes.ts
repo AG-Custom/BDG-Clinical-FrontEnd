@@ -3,7 +3,7 @@ export const permissoes = {
     visualizar: 'unidade.visualizar',
     criar: 'unidade.criar',
     editar: 'unidade.editar',
-    desativar: 'unidade.excluir',
+    desativar: 'unidade.editar',
   },
   pacientes: {
     visualizar: 'paciente.visualizar',
@@ -18,23 +18,27 @@ export const permissoes = {
     criar: 'agendamento.criar',
     editar: 'agendamento.editar',
     cancelar: 'agendamento.cancelar',
+    confirmar: 'agendamento.confirmar',
+    concluir: 'agendamento.concluir',
+    registrarFalta: 'agendamento.registrar_falta',
   },
   aplicacoes: {
     visualizar: 'aplicacao.visualizar',
     criar: 'aplicacao.criar',
     editar: 'aplicacao.editar',
+    cancelar: 'aplicacao.cancelar',
   },
   procedimentos: {
     visualizar: 'procedimento.visualizar',
     criar: 'procedimento.criar',
     editar: 'procedimento.editar',
-    desativar: 'procedimento.excluir',
+    desativar: 'procedimento.editar',
   },
   pacotes: {
     visualizar: 'pacote.visualizar',
     criar: 'pacote.criar',
     editar: 'pacote.editar',
-    desativar: 'pacote.excluir',
+    desativar: 'pacote.editar',
   },
   comprasPaciente: {
     visualizar: 'compra_paciente.visualizar',
@@ -51,13 +55,14 @@ export const permissoes = {
     visualizar: 'funcionario.visualizar',
     criar: 'funcionario.criar',
     editar: 'funcionario.editar',
-    desativar: 'funcionario.excluir',
+    desativar: 'funcionario.editar',
   },
+  // Cargos usam as permissões de funcionário no backend (PositionController).
   cargos: {
-    visualizar: 'cargo.visualizar',
-    criar: 'cargo.criar',
-    editar: 'cargo.editar',
-    desativar: 'cargo.excluir',
+    visualizar: 'funcionario.visualizar',
+    criar: 'funcionario.editar',
+    editar: 'funcionario.editar',
+    desativar: 'funcionario.editar',
   },
   produtos: {
     visualizar: 'produto.visualizar',
@@ -80,6 +85,7 @@ export const permissoes = {
   estoque: {
     visualizar: 'estoque.visualizar',
     movimentar: 'estoque.movimentar',
+    ajustar: 'estoque.ajustar',
   },
   fornecedores: {
     visualizar: 'fornecedor.visualizar',
@@ -91,11 +97,13 @@ export const permissoes = {
     visualizar: 'pedido.visualizar',
     criar: 'pedido.criar',
     editar: 'pedido.editar',
+    cancelar: 'pedido.cancelar',
     receber: 'pedido.aprovar',
   },
+  // Backend só expõe empresa.editar no catálogo.
   empresas: {
-    visualizar: 'empresa.visualizar',
-    criar: 'empresa.criar',
+    visualizar: 'empresa.editar',
+    criar: 'empresa.editar',
     editar: 'empresa.editar',
   },
   financeiro: {

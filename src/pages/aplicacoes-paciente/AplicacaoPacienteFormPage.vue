@@ -4,7 +4,9 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
+import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { permissoes } from '@/constants/permissoes';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
 import { cargoService } from '@/services/cargo.service';
 import { compraPacienteService } from '@/services/compra-paciente.service';
@@ -60,6 +62,9 @@ const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const { podeGerenciarAplicacoes } = useAplicador();
+const podeCriarAplicacao = usePermissao(permissoes.aplicacoes.criar);
+const podeEditarAplicacao = usePermissao(permissoes.aplicacoes.editar);
+const podeCancelarAplicacao = usePermissao(permissoes.aplicacoes.cancelar);
 
 const carregando = ref(false);
 const salvando = ref(false);
@@ -178,7 +183,10 @@ const opcoesSintomas = computed(() =>
 );
 
 const podeEditarCampos = computed(
-  () => podeGerenciarAplicacoes.value && !somenteLeitura.value,
+  () =>
+    podeGerenciarAplicacoes.value &&
+    !somenteLeitura.value &&
+    (isEdicao.value ? podeEditarAplicacao.value : podeCriarAplicacao.value),
 );
 
 const mostrarAlertaUnidades = computed(
@@ -1234,7 +1242,7 @@ onMounted(async () => {
               :disable="!podeEditarCampos"
             />
             <q-btn
-              v-if="isEdicao && !somenteLeitura && podeGerenciarAplicacoes"
+              v-if="isEdicao && !somenteLeitura && podeGerenciarAplicacoes && podeCancelarAplicacao"
               flat
               label="Cancelar aplicação"
               color="negative"

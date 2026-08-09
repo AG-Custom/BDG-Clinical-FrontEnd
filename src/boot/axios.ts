@@ -1,7 +1,8 @@
 import axios, { AxiosError } from 'axios';
 
 import type { ApiError, ApiResponse } from '@/types/api/api';
-import { lerTokenAuth } from '@/utils/auth-storage';
+import { lerTokenAuth, limparAuthStorage } from '@/utils/auth-storage';
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://localhost:7013',
   timeout: 30000,
@@ -33,9 +34,37 @@ function extractErrorMessage(error: AxiosError<ApiError | ApiResponse<unknown>>)
   return error.message || 'Erro ao processar a requisição.';
 }
 
+function isAuthRoute(url?: string): boolean {
+  if (!url) {
+    return false;
+  }
+
+  return (
+    url.includes('/api/auth/login') ||
+    url.includes('/api/auth/register') ||
+    url.includes('/api/auth/primeiro-acesso')
+  );
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError | ApiResponse<unknown>>) => {
-    return Promise.reject(new Error(extractErrorMessage(error)));
+    const status = error.response?.status;
+    const requestUrl = error.config?.url;
+
+    if (status === 401 && !isAuthRoute(requestUrl)) {
+      limparAuthStorage();
+
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        const redirect = encodeURIComponent(
+          `${window.location.pathname}${window.location.search}`,
+        );
+        window.location.assign(`/login?redirect=${redirect}`);
+      }
+    }
+
+    const rejected = new Error(extractErrorMessage(error)) as Error & { status?: number };
+    rejected.status = status;
+    return Promise.reject(rejected);
   },
 );
