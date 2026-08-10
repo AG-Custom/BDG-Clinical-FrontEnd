@@ -136,6 +136,30 @@ const opcoesPacientes = computed(() =>
     })),
 );
 
+const opcoesPacientesFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesPacientes,
+  (lista) => {
+    opcoesPacientesFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarPacientes(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesPacientesFiltradas.value = opcoesPacientes.value;
+      return;
+    }
+
+    opcoesPacientesFiltradas.value = opcoesPacientes.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const opcoesComprasAtivas = computed(() =>
   comprasAtivas.value.map((compra) => ({
     label: formatarOpcaoCompraAtiva(compra),
@@ -181,6 +205,30 @@ const opcoesAplicadores = computed(() =>
     value: funcionario.id,
   })),
 );
+
+const opcoesAplicadoresFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesAplicadores,
+  (lista) => {
+    opcoesAplicadoresFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarAplicadores(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesAplicadoresFiltradas.value = opcoesAplicadores.value;
+      return;
+    }
+
+    opcoesAplicadoresFiltradas.value = opcoesAplicadores.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const opcoesSintomas = computed(() =>
   sintomasDisponiveis.value
@@ -1114,16 +1162,25 @@ onMounted(async () => {
                 <q-select
                   v-model="form.pacienteId"
                   class="form-field--required"
-                  :options="opcoesPacientes"
+                  :options="opcoesPacientesFiltradas"
                   label="Paciente"
                   outlined
                   emit-value
                   map-options
+                  use-input
+                  input-debounce="200"
                   :rules="[validarPaciente]"
                   :readonly="!podeEditarCampos || camposImutaveis"
                   :disable="!podeEditarCampos || camposImutaveis || !form.unidadeId"
+                  @filter="filtrarPacientes"
                   @update:model-value="onPacienteChange"
-                />
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">Nenhum paciente encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
                 <app-form-dependencia-alerta
                   v-if="mostrarAlertaPacientes"
                   inline
@@ -1514,16 +1571,25 @@ onMounted(async () => {
                 <q-select
                   v-model="form.aplicadorId"
                   class="form-field--required"
-                  :options="opcoesAplicadores"
+                  :options="opcoesAplicadoresFiltradas"
                   label="Aplicador"
                   outlined
                   emit-value
                   map-options
+                  use-input
+                  input-debounce="200"
                   :hint="hintAplicador"
                   :rules="[validarAplicador]"
                   :readonly="!podeEditarCampos || camposImutaveis"
                   :disable="!podeEditarCampos || camposImutaveis || !form.unidadeId"
-                />
+                  @filter="filtrarAplicadores"
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">Nenhum aplicador encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
                 <app-form-dependencia-alerta
                   v-if="mostrarAlertaAplicadores"
                   inline

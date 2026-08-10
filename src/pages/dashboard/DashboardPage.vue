@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
@@ -105,6 +105,30 @@ const opcoesFuncionarios = computed(() => [
     .filter((f) => f.ativo)
     .map((f) => ({ label: f.nome, value: f.id })),
 ]);
+
+const opcoesFuncionariosFiltradas = ref<{ label: string; value: string | null }[]>([]);
+
+watch(
+  opcoesFuncionarios,
+  (lista) => {
+    opcoesFuncionariosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarFuncionarios(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesFuncionariosFiltradas.value = opcoesFuncionarios.value;
+      return;
+    }
+
+    opcoesFuncionariosFiltradas.value = opcoesFuncionarios.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const agendamentosHoje = ref(0);
 
@@ -369,15 +393,24 @@ onMounted(async () => {
 
         <q-select
           v-model="filtroFuncionarioId"
-          :options="opcoesFuncionarios"
+          :options="opcoesFuncionariosFiltradas"
           label="Profissional"
           outlined
           dense
           emit-value
           map-options
+          use-input
+          input-debounce="200"
           class="agenda-page__filtro"
+          @filter="filtrarFuncionarios"
           @update:model-value="aoAlterarFiltroFuncionario"
-        />
+        >
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey">Nenhum profissional encontrado</q-item-section>
+            </q-item>
+          </template>
+        </q-select>
       </div>
     </div>
 

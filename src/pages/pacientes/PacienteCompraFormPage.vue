@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
@@ -63,6 +63,30 @@ const opcoesPacientes = computed(() => {
     value: paciente.id,
   }));
 });
+
+const opcoesPacientesFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesPacientes,
+  (lista) => {
+    opcoesPacientesFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarPacientes(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesPacientesFiltradas.value = opcoesPacientes.value;
+      return;
+    }
+
+    opcoesPacientesFiltradas.value = opcoesPacientes.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const opcoesPacotes = computed(() =>
   pacotesDisponiveis.value
@@ -278,19 +302,28 @@ onMounted(async () => {
             <q-select
               v-model="form.pacienteId"
               class="form-field--required"
-              :options="opcoesPacientes"
+              :options="opcoesPacientesFiltradas"
               label="Paciente"
               outlined
               emit-value
               map-options
+              use-input
+              input-debounce="200"
               :rules="[validarPaciente]"
               :readonly="pacienteFixoNaRota || !podeCriar"
               :disable="
                 !podeCriar ||
                 (!pacienteFixoNaRota && opcoesPacientes.length === 0)
               "
+              @filter="filtrarPacientes"
               @update:model-value="onPacienteChange"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum paciente encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
             <app-form-dependencia-alerta
               v-if="mostrarAlertaPacientes"
               inline

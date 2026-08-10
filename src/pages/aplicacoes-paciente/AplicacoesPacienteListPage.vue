@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAplicador } from '@/composables/useAplicador';
@@ -120,6 +120,30 @@ const opcoesPacientesFiltro = computed(() => [
   })),
 ]);
 
+const opcoesPacientesFiltroFiltradas = ref<{ label: string; value: string | null }[]>([]);
+
+watch(
+  opcoesPacientesFiltro,
+  (lista) => {
+    opcoesPacientesFiltroFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarPacientesFiltro(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesPacientesFiltroFiltradas.value = opcoesPacientesFiltro.value;
+      return;
+    }
+
+    opcoesPacientesFiltroFiltradas.value = opcoesPacientesFiltro.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const opcoesProdutosFiltro = computed(() => [
   { label: 'Todos os produtos', value: null },
   ...produtos.value.map((produto) => ({
@@ -153,6 +177,30 @@ const opcoesAplicadoresFiltro = computed(() => [
     value: funcionario.id,
   })),
 ]);
+
+const opcoesAplicadoresFiltroFiltradas = ref<{ label: string; value: string | null }[]>([]);
+
+watch(
+  opcoesAplicadoresFiltro,
+  (lista) => {
+    opcoesAplicadoresFiltroFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarAplicadoresFiltro(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesAplicadoresFiltroFiltradas.value = opcoesAplicadoresFiltro.value;
+      return;
+    }
+
+    opcoesAplicadoresFiltroFiltradas.value = opcoesAplicadoresFiltro.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 async function carregarPacientesFiltro(): Promise<void> {
   if (!filtroUnidadeId.value) {
@@ -318,15 +366,24 @@ onMounted(async () => {
           <div class="col-12 col-md-4">
             <q-select
               v-model="filtroPacienteId"
-              :options="opcoesPacientesFiltro"
+              :options="opcoesPacientesFiltroFiltradas"
               label="Paciente"
               outlined
               dense
               emit-value
               map-options
+              use-input
+              input-debounce="200"
               :disable="!filtroUnidadeId"
+              @filter="filtrarPacientesFiltro"
               @update:model-value="carregarAplicacoes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum paciente encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div class="col-12 col-md-4">
             <q-select
@@ -355,15 +412,24 @@ onMounted(async () => {
           <div class="col-12 col-md-4">
             <q-select
               v-model="filtroAplicadorId"
-              :options="opcoesAplicadoresFiltro"
+              :options="opcoesAplicadoresFiltroFiltradas"
               label="Aplicador"
               outlined
               dense
               emit-value
               map-options
+              use-input
+              input-debounce="200"
               :disable="!filtroUnidadeId"
+              @filter="filtrarAplicadoresFiltro"
               @update:model-value="carregarAplicacoes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum aplicador encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div class="col-12 col-md-4">
             <q-select

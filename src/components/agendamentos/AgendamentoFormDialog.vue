@@ -85,6 +85,16 @@ const opcoesPacientes = computed(() =>
     .map((paciente) => ({ label: paciente.nome, value: paciente.id })),
 );
 
+const opcoesPacientesFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesPacientes,
+  (lista) => {
+    opcoesPacientesFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
 const opcoesProcedimentos = computed(() =>
   procedimentosDisponiveis.value
     .filter((procedimento) => procedimento.ativo)
@@ -96,6 +106,44 @@ const opcoesFuncionarios = computed(() =>
     .filter((funcionario) => funcionario.ativo)
     .map((funcionario) => ({ label: funcionario.nome, value: funcionario.id })),
 );
+
+const opcoesFuncionariosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesFuncionarios,
+  (lista) => {
+    opcoesFuncionariosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarPacientes(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesPacientesFiltradas.value = opcoesPacientes.value;
+      return;
+    }
+
+    opcoesPacientesFiltradas.value = opcoesPacientes.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
+function filtrarFuncionarios(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesFuncionariosFiltradas.value = opcoesFuncionarios.value;
+      return;
+    }
+
+    opcoesFuncionariosFiltradas.value = opcoesFuncionarios.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const opcoesTipos = computed(() =>
   TIPOS_AGENDAMENTO.map((tipo) => ({
@@ -484,7 +532,7 @@ watch(
           <div class="form-field-stack">
             <q-select
               v-model="form.pacienteId"
-              :options="opcoesPacientes"
+              :options="opcoesPacientesFiltradas"
               label="Paciente *"
               outlined
               emit-value
@@ -494,7 +542,14 @@ watch(
               :loading="carregandoDados"
               :disable="salvando || !form.unidadeId"
               :rules="[(v) => Boolean(v) || 'Obrigatório']"
-            />
+              @filter="filtrarPacientes"
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum paciente encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
 
             <div v-if="mostrarBoxNovoPaciente" class="agendamento-form-dialog__box-paciente">
               <p class="agendamento-form-dialog__box-paciente-texto">
@@ -515,15 +570,24 @@ watch(
 
           <q-select
             v-model="form.funcionarioId"
-            :options="opcoesFuncionarios"
+            :options="opcoesFuncionariosFiltradas"
             label="Profissional *"
             outlined
             emit-value
             map-options
+            use-input
+            input-debounce="200"
             :loading="carregandoDados"
             :disable="salvando || !form.unidadeId"
             :rules="[(v) => Boolean(v) || 'Obrigatório']"
-          />
+            @filter="filtrarFuncionarios"
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">Nenhum profissional encontrado</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
 
           <q-select
             v-model="form.tipo"
