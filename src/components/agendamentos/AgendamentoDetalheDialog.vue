@@ -5,6 +5,7 @@ import AppEntityAuditSection from '@/components/shared/AppEntityAuditSection.vue
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { permissoes } from '@/constants/permissoes';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { agendamentoService } from '@/services/agendamento.service';
 import { procedimentoService } from '@/services/procedimento.service';
