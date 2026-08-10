@@ -13,7 +13,7 @@ import { unidadeService } from '@/services/unidade.service';
 import type { Paciente } from '@/types/entidades/paciente';
 import { obterUnidadeIdsDoPaciente } from '@/types/entidades/paciente';
 import type { Pacote } from '@/types/entidades/pacote';
-import { formatarValorPacote } from '@/types/entidades/pacote';
+import { ehPacoteMigracao, formatarValorPacote } from '@/types/entidades/pacote';
 import type { Unidade } from '@/types/entidades/unidade';
 import {
   deInputDatetimeLocalParaIso,
@@ -66,7 +66,7 @@ const opcoesPacientes = computed(() => {
 
 const opcoesPacotes = computed(() =>
   pacotesDisponiveis.value
-    .filter((pacote) => pacote.ativo)
+    .filter((pacote) => pacote.ativo && !ehPacoteMigracao(pacote))
     .map((pacote) => ({
       label: `${pacote.nome} — ${formatarValorPacote(pacote.valor)}`,
       value: pacote.id,

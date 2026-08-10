@@ -8,7 +8,7 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacoteService } from '@/services/pacote.service';
 import type { Pacote } from '@/types/entidades/pacote';
-import { formatarValorPacote } from '@/types/entidades/pacote';
+import { ehPacoteMigracao, formatarValorPacote } from '@/types/entidades/pacote';
 
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -44,9 +44,11 @@ async function carregarPacotes(): Promise<void> {
   carregando.value = true;
 
   try {
-    pacotes.value = await pacoteService.listar({
-      includeInactive: incluirInativos.value,
-    });
+    pacotes.value = (
+      await pacoteService.listar({
+        includeInactive: incluirInativos.value,
+      })
+    ).filter((pacote) => !ehPacoteMigracao(pacote));
   } catch (error) {
     notificacao.erro(obterMensagem(error));
   } finally {

@@ -52,6 +52,11 @@ export function criarItemPacoteVazio(): ItemPacoteFormulario {
   };
 }
 
+/** Pacotes criados só para migração de saldo (não fazem parte do catálogo comercial). */
+export function ehPacoteMigracao(pacote: Pick<Pacote, 'nome'>): boolean {
+  return /^migra(?:ç|c)(?:ã|a)o\b/i.test(pacote.nome.trim());
+}
+
 export function formatarValorPacote(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
