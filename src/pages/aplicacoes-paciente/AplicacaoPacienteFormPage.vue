@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
 import { cargoService } from '@/services/cargo.service';
 import { compraPacienteService } from '@/services/compra-paciente.service';
@@ -30,8 +31,10 @@ import { isFuncionarioAplicador } from '@/types/entidades/funcionario';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import type { Cargo } from '@/types/entidades/cargo';
 import { formatarSaldoComUnidade } from '@/types/entidades/saldo-estoque';
+import type { SaldoLoteEstoque } from '@/types/entidades/saldo-estoque';
 import type { Paciente } from '@/types/entidades/paciente';
-import type { Procedimento } from '@/types/entidades/procedimento';
+import type { ItemProcedimentoFormulario, Procedimento } from '@/types/entidades/procedimento';
+import { criarItemProcedimentoVazio } from '@/types/entidades/procedimento';
 import type { Produto } from '@/types/entidades/produto';
 import type { Sintoma } from '@/types/entidades/sintoma';
 import type { Unidade } from '@/types/entidades/unidade';
@@ -50,7 +53,13 @@ interface ProcedimentoNaFormulario {
   procedimentoId: string;
   nome: string;
   exigeQuantidade: boolean;
+  exigeLote: boolean;
   quantidadeUtilizada: number | null;
+  loteProdutoId: string | null;
+  consumirInsumosKit: boolean;
+  insumosManuais: ItemProcedimentoFormulario[];
+  lotesDisponiveis: SaldoLoteEstoque[];
+  carregandoLotes: boolean;
   procedimento: Procedimento | null;
   saldosKit: SaldoKitItem[];
 }
@@ -284,6 +293,31 @@ function validarAplicador(value: string | null): boolean | string {
   return Boolean(value) || 'Selecione o aplicador';
 }
 
+function produtoExigeLote(produtoId: string | null | undefined): boolean {
+  if (!produtoId) {
+    return false;
+  }
+
+  const produto = produtosPorId.value.get(produtoId);
+  return Boolean(
+    produto?.controlaEstoque && produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO,
+  );
+}
+
+function formatarOpcaoLote(lote: SaldoLoteEstoque): string {
+  const saldo = formatarSaldoComUnidade(lote.saldoAtual, lote.unidadeMedidaSigla);
+  return `${lote.codigo} · val. ${lote.dataValidade} · ${saldo}`;
+}
+
+function opcoesLotesProcedimento(item: ProcedimentoNaFormulario) {
+  return item.lotesDisponiveis
+    .filter((lote) => lote.saldoAtual > 0)
+    .map((lote) => ({
+      label: formatarOpcaoLote(lote),
+      value: lote.loteProdutoId,
+    }));
+}
+
 function validarQuantidadeProcedimento(
   procedimento: ProcedimentoNaFormulario,
 ): boolean | string {
@@ -301,6 +335,118 @@ function validarQuantidadeProcedimento(
   }
 
   return true;
+}
+
+/** Lote opcional por enquanto (pós-migração); futuramente voltará a ser obrigatório. */
+function validarLoteProcedimento(_procedimento: ProcedimentoNaFormulario): boolean | string {
+  return true;
+}
+
+function opcoesInsumosManuais(item: ProcedimentoNaFormulario) {
+  const produtoAplicadoId = item.procedimento?.produtoAplicadoId ?? null;
+  const selecionados = new Set(
+    item.insumosManuais
+      .map((insumo) => insumo.produtoId)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  return produtosDisponiveis.value
+    .filter((produto) => {
+      if (produto.id === produtoAplicadoId) {
+        return false;
+      }
+
+      if (selecionados.has(produto.id)) {
+        return true;
+      }
+
+      return (
+        produto.ativo && produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.INSUMO
+      );
+    })
+    .map((produto) => ({
+      label: produto.nome,
+      value: produto.id,
+    }));
+}
+
+function obterSiglaUnidadeMedida(produtoId: string | null): string {
+  if (!produtoId) {
+    return '';
+  }
+
+  return produtosPorId.value.get(produtoId)?.unidadeMedidaSigla ?? '';
+}
+
+function validarQuantidadeInsumoManual(value: number | null): boolean | string {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 'Informe a quantidade';
+  }
+
+  if (value <= 0) {
+    return 'A quantidade deve ser maior que zero';
+  }
+
+  return true;
+}
+
+function validarInsumosManuaisProcedimento(
+  procedimento: ProcedimentoNaFormulario,
+): boolean | string {
+  if (procedimento.consumirInsumosKit) {
+    return true;
+  }
+
+  for (const insumo of procedimento.insumosManuais) {
+    if (!insumo.produtoId) {
+      return 'Selecione o produto de cada insumo manual.';
+    }
+
+    const quantidadeOk = validarQuantidadeInsumoManual(insumo.quantidade);
+    if (quantidadeOk !== true) {
+      return quantidadeOk;
+    }
+  }
+
+  const ids = procedimento.insumosManuais
+    .map((insumo) => insumo.produtoId)
+    .filter((id): id is string => Boolean(id));
+
+  if (new Set(ids).size !== ids.length) {
+    return 'Não é permitido repetir o mesmo insumo na lista manual.';
+  }
+
+  return true;
+}
+
+function adicionarInsumoManual(item: ProcedimentoNaFormulario): void {
+  item.insumosManuais.push(criarItemProcedimentoVazio());
+}
+
+function removerInsumoManual(item: ProcedimentoNaFormulario, indice: number): void {
+  item.insumosManuais.splice(indice, 1);
+  void atualizarSaldosProcedimento(item);
+}
+
+function montarInsumosManuaisPayload(item: ProcedimentoNaFormulario) {
+  if (item.consumirInsumosKit) {
+    return null;
+  }
+
+  const insumos = item.insumosManuais
+    .filter(
+      (insumo): insumo is { produtoId: string; quantidade: number } =>
+        Boolean(insumo.produtoId) &&
+        insumo.quantidade !== null &&
+        !Number.isNaN(insumo.quantidade) &&
+        insumo.quantidade > 0,
+    )
+    .map((insumo) => ({
+      produtoId: insumo.produtoId,
+      quantidade: insumo.quantidade,
+    }));
+
+  return insumos.length > 0 ? insumos : null;
 }
 
 function validarDataAplicacao(value: string): boolean | string {
@@ -357,6 +503,8 @@ async function carregarComprasAtivasDoPaciente(): Promise<void> {
 async function carregarSaldosKitParaProcedimento(
   procedimento: Procedimento,
   quantidadeUtilizada: number | null,
+  consumirInsumosKit: boolean,
+  insumosManuais: ItemProcedimentoFormulario[] = [],
 ): Promise<SaldoKitItem[]> {
   if (!form.unidadeId) {
     return [];
@@ -372,12 +520,27 @@ async function carregarSaldosKitParaProcedimento(
     });
   }
 
-  for (const item of procedimento.itens) {
-    produtosKit.push({
-      produtoId: item.produtoId,
-      produtoNome: item.produtoNome ?? 'Insumo',
-      quantidade: item.quantidade,
-    });
+  if (consumirInsumosKit) {
+    for (const item of procedimento.itens) {
+      produtosKit.push({
+        produtoId: item.produtoId,
+        produtoNome: item.produtoNome ?? 'Insumo',
+        quantidade: item.quantidade,
+      });
+    }
+  } else {
+    for (const item of insumosManuais) {
+      if (!item.produtoId || item.quantidade === null || item.quantidade <= 0) {
+        continue;
+      }
+
+      const produto = produtosPorId.value.get(item.produtoId);
+      produtosKit.push({
+        produtoId: item.produtoId,
+        produtoNome: produto?.nome ?? 'Insumo',
+        quantidade: item.quantidade,
+      });
+    }
   }
 
   const itensComEstoque = produtosKit.filter((item) => {
@@ -417,6 +580,38 @@ async function carregarSaldosKitParaProcedimento(
   }
 }
 
+async function carregarLotesProcedimento(item: ProcedimentoNaFormulario): Promise<void> {
+  if (!form.unidadeId || !item.procedimento?.produtoAplicadoId || !item.exigeLote) {
+    item.lotesDisponiveis = [];
+    item.loteProdutoId = null;
+    item.carregandoLotes = false;
+    return;
+  }
+
+  item.carregandoLotes = true;
+
+  try {
+    const lotes = await saldoEstoqueService.listarLotes({
+      unidadeId: form.unidadeId,
+      produtoId: item.procedimento.produtoAplicadoId,
+    });
+    item.lotesDisponiveis = lotes.filter((lote) => lote.saldoAtual > 0);
+
+    if (
+      item.loteProdutoId &&
+      !item.lotesDisponiveis.some((lote) => lote.loteProdutoId === item.loteProdutoId)
+    ) {
+      item.loteProdutoId = null;
+    }
+  } catch (error) {
+    item.lotesDisponiveis = [];
+    item.loteProdutoId = null;
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    item.carregandoLotes = false;
+  }
+}
+
 async function sincronizarProcedimentosFormulario(): Promise<void> {
   if (isEdicao.value) {
     return;
@@ -438,14 +633,29 @@ async function sincronizarProcedimentosFormulario(): Promise<void> {
 
     try {
       const procedimento = await procedimentoService.obter(procedimentoId);
-      proximos.push({
+      const exigeLote = produtoExigeLote(procedimento.produtoAplicadoId);
+      const novoItem: ProcedimentoNaFormulario = {
         procedimentoId,
         nome: procedimento.nome,
         exigeQuantidade: Boolean(procedimento.produtoAplicadoId),
+        exigeLote,
         quantidadeUtilizada: null,
+        loteProdutoId: null,
+        consumirInsumosKit: procedimento.itens.length > 0,
+        insumosManuais: [],
+        lotesDisponiveis: [],
+        carregandoLotes: false,
         procedimento,
-        saldosKit: await carregarSaldosKitParaProcedimento(procedimento, null),
-      });
+        saldosKit: [],
+      };
+      await carregarLotesProcedimento(novoItem);
+      novoItem.saldosKit = await carregarSaldosKitParaProcedimento(
+        procedimento,
+        null,
+        novoItem.consumirInsumosKit,
+        novoItem.insumosManuais,
+      );
+      proximos.push(novoItem);
     } catch (error) {
       notificacao.erro(obterMensagem(error));
     }
@@ -462,6 +672,8 @@ async function atualizarSaldosProcedimento(item: ProcedimentoNaFormulario): Prom
   item.saldosKit = await carregarSaldosKitParaProcedimento(
     item.procedimento,
     item.quantidadeUtilizada,
+    item.consumirInsumosKit,
+    item.insumosManuais,
   );
 }
 
@@ -499,7 +711,12 @@ async function onUnidadeChange(): Promise<void> {
 }
 
 async function carregarSaldosTodosProcedimentos(): Promise<void> {
-  await Promise.all(procedimentosNaFormulario.value.map((item) => atualizarSaldosProcedimento(item)));
+  await Promise.all(
+    procedimentosNaFormulario.value.map(async (item) => {
+      await carregarLotesProcedimento(item);
+      await atualizarSaldosProcedimento(item);
+    }),
+  );
 }
 
 async function onPacienteChange(): Promise<void> {
@@ -587,7 +804,13 @@ async function carregarProcedimentoEdicao(procedimentoId: string | null): Promis
         procedimentoId,
         nome: procedimento.nome,
         exigeQuantidade: Boolean(procedimento.produtoAplicadoId),
+        exigeLote: produtoExigeLote(procedimento.produtoAplicadoId),
         quantidadeUtilizada: aplicacaoCarregada.value?.quantidadeUtilizada ?? null,
+        loteProdutoId: null,
+        consumirInsumosKit: procedimento.itens.length > 0,
+        insumosManuais: [],
+        lotesDisponiveis: [],
+        carregandoLotes: false,
         procedimento,
         saldosKit: [],
       },
@@ -664,6 +887,19 @@ async function carregarAplicacao(): Promise<void> {
   }
 }
 
+function camposProcedimentoPayload(item: ProcedimentoNaFormulario) {
+  const insumosManuais = montarInsumosManuaisPayload(item);
+
+  return {
+    ...(item.exigeQuantidade && item.quantidadeUtilizada !== null
+      ? { quantidadeUtilizada: item.quantidadeUtilizada }
+      : {}),
+    ...(item.exigeLote && item.loteProdutoId ? { loteProdutoId: item.loteProdutoId } : {}),
+    consumirInsumosKit: item.consumirInsumosKit,
+    ...(insumosManuais ? { insumosManuais } : {}),
+  };
+}
+
 function montarPayloadCriacao() {
   const base = {
     pacienteId: form.pacienteId!,
@@ -683,9 +919,7 @@ function montarPayloadCriacao() {
     return {
       ...base,
       procedimentoId: unico.procedimentoId,
-      ...(unico.exigeQuantidade && unico.quantidadeUtilizada !== null
-        ? { quantidadeUtilizada: unico.quantidadeUtilizada }
-        : {}),
+      ...camposProcedimentoPayload(unico),
     };
   }
 
@@ -693,9 +927,7 @@ function montarPayloadCriacao() {
     ...base,
     procedimentos: itens.map((item) => ({
       procedimentoId: item.procedimentoId,
-      ...(item.exigeQuantidade && item.quantidadeUtilizada !== null
-        ? { quantidadeUtilizada: item.quantidadeUtilizada }
-        : {}),
+      ...camposProcedimentoPayload(item),
     })),
   };
 }
@@ -719,6 +951,16 @@ async function salvar(): Promise<void> {
       notificacao.info(
         'Informe a quantidade do produto para todos os procedimentos com medicamento.',
       );
+      return;
+    }
+
+    const insumosInvalidos = procedimentosNaFormulario.value.find(
+      (procedimento) => validarInsumosManuaisProcedimento(procedimento) !== true,
+    );
+
+    if (insumosInvalidos) {
+      const mensagem = validarInsumosManuaisProcedimento(insumosInvalidos);
+      notificacao.info(typeof mensagem === 'string' ? mensagem : 'Revise os insumos manuais.');
       return;
     }
   }
@@ -782,6 +1024,18 @@ watch(
 );
 
 function aoAlterarQuantidadeProcedimento(item: ProcedimentoNaFormulario): void {
+  void atualizarSaldosProcedimento(item);
+}
+
+function aoAlterarConsumirInsumosKit(item: ProcedimentoNaFormulario): void {
+  if (item.consumirInsumosKit) {
+    item.insumosManuais = [];
+  }
+
+  void atualizarSaldosProcedimento(item);
+}
+
+function aoAlterarInsumoManual(item: ProcedimentoNaFormulario): void {
   void atualizarSaldosProcedimento(item);
 }
 
@@ -1022,6 +1276,27 @@ onMounted(async () => {
                   @update:model-value="aoAlterarQuantidadeProcedimento(procedimentoItem)"
                 />
 
+                <q-select
+                  v-if="procedimentoItem.exigeLote"
+                  v-model="procedimentoItem.loteProdutoId"
+                  class="q-mb-md"
+                  :options="opcoesLotesProcedimento(procedimentoItem)"
+                  label="Lote do medicamento (opcional)"
+                  outlined
+                  emit-value
+                  map-options
+                  clearable
+                  :disable="!podeEditarCampos || camposImutaveis || procedimentoItem.carregandoLotes"
+                  :hint="
+                    procedimentoItem.carregandoLotes
+                      ? 'Carregando lotes…'
+                      : opcoesLotesProcedimento(procedimentoItem).length === 0
+                        ? 'Nenhum lote com saldo nesta unidade. Pode salvar sem lote por enquanto.'
+                        : 'Opcional por enquanto — informe se já houver entrada com lote.'
+                  "
+                  :rules="[() => validarLoteProcedimento(procedimentoItem)]"
+                />
+
                 <template v-if="procedimentoItem.procedimento">
                   <div
                     v-if="procedimentoItem.procedimento.produtoAplicadoId"
@@ -1031,8 +1306,24 @@ onMounted(async () => {
                     {{ procedimentoItem.procedimento.produtoAplicadoNome || '—' }}
                   </div>
 
-                  <div v-if="procedimentoItem.procedimento.itens.length > 0" class="q-mb-sm">
-                    <div class="text-weight-medium q-mb-xs">Insumos</div>
+                  <q-toggle
+                    v-if="procedimentoItem.procedimento.itens.length > 0"
+                    v-model="procedimentoItem.consumirInsumosKit"
+                    class="q-mb-sm"
+                    label="Usar insumos do kit"
+                    color="primary"
+                    :disable="!podeEditarCampos || camposImutaveis"
+                    @update:model-value="aoAlterarConsumirInsumosKit(procedimentoItem)"
+                  />
+
+                  <div
+                    v-if="
+                      procedimentoItem.consumirInsumosKit &&
+                      procedimentoItem.procedimento.itens.length > 0
+                    "
+                    class="q-mb-sm"
+                  >
+                    <div class="text-weight-medium q-mb-xs">Insumos do kit</div>
                     <q-markup-table flat bordered dense>
                       <thead>
                         <tr>
@@ -1050,6 +1341,82 @@ onMounted(async () => {
                         </tr>
                       </tbody>
                     </q-markup-table>
+                  </div>
+
+                  <div v-if="!procedimentoItem.consumirInsumosKit" class="q-mb-sm">
+                    <div class="row items-center q-mb-sm">
+                      <div class="text-weight-medium">Insumos manuais</div>
+                      <q-space />
+                      <q-btn
+                        flat
+                        color="primary"
+                        icon="add"
+                        label="Adicionar insumo"
+                        no-caps
+                        dense
+                        :disable="!podeEditarCampos || camposImutaveis"
+                        @click="adicionarInsumoManual(procedimentoItem)"
+                      />
+                    </div>
+
+                    <div
+                      v-for="(insumo, indice) in procedimentoItem.insumosManuais"
+                      :key="indice"
+                      class="aplicacao-insumo-manual q-mb-sm q-pa-sm"
+                    >
+                      <div class="row q-col-gutter-sm items-start">
+                        <div class="col-12 col-md-7">
+                          <q-select
+                            v-model="insumo.produtoId"
+                            class="form-field--required"
+                            :options="opcoesInsumosManuais(procedimentoItem)"
+                            label="Insumo"
+                            outlined
+                            dense
+                            emit-value
+                            map-options
+                            :disable="!podeEditarCampos || camposImutaveis"
+                            @update:model-value="aoAlterarInsumoManual(procedimentoItem)"
+                          />
+                        </div>
+                        <div class="col-8 col-md-3">
+                          <q-input
+                            v-model.number="insumo.quantidade"
+                            class="form-field--required"
+                            label="Quantidade"
+                            outlined
+                            dense
+                            type="number"
+                            min="0.01"
+                            step="any"
+                            :readonly="!podeEditarCampos || camposImutaveis"
+                            :rules="[validarQuantidadeInsumoManual]"
+                            @update:model-value="aoAlterarInsumoManual(procedimentoItem)"
+                          >
+                            <template v-if="insumo.produtoId" #append>
+                              <span class="aplicacao-insumo-manual__sigla">
+                                {{ obterSiglaUnidadeMedida(insumo.produtoId) }}
+                              </span>
+                            </template>
+                          </q-input>
+                        </div>
+                        <div class="col-4 col-md-2 flex flex-center">
+                          <app-table-action-button
+                            acao="excluir"
+                            rotulo="Remover insumo"
+                            :disable="!podeEditarCampos || camposImutaveis"
+                            @click="removerInsumoManual(procedimentoItem, indice)"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="procedimentoItem.insumosManuais.length === 0"
+                      class="text-body2 aplicacao-insumo-manual__vazio"
+                    >
+                      Nenhum insumo manual. A baixa será apenas do medicamento.
+                    </div>
                   </div>
 
                   <div v-if="procedimentoItem.saldosKit.length > 0">
@@ -1272,3 +1639,19 @@ onMounted(async () => {
     </q-dialog>
   </q-page>
 </template>
+
+<style scoped lang="scss">
+.aplicacao-insumo-manual {
+  border: 1px solid var(--ds-border-default);
+  border-radius: var(--ds-radius-md);
+
+  &__sigla {
+    color: var(--ds-text-secondary);
+    font-size: var(--ds-font-size-xs, 0.75rem);
+  }
+
+  &__vazio {
+    color: var(--ds-text-secondary);
+  }
+}
+</style>

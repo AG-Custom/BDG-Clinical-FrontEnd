@@ -14,6 +14,8 @@ export interface AplicacaoPacienteItemConsumido {
   produtoNome: string;
   quantidade: number;
   controlaEstoque: boolean;
+  loteProdutoId?: string | null;
+  loteCodigo?: string | null;
 }
 
 export interface AplicacaoPaciente {
@@ -37,13 +39,23 @@ export interface AplicacaoPaciente {
   cancelada: boolean;
   sintomas: AplicacaoPacienteSintoma[];
   itensConsumidos: AplicacaoPacienteItemConsumido[];
+  loteProdutoId?: string | null;
+  loteCodigo?: string | null;
   criadoEm: string;
   atualizadoEm: string | null;
+}
+
+export interface InsumoManualAplicacaoRequest {
+  produtoId: string;
+  quantidade: number;
 }
 
 export interface CriarAplicacaoProcedimentoRequest {
   procedimentoId: string;
   quantidadeUtilizada?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: InsumoManualAplicacaoRequest[] | null;
 }
 
 export interface CriarAplicacaoPacienteRequest {
@@ -54,6 +66,9 @@ export interface CriarAplicacaoPacienteRequest {
   compraPacienteId?: string | null;
   procedimentoId?: string | null;
   quantidadeUtilizada?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: InsumoManualAplicacaoRequest[] | null;
   procedimentos?: CriarAplicacaoProcedimentoRequest[] | null;
   peso?: number | null;
   observacao?: string | null;

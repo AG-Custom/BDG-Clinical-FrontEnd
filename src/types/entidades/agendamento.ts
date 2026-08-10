@@ -73,14 +73,25 @@ export interface CriarAgendamentoRequest {
 
 export type AtualizarAgendamentoRequest = CriarAgendamentoRequest;
 
+export interface InsumoManualConclusaoRequest {
+  produtoId: string;
+  quantidade: number;
+}
+
 export interface ProcedimentoConclusaoRequest {
   procedimentoId: string;
   quantidadeUtilizada?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: InsumoManualConclusaoRequest[] | null;
 }
 
 export interface ConcluirAgendamentoRequest {
   quantidadeUtilizada?: number | null;
   peso?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: InsumoManualConclusaoRequest[] | null;
   procedimentos?: ProcedimentoConclusaoRequest[];
 }
 

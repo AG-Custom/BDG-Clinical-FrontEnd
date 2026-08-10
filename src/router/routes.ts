@@ -118,6 +118,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.comprasPaciente.criar },
       },
       {
+        path: 'compras/:id',
+        name: 'compras-detalhe',
+        component: () => import('@/pages/compras/CompraDetalhePage.vue'),
+        meta: { permissao: p.comprasPaciente.visualizar },
+      },
+      {
         path: 'pacotes',
         name: 'pacotes',
         component: () => import('@/pages/pacotes/PacotesListPage.vue'),

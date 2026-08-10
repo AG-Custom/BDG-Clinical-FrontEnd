@@ -535,6 +535,27 @@ Ver seção Dashboard para dependências cruzadas e problemas.
 
 ---
 
+## Compras de pacote — `/compras` | `/pacientes/:id/compras`
+
+**Objetivo:** Listar compras de pacote, visualizar saldo, cancelar e ajustar quantidade contratada (pós-migração).
+
+**Guard:** `compra_paciente.visualizar`
+
+**Montagem:** `GET /api/patient-purchases` (lista global) ou `GET /api/patients/{id}/purchases`; lista global também `GET /api/patients?includeInactive=true` para filtro.
+
+**Ações:**
+
+| Ação na UI | Método | Endpoint | Permissão backend |
+|------------|--------|----------|-------------------|
+| Nova compra | — | navega para form | `compra_paciente.criar` |
+| Visualizar | GET | `/api/patient-purchases/{id}` + `/history` → tela `/compras/:id` | `compra_paciente.visualizar` |
+| Ajustar saldo | PUT | `/api/patient-purchases/{id}/balance` | `compra_paciente.editar` |
+| Cancelar compra | POST | `/api/patient-purchases/{id}/cancel` | `compra_paciente.cancelar` |
+
+**Form nova compra** (`/compras/nova`, `/pacientes/:id/compras/nova`): `POST /api/patients/{id}/purchases` — `compra_paciente.criar`.
+
+---
+
 ## Aplicações paciente — `/aplicacoes-paciente`
 
 **Objetivo:** Listar aplicações realizadas.

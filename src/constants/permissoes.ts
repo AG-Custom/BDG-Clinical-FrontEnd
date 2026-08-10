@@ -39,6 +39,7 @@ export const permissoes = {
   comprasPaciente: {
     visualizar: 'compra_paciente.visualizar',
     criar: 'compra_paciente.criar',
+    editar: 'compra_paciente.editar',
     cancelar: 'compra_paciente.cancelar',
   },
   sintomas: {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import PacienteDetalheDialog from '@/components/pacientes/PacienteDetalheDialog.vue';
+import PacientesSecaoTabs from '@/components/pacientes/PacientesSecaoTabs.vue';
 import { permissoes } from '@/constants/permissoes';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
@@ -32,6 +33,7 @@ const unidadesPorId = ref<Map<string, string>>(new Map());
 const carregando = ref(true);
 const incluirInativos = ref(false);
 const filtroUnidadeId = ref<string | null>(null);
+const termoBusca = ref('');
 const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
@@ -52,6 +54,21 @@ const colunas = [
 const opcoesUnidadesFiltro = ref<{ label: string; value: string | null }[]>([
   { label: 'Todas as unidades', value: null },
 ]);
+
+const termoBuscaNormalizado = computed(() => termoBusca.value.trim().toLocaleLowerCase('pt-BR'));
+
+const pacientesFiltrados = computed(() => {
+  const termo = termoBuscaNormalizado.value;
+  if (!termo) {
+    return pacientes.value;
+  }
+
+  return pacientes.value.filter((paciente) =>
+    paciente.nome.toLocaleLowerCase('pt-BR').includes(termo),
+  );
+});
+
+const temFiltroNome = computed(() => termoBuscaNormalizado.value.length > 0);
 
 function formatarTelefone(telefone: string | null): string {
   return formatarTelefonePaciente(telefone);
@@ -191,10 +208,26 @@ onMounted(async () => {
       />
     </app-page-header>
 
+    <pacientes-secao-tabs />
+
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
+            <q-input
+              v-model="termoBusca"
+              label="Buscar por nome"
+              outlined
+              dense
+              clearable
+              debounce="200"
+            >
+              <template #prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 col-md-4">
             <q-select
               v-model="filtroUnidadeId"
               :options="opcoesUnidadesFiltro"
@@ -206,7 +239,7 @@ onMounted(async () => {
               @update:model-value="carregarPacientes"
             />
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-4">
             <q-toggle
               v-model="incluirInativos"
               label="Incluir inativos"
@@ -220,8 +253,8 @@ onMounted(async () => {
 
     <q-card flat bordered>
       <q-table
-        v-if="pacientes.length > 0"
-        :rows="pacientes"
+        v-if="pacientesFiltrados.length > 0"
+        :rows="pacientesFiltrados"
         :columns="colunas"
         row-key="id"
         flat
@@ -292,6 +325,14 @@ onMounted(async () => {
         <app-table-skeleton :columns="colunas.length" />
       </q-card-section>
 
+      <q-card-section v-else-if="temFiltroNome && pacientes.length > 0">
+        <app-empty-state
+          icon="search_off"
+          titulo="Nenhum paciente encontrado"
+          texto="Nenhum paciente corresponde ao nome informado. Ajuste a busca ou limpe o filtro."
+        />
+      </q-card-section>
+
       <q-card-section v-else>
         <app-empty-state
           icon="personal_injury"
@@ -305,7 +346,7 @@ onMounted(async () => {
             icon="person_add"
             unelevated
             no-caps
-              :disable="!podeDesativar"
+            :disable="!podeCriar"
             :to="podeCriar ? { name: 'pacientes-novo' } : undefined"
           />
         </div>

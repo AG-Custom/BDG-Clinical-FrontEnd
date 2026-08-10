@@ -1948,6 +1948,165 @@ Hoje as entradas vêm de `PATCH /api/supplier-orders/{id}/receive` (`motivo: Com
 
 ---
 
+## 17.5. Pacotes — `/api/packages`
+
+Catálogo comercial de pacotes vendidos aos pacientes.
+
+### GET `/api/packages`
+
+| Param | Tipo | Default | Descrição |
+|-------|------|---------|-----------|
+| `includeInactive` | `boolean` | `false` | Incluir inativos |
+| `search` | `string` | — | Busca por nome (mín. 2) |
+| `limit` | `number` | — | Máx. 50 |
+
+Permissão: `pacote.visualizar` (auxiliares: `compra_paciente.criar` / `aplicacao.criar` / `agendamento.criar`).
+
+### GET `/api/packages/{id}`
+
+### POST `/api/packages` — `pacote.criar`
+
+```json
+{
+  "nome": "Pacote Tirzepatida 60mg",
+  "descricao": "12 aplicações",
+  "quantidadeAplicacoes": 12,
+  "valor": 3500.00,
+  "itens": [
+    { "produtoId": "uuid", "quantidadeTotal": 60, "unidadeMedida": "mg" }
+  ]
+}
+```
+
+### PUT `/api/packages/{id}` — `pacote.editar`
+
+Mesmo body do create (substitui itens).
+
+### PATCH `/api/packages/{id}/deactivate` | `/reactivate` — `pacote.editar`
+
+---
+
+## 17.6. Compras de pacote do paciente
+
+### GET `/api/patients/{patientId}/purchases` — `compra_paciente.visualizar`
+
+| Param | Tipo | Descrição |
+|-------|------|-----------|
+| `status` | `Ativo\|Concluido\|Cancelado\|Vencido` | Filtro opcional |
+
+### GET `/api/patients/{patientId}/purchases/active`
+
+Lista compras ativas (para selects de aplicação/agenda).
+
+### GET `/api/patient-purchases`
+
+Lista global (filtros `pacienteId`, `status`).
+
+### POST `/api/patients/{patientId}/purchases` — `compra_paciente.criar`
+
+```json
+{
+  "pacoteId": "uuid",
+  "unidadeId": "uuid",
+  "dataCompra": "2026-07-14T12:00:00Z",
+  "observacao": null
+}
+```
+
+**Não altera estoque.** Copia quantidades do pacote para o saldo da compra.
+
+### GET `/api/patient-purchases/{id}`
+
+Inclui `saldo` calculado (aplicações + quantidade por produto).
+
+### GET `/api/patient-purchases/{id}/balance`
+
+Retorna o saldo por produto (`quantidadeContratada`, `quantidadeUtilizada`, `quantidadeRestante`).
+
+### GET `/api/patient-purchases/{id}/history`
+
+Histórico cronológico da compra (compra, aplicações com aplicador/lote, cancelamentos de aplicação, ajustes manuais via auditoria, cancelamento da compra).
+
+```json
+{
+  "compraPacienteId": "uuid",
+  "eventos": [
+    {
+      "tipo": "Compra",
+      "data": "2026-07-23T12:00:00Z",
+      "produtoId": "uuid",
+      "produtoNome": "Tirzepatida",
+      "quantidade": 60,
+      "unidadeMedida": "mg",
+      "usuarioId": "uuid",
+      "usuarioNome": "Admin"
+    },
+    {
+      "tipo": "Aplicacao",
+      "data": "2026-07-30T15:00:00Z",
+      "produtoId": "uuid",
+      "produtoNome": "Tirzepatida",
+      "quantidade": 5,
+      "unidadeMedida": "mg",
+      "aplicadorId": "uuid",
+      "aplicadorNome": "Isadora",
+      "loteProdutoId": "uuid",
+      "loteCodigo": "Lote-01",
+      "aplicacaoId": "uuid",
+      "cancelada": false
+    },
+    {
+      "tipo": "AjusteManual",
+      "data": "2026-08-10T10:00:00Z",
+      "produtoId": "uuid",
+      "produtoNome": "Tirzepatida",
+      "quantidadeAnterior": 3,
+      "quantidadeNova": 1,
+      "campoAjuste": "quantidadeUtilizada",
+      "unidadeMedida": "mg",
+      "usuarioId": "uuid",
+      "usuarioNome": "Admin",
+      "motivo": "Correção de saldo migrado"
+    }
+  ]
+}
+```
+
+Tipos: `Compra` | `Aplicacao` | `CancelamentoAplicacao` | `AjusteManual` | `CancelamentoCompra`.
+
+### PUT `/api/patient-purchases/{id}/balance` — `compra_paciente.editar`
+
+Ajusta a quantidade contratada (`item_pacote.quantidade_total`) e a quantidade utilizada de uma compra com **pacote exclusivo** (1 compra → 1 pacote). O restante é recalculado. Pode reabrir compra `Concluido` → `Ativo` (ou o inverso) conforme o novo saldo.
+
+A utilizada informada é o **total desejado**. O backend persiste a diferença em `item_pacote.quantidade_utilizada_base`; o total exibido é `base + soma das aplicações`.
+
+```json
+{
+  "itens": [
+    { "produtoId": "uuid", "quantidadeContratada": 60, "quantidadeUtilizada": 12 }
+  ],
+  "motivo": "Correção de saldo migrado"
+}
+```
+
+| Campo | Obrigatório | Regra |
+|-------|-------------|-------|
+| `itens` | Sim | Ao menos um item |
+| `itens[].produtoId` | Sim | Produto existente no pacote da compra |
+| `itens[].quantidadeContratada` | Sim | `> 0` e `>= quantidadeUtilizada` |
+| `itens[].quantidadeUtilizada` | Sim | `>= 0` |
+| `motivo` | Não | Máx. 2000 caracteres |
+
+**Erros comuns (400):** compra cancelada; pacote compartilhado por mais de uma compra; quantidade abaixo da utilizada. **404** se a compra não existir no tenant.
+
+### POST `/api/patient-purchases/{id}/cancel` — `compra_paciente.cancelar`
+
+```json
+{ "observacao": "Motivo" }
+```
+
+---
+
 ## 18. Procedimentos — `/api/procedures`
 
 Kits reutilizáveis de insumos (e opcionalmente produto aplicado) para aplicações em pacientes.
@@ -2000,6 +2159,10 @@ Desativa ou reativa o procedimento.
 
 Registro de aplicações realizadas. **Sempre** informe `procedimentoId` — o produto aplicado é resolvido internamente a partir do procedimento. Ao criar, gera saída(s) de estoque; ao cancelar, estorna todas.
 
+Para medicamento com controle de lote: informe `loteProdutoId` (obrigatório). Lotes com saldo: `GET /api/stock-balances/lots?unidadeId=&produtoId=`.
+
+`consumirInsumosKit` (default `true`): quando `false`, não baixa os insumos do kit; use `insumosManuais: [{ produtoId, quantidade }]` para baixa manual (lista vazia/omitida = só o medicamento).
+
 ### GET `/api/patient-applications`
 
 | Param | Tipo | Default | Descrição |
@@ -2020,7 +2183,7 @@ Retorna uma aplicação com nomes resolvidos (paciente, produto, aplicador, unid
 
 ### POST `/api/patient-applications`
 
-Um procedimento (legado) ou vários via `procedimentos[]`. `compraPacienteId` é opcional.
+Um procedimento (legado) ou vários via `procedimentos[]`. `compraPacienteId` é opcional. Aceita `loteProdutoId`, `consumirInsumosKit` e `insumosManuais` no modo legado ou por item em `procedimentos[]`.
 
 **Response 201:** `{ "aplicacoes": [ ... ] }` — uma entrada por procedimento.
 
@@ -2111,11 +2274,18 @@ Conclui agendamento. Para `tipo = Aplicacao`, cria `AplicacaoPaciente` vinculada
 ```json
 {
   "quantidadeUtilizada": 1.0,
+  "loteProdutoId": "uuid",
+  "consumirInsumosKit": false,
+  "insumosManuais": [
+    { "produtoId": "uuid-seringa", "quantidade": 1 }
+  ],
   "peso": 72.5
 }
 ```
 
-`quantidadeUtilizada` obrigatória quando o procedimento possui produto aplicado.
+`quantidadeUtilizada` obrigatória quando o procedimento possui produto aplicado.  
+`loteProdutoId` obrigatório para medicamento com controle de lote.  
+`consumirInsumosKit` (default `true`) controla a baixa dos insumos do kit; com `false`, use `insumosManuais` para baixa manual.
 
 ### PATCH `/api/appointments/{id}/cancel`
 
@@ -2570,13 +2740,30 @@ interface PatientApplication {
   atualizadoEm: string | null;
 }
 
+interface PatientApplicationManualSupplyRequest {
+  produtoId: string;
+  quantidade: number;
+}
+
+interface CreatePatientApplicationProcedureRequest {
+  procedimentoId: string;
+  quantidadeUtilizada?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: PatientApplicationManualSupplyRequest[] | null;
+}
+
 interface CreatePatientApplicationRequest {
   pacienteId: string;
-  procedimentoId: string;
+  procedimentoId?: string | null;
+  procedimentos?: CreatePatientApplicationProcedureRequest[] | null;
   aplicadorId: string;
   unidadeId: string;
   dataAplicacao: string;
   quantidadeUtilizada?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: PatientApplicationManualSupplyRequest[] | null;
   peso?: number | null;
   observacao?: string | null;
   sintomaIds?: string[] | null;
@@ -2633,9 +2820,22 @@ interface CancelAppointmentRequest {
   motivo: string;
 }
 
+interface CompleteAppointmentProcedureRequest {
+  procedimentoId: string;
+  quantidadeUtilizada?: number | null;
+  peso?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: PatientApplicationManualSupplyRequest[] | null;
+}
+
 interface CompleteAppointmentRequest {
   quantidadeUtilizada?: number | null;
   peso?: number | null;
+  loteProdutoId?: string | null;
+  consumirInsumosKit?: boolean;
+  insumosManuais?: PatientApplicationManualSupplyRequest[] | null;
+  procedimentos?: CompleteAppointmentProcedureRequest[] | null;
 }
 ```
 

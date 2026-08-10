@@ -11,7 +11,9 @@ const STATUS_COMPRA_POR_NUMERO: Record<number, StatusCompraPaciente> = {
   4: 'Vencido',
 };
 
-export type NivelSaldoCompra = 'ok' | 'baixo' | 'sem_saldo';
+export const NIVEIS_SALDO_COMPRA = ['ok', 'baixo', 'sem_saldo'] as const;
+
+export type NivelSaldoCompra = (typeof NIVEIS_SALDO_COMPRA)[number];
 
 export interface SaldoProdutoCompraPaciente {
   produtoId: string;
@@ -53,6 +55,53 @@ export interface CriarCompraPacienteRequest {
 
 export interface CancelarCompraPacienteRequest {
   observacao?: string | null;
+}
+
+export interface AtualizarSaldoCompraPacienteItemRequest {
+  produtoId: string;
+  quantidadeContratada: number;
+  quantidadeUtilizada: number;
+}
+
+export interface AtualizarSaldoCompraPacienteRequest {
+  itens: AtualizarSaldoCompraPacienteItemRequest[];
+  motivo?: string | null;
+}
+
+export const TIPOS_HISTORICO_COMPRA_PACIENTE = [
+  'Compra',
+  'Aplicacao',
+  'CancelamentoAplicacao',
+  'AjusteManual',
+  'CancelamentoCompra',
+] as const;
+
+export type TipoHistoricoCompraPaciente = (typeof TIPOS_HISTORICO_COMPRA_PACIENTE)[number];
+
+export interface HistoricoCompraPacienteEvento {
+  tipo: TipoHistoricoCompraPaciente | string;
+  data: string;
+  produtoId?: string | null;
+  produtoNome?: string | null;
+  quantidade?: number | null;
+  quantidadeAnterior?: number | null;
+  quantidadeNova?: number | null;
+  campoAjuste?: 'quantidadeContratada' | 'quantidadeUtilizada' | string | null;
+  unidadeMedida?: string | null;
+  aplicadorId?: string | null;
+  aplicadorNome?: string | null;
+  usuarioId?: string | null;
+  usuarioNome?: string | null;
+  loteProdutoId?: string | null;
+  loteCodigo?: string | null;
+  aplicacaoId?: string | null;
+  motivo?: string | null;
+  cancelada?: boolean | null;
+}
+
+export interface HistoricoCompraPaciente {
+  compraPacienteId: string;
+  eventos: HistoricoCompraPacienteEvento[];
 }
 
 export interface ListarComprasPacienteParams {
@@ -97,6 +146,19 @@ export function isCompraAtiva(
   status: StatusCompraPaciente | number | string | null | undefined,
 ): boolean {
   return normalizarStatusCompra(status) === 'Ativo';
+}
+
+export function isCompraCancelada(
+  status: StatusCompraPaciente | number | string | null | undefined,
+): boolean {
+  return normalizarStatusCompra(status) === 'Cancelado';
+}
+
+/** Compra cancelada não pode ter saldo ajustado (regra do PUT /balance). */
+export function podeAjustarSaldoCompra(
+  status: StatusCompraPaciente | number | string | null | undefined,
+): boolean {
+  return !isCompraCancelada(status);
 }
 
 export function obterLabelStatusCompra(
@@ -260,6 +322,51 @@ export function formatarResumoSaldoProdutos(
 export function formatarOpcaoCompraAtiva(compra: CompraPaciente): string {
   const saldoResumo = formatarResumoSaldoProdutos(compra.saldo);
   return `${compra.pacoteNome} — ${saldoResumo}`;
+}
+
+export function formatarTextoHistoricoCompra(
+  evento: HistoricoCompraPacienteEvento,
+): string {
+  const unidade = evento.unidadeMedida?.trim() || '';
+  const produto = evento.produtoNome?.trim() || '';
+  const data = formatarDataBrasil(evento.data);
+
+  switch (evento.tipo) {
+    case 'Compra': {
+      const qtd = formatarQuantidadeProduto(evento.quantidade ?? 0, unidade);
+      const por = evento.usuarioNome ? ` · por ${evento.usuarioNome}` : '';
+      return produto
+        ? `Comprou ${qtd} de ${produto} em ${data}${por}`
+        : `Comprou ${qtd} em ${data}${por}`;
+    }
+    case 'Aplicacao': {
+      const qtd = formatarQuantidadeProduto(evento.quantidade ?? 0, unidade);
+      const aplicador = evento.aplicadorNome ? ` · aplicado por ${evento.aplicadorNome}` : '';
+      const lote = evento.loteCodigo ? ` · lote ${evento.loteCodigo}` : '';
+      const cancelada = evento.cancelada ? ' (cancelada)' : '';
+      return `Usou ${qtd}${produto ? ` de ${produto}` : ''} em ${data}${aplicador}${lote}${cancelada}`;
+    }
+    case 'CancelamentoAplicacao': {
+      const qtd = formatarQuantidadeProduto(evento.quantidade ?? 0, unidade);
+      return `Cancelou uso de ${qtd}${produto ? ` de ${produto}` : ''} em ${data}`;
+    }
+    case 'AjusteManual': {
+      const campo =
+        evento.campoAjuste === 'quantidadeContratada' ? 'contratada' : 'utilizada';
+      const de = formatarQuantidadeProduto(evento.quantidadeAnterior ?? 0, unidade);
+      const para = formatarQuantidadeProduto(evento.quantidadeNova ?? 0, unidade);
+      const por = evento.usuarioNome ? ` · manual por ${evento.usuarioNome}` : ' · manual';
+      const motivo = evento.motivo ? ` · ${evento.motivo}` : '';
+      return `Ajuste de ${campo}: ${de} → ${para}${produto ? ` (${produto})` : ''} em ${data}${por}${motivo}`;
+    }
+    case 'CancelamentoCompra': {
+      const por = evento.usuarioNome ? ` · por ${evento.usuarioNome}` : '';
+      const motivo = evento.motivo ? ` · ${evento.motivo}` : '';
+      return `Compra cancelada em ${data}${por}${motivo}`;
+    }
+    default:
+      return `${evento.tipo} em ${data}`;
+  }
 }
 
 export function normalizarCompraPaciente(compra: CompraPaciente): CompraPaciente {

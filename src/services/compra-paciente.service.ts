@@ -1,9 +1,11 @@
 import { api } from '@/boot/axios';
 import type { ApiResponse } from '@/types/api/api';
 import type {
+  AtualizarSaldoCompraPacienteRequest,
   CancelarCompraPacienteRequest,
   CompraPaciente,
   CriarCompraPacienteRequest,
+  HistoricoCompraPaciente,
   ListarComprasPacienteParams,
   SaldoCompraPaciente,
 } from '@/types/entidades/compra-paciente';
@@ -78,6 +80,26 @@ export const compraPacienteService = {
   async obterSaldo(id: string): Promise<SaldoCompraPaciente> {
     const { data } = await api.get<ApiResponse<SaldoCompraPaciente>>(
       `/api/patient-purchases/${id}/balance`,
+    );
+
+    return data.data;
+  },
+
+  async obterHistorico(id: string): Promise<HistoricoCompraPaciente> {
+    const { data } = await api.get<ApiResponse<HistoricoCompraPaciente>>(
+      `/api/patient-purchases/${id}/history`,
+    );
+
+    return data.data;
+  },
+
+  async atualizarSaldo(
+    id: string,
+    payload: AtualizarSaldoCompraPacienteRequest,
+  ): Promise<SaldoCompraPaciente> {
+    const { data } = await api.put<ApiResponse<SaldoCompraPaciente>>(
+      `/api/patient-purchases/${id}/balance`,
+      payload,
     );
 
     return data.data;

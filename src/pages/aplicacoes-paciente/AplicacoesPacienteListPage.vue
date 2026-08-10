@@ -225,9 +225,18 @@ function abrirDialogCancelar(aplicacao: AplicacaoPaciente): void {
   dialogCancelar.value = true;
 }
 
-function abrirDialogVisualizar(aplicacao: AplicacaoPaciente): void {
+async function abrirDialogVisualizar(aplicacao: AplicacaoPaciente): Promise<void> {
   aplicacaoSelecionada.value = aplicacao;
   dialogVisualizar.value = true;
+
+  try {
+    const completa = await aplicacaoPacienteService.obter(aplicacao.id);
+    if (dialogVisualizar.value && aplicacaoSelecionada.value?.id === aplicacao.id) {
+      aplicacaoSelecionada.value = completa;
+    }
+  } catch {
+    // Mantém os dados da listagem se o detalhe falhar.
+  }
 }
 
 async function confirmarCancelar(): Promise<void> {

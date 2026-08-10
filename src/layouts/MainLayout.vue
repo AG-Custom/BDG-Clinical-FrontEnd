@@ -16,6 +16,7 @@ const ROTAS_SECAO_ATENDIMENTO = new Set([
   'pacientes-compras-nova',
   'compras',
   'compras-nova',
+  'compras-detalhe',
   'aplicacoes-paciente',
   'aplicacoes-paciente-nova',
   'aplicacoes-paciente-editar',

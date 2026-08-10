@@ -94,7 +94,11 @@ const camposIgnorados = new Set([
 
   "itens",
 
+  "itensConsumidos",
+
   "links",
+
+  "loteProdutoId",
 
   "origem",
 
