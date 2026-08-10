@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { isRequisicaoCancelada, useBuscaRemota } from '@/composables/useBuscaRemota';
@@ -73,6 +73,28 @@ const opcoesUnidadesFiltro = ref<{ label: string; value: string | null }[]>([
 const opcoesProdutosFiltro = ref<{ label: string; value: string | null }[]>([
   { label: 'Todos os produtos', value: null },
 ]);
+
+const opcoesProdutosFiltroFiltradas = ref<{ label: string; value: string | null }[]>([
+  { label: 'Todos os produtos', value: null },
+]);
+
+watch(opcoesProdutosFiltro, (lista) => {
+  opcoesProdutosFiltroFiltradas.value = lista;
+});
+
+function filtrarProdutosFiltro(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProdutosFiltroFiltradas.value = opcoesProdutosFiltro.value;
+      return;
+    }
+
+    opcoesProdutosFiltroFiltradas.value = opcoesProdutosFiltro.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const opcoesTiposFiltro = ref<{ label: string; value: string | null }[]>([
   { label: 'Todos os tipos', value: null },
@@ -436,14 +458,23 @@ onMounted(async () => {
           <div class="col-12 col-md-3">
             <q-select
               v-model="filtroProdutoId"
-              :options="opcoesProdutosFiltro"
+              :options="opcoesProdutosFiltroFiltradas"
               label="Produto"
               outlined
               dense
               emit-value
               map-options
+              use-input
+              input-debounce="200"
+              @filter="filtrarProdutosFiltro"
               @update:model-value="carregarSaldos"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum produto encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div class="col-12 col-md-2">
             <q-toggle

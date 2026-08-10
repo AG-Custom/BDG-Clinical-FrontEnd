@@ -191,6 +191,30 @@ const opcoesProcedimentos = computed(() =>
     })),
 );
 
+const opcoesProcedimentosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesProcedimentos,
+  (lista) => {
+    opcoesProcedimentosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProcedimentos(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProcedimentosFiltradas.value = opcoesProcedimentos.value;
+      return;
+    }
+
+    opcoesProcedimentosFiltradas.value = opcoesProcedimentos.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const produtosPorId = computed(
   () => new Map(produtosDisponiveis.value.map((produto) => [produto.id, produto])),
 );
@@ -238,6 +262,30 @@ const opcoesSintomas = computed(() =>
       value: sintoma.id,
     })),
 );
+
+const opcoesSintomasFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesSintomas,
+  (lista) => {
+    opcoesSintomasFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarSintomas(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesSintomasFiltradas.value = opcoesSintomas.value;
+      return;
+    }
+
+    opcoesSintomasFiltradas.value = opcoesSintomas.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const podeEditarCampos = computed(
   () =>
@@ -424,6 +472,27 @@ function opcoesInsumosManuais(item: ProcedimentoNaFormulario) {
       label: produto.nome,
       value: produto.id,
     }));
+}
+
+const opcoesInsumosManuaisFiltradas = ref<{ label: string; value: string }[]>([]);
+
+function filtrarInsumosManuais(
+  val: string,
+  update: (callback: () => void) => void,
+  procedimento: ProcedimentoNaFormulario,
+): void {
+  update(() => {
+    const base = opcoesInsumosManuais(procedimento);
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesInsumosManuaisFiltradas.value = base;
+      return;
+    }
+
+    opcoesInsumosManuaisFiltradas.value = base.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
 }
 
 function obterSiglaUnidadeMedida(produtoId: string | null): string {
@@ -1280,17 +1349,26 @@ onMounted(async () => {
                   v-if="!isEdicao"
                   v-model="form.procedimentoIds"
                   class="form-field--required"
-                  :options="opcoesProcedimentos"
+                  :options="opcoesProcedimentosFiltradas"
                   label="Procedimentos"
                   outlined
                   multiple
                   use-chips
+                  use-input
+                  input-debounce="200"
                   emit-value
                   map-options
                   :rules="[validarProcedimentos]"
                   :readonly="!podeEditarCampos || camposImutaveis"
                   :disable="!podeEditarCampos || camposImutaveis"
-                />
+                  @filter="filtrarProcedimentos"
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">Nenhum procedimento encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
                 <q-select
                   v-else-if="procedimentosNaFormulario[0]"
                   :model-value="procedimentosNaFormulario[0].procedimentoId"
@@ -1434,15 +1512,24 @@ onMounted(async () => {
                           <q-select
                             v-model="insumo.produtoId"
                             class="form-field--required"
-                            :options="opcoesInsumosManuais(procedimentoItem)"
+                            :options="opcoesInsumosManuaisFiltradas"
                             label="Insumo"
                             outlined
                             dense
                             emit-value
                             map-options
+                            use-input
+                            input-debounce="200"
                             :disable="!podeEditarCampos || camposImutaveis"
+                            @filter="(val, update) => filtrarInsumosManuais(val, update, procedimentoItem)"
                             @update:model-value="aoAlterarInsumoManual(procedimentoItem)"
-                          />
+                          >
+                            <template #no-option>
+                              <q-item>
+                                <q-item-section class="text-grey">Nenhum insumo encontrado</q-item-section>
+                              </q-item>
+                            </template>
+                          </q-select>
                         </div>
                         <div class="col-8 col-md-3">
                           <q-input
@@ -1630,16 +1717,25 @@ onMounted(async () => {
               <div class="form-field-stack">
                 <q-select
                   v-model="form.sintomaIds"
-                  :options="opcoesSintomas"
+                  :options="opcoesSintomasFiltradas"
                   label="Sintomas"
                   outlined
                   multiple
                   use-chips
+                  use-input
+                  input-debounce="200"
                   emit-value
                   map-options
                   :readonly="!podeEditarCampos"
                   :disable="!podeEditarCampos"
-                />
+                  @filter="filtrarSintomas"
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">Nenhum sintoma encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
                 <app-form-dependencia-alerta
                   v-if="mostrarAlertaSintomas"
                   inline

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
@@ -118,6 +118,30 @@ const opcoesProdutos = computed(() =>
     value: produto.id,
   })),
 );
+
+const opcoesProdutosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesProdutos,
+  (lista) => {
+    opcoesProdutosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProdutos(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProdutosFiltradas.value = opcoesProdutos.value;
+      return;
+    }
+
+    opcoesProdutosFiltradas.value = opcoesProdutos.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const produtosPorId = computed(
   () => new Map(produtosDisponiveis.value.map((produto) => [produto.id, produto])),
@@ -767,17 +791,26 @@ onMounted(async () => {
                   <q-select
                     v-model="item.produtoId"
                     class="form-field--required"
-                    :options="opcoesProdutos"
+                    :options="opcoesProdutosFiltradas"
                     label="Produto"
                     outlined
                     dense
                     emit-value
                     map-options
                     options-dense
+                    use-input
+                    input-debounce="200"
                     :rules="[validarProduto]"
                     :disable="!podeSalvar || somenteLeitura || opcoesProdutos.length === 0"
+                    @filter="filtrarProdutos"
                     @update:model-value="aoSelecionarProduto(item)"
-                  />
+                  >
+                    <template #no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">Nenhum produto encontrado</q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
                 </div>
 
                 <div class="col-4 col-md-2">

@@ -97,6 +97,30 @@ const opcoesPacotes = computed(() =>
     })),
 );
 
+const opcoesPacotesFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesPacotes,
+  (lista) => {
+    opcoesPacotesFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarPacotes(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesPacotesFiltradas.value = opcoesPacotes.value;
+      return;
+    }
+
+    opcoesPacotesFiltradas.value = opcoesPacotes.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const opcoesUnidades = computed(() =>
   unidadesDisponiveis.value
     .filter(
@@ -338,14 +362,23 @@ onMounted(async () => {
             <q-select
               v-model="form.pacoteId"
               class="form-field--required"
-              :options="opcoesPacotes"
+              :options="opcoesPacotesFiltradas"
               label="Pacote"
               outlined
               emit-value
               map-options
+              use-input
+              input-debounce="200"
               :rules="[validarPacote]"
               :disable="!podeCriar || opcoesPacotes.length === 0"
-            />
+              @filter="filtrarPacotes"
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum pacote encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
             <app-form-dependencia-alerta
               v-if="mostrarAlertaPacotes"
               inline

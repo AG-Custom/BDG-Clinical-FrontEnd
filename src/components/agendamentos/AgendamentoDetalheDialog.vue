@@ -267,6 +267,27 @@ function opcoesInsumosManuaisConclusao(item: ProcedimentoConclusaoFormulario) {
     }));
 }
 
+const opcoesInsumosManuaisConclusaoFiltradas = ref<{ label: string; value: string }[]>([]);
+
+function filtrarInsumosManuaisConclusao(
+  val: string,
+  update: (callback: () => void) => void,
+  procedimento: ProcedimentoConclusaoFormulario,
+): void {
+  update(() => {
+    const base = opcoesInsumosManuaisConclusao(procedimento);
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesInsumosManuaisConclusaoFiltradas.value = base;
+      return;
+    }
+
+    opcoesInsumosManuaisConclusaoFiltradas.value = base.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 function obterSiglaInsumoConclusao(produtoId: string | null): string {
   if (!produtoId) {
     return '';
@@ -936,14 +957,23 @@ watch(
               <div class="col-12 col-sm-7">
                 <q-select
                   v-model="insumo.produtoId"
-                  :options="opcoesInsumosManuaisConclusao(procedimento)"
+                  :options="opcoesInsumosManuaisConclusaoFiltradas"
                   label="Insumo"
                   outlined
                   dense
                   emit-value
                   map-options
+                  use-input
+                  input-debounce="200"
                   :disable="processando"
-                />
+                  @filter="(val, update) => filtrarInsumosManuaisConclusao(val, update, procedimento)"
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">Nenhum insumo encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
               </div>
               <div class="col-8 col-sm-3">
                 <q-input

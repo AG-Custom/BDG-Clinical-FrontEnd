@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
@@ -49,6 +49,30 @@ const opcoesProdutos = computed(() =>
     })),
 );
 
+const opcoesProdutosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesProdutos,
+  (lista) => {
+    opcoesProdutosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProdutos(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProdutosFiltradas.value = opcoesProdutos.value;
+      return;
+    }
+
+    opcoesProdutosFiltradas.value = opcoesProdutos.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const opcoesProdutosInsumos = computed(() =>
   produtosDisponiveis.value
     .filter((produto) => {
@@ -73,6 +97,30 @@ const opcoesProdutosInsumos = computed(() =>
       value: produto.id,
     })),
 );
+
+const opcoesProdutosInsumosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesProdutosInsumos,
+  (lista) => {
+    opcoesProdutosInsumosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProdutosInsumos(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProdutosInsumosFiltradas.value = opcoesProdutosInsumos.value;
+      return;
+    }
+
+    opcoesProdutosInsumosFiltradas.value = opcoesProdutosInsumos.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const mostrarAlertaProdutos = computed(
   () => dadosIniciaisCarregados.value && opcoesProdutos.value.length === 0,
@@ -327,16 +375,25 @@ onMounted(async () => {
 
           <q-select
             v-model="form.produtoAplicadoId"
-            :options="opcoesProdutos"
+            :options="opcoesProdutosFiltradas"
             label="Produto aplicado"
             outlined
             emit-value
             map-options
             clearable
+            use-input
+            input-debounce="200"
             :readonly="!podeSalvar"
             hint="Medicamento ou produto clínico aplicado. Opcional se houver apenas insumos."
             :rules="[validarProdutoAplicado]"
-          />
+            @filter="filtrarProdutos"
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">Nenhum produto encontrado</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
 
           <q-input
             v-model="form.observacoes"
@@ -383,14 +440,23 @@ onMounted(async () => {
                 <q-select
                   v-model="item.produtoId"
                   class="form-field--required"
-                  :options="opcoesProdutosInsumos"
+                  :options="opcoesProdutosInsumosFiltradas"
                   label="Produto"
                   outlined
                   dense
                   emit-value
                   map-options
+                  use-input
+                  input-debounce="200"
                   :disable="!podeSalvar || opcoesProdutosInsumos.length === 0"
-                />
+                  @filter="filtrarProdutosInsumos"
+                >
+                  <template #no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">Nenhum produto encontrado</q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
               </div>
 
               <div class="col-6 col-md-3">

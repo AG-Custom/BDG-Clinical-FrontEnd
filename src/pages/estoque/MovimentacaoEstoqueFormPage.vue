@@ -138,6 +138,30 @@ const opcoesProdutos = computed(() =>
     })),
 );
 
+const opcoesProdutosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesProdutos,
+  (lista) => {
+    opcoesProdutosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProdutos(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProdutosFiltradas.value = opcoesProdutos.value;
+      return;
+    }
+
+    opcoesProdutosFiltradas.value = opcoesProdutos.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const mostrarAlertaUnidades = computed(
   () => dadosIniciaisCarregados.value && opcoesUnidades.value.length === 0,
 );
@@ -504,15 +528,24 @@ onMounted(async () => {
                     <q-select
                       v-model="form.produtoId"
                       class="form-field--required"
-                      :options="opcoesProdutos"
+                      :options="opcoesProdutosFiltradas"
                       label="Produto"
                       outlined
                       emit-value
                       map-options
+                      use-input
+                      input-debounce="200"
                       :rules="[validarProduto]"
                       :readonly="!podeRegistrar"
                       :disable="!podeRegistrar"
-                    />
+                      @filter="filtrarProdutos"
+                    >
+                      <template #no-option>
+                        <q-item>
+                          <q-item-section class="text-grey">Nenhum produto encontrado</q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
                     <app-form-dependencia-alerta
                       v-if="mostrarAlertaProdutos"
                       inline

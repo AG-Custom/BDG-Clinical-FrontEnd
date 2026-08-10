@@ -64,8 +64,9 @@ const form = reactive({
   pacienteId: null as string | null,
   funcionarioId: null as string | null,
   tipo: 'Consulta' as TipoAgendamento,
-  dataInicio: '',
-  dataFim: '',
+  data: '',
+  horaInicio: '',
+  horaFim: '',
   procedimentoIds: [] as string[],
   compraPacienteId: null as string | null,
   observacao: '',
@@ -100,6 +101,30 @@ const opcoesProcedimentos = computed(() =>
     .filter((procedimento) => procedimento.ativo)
     .map((procedimento) => ({ label: procedimento.nome, value: procedimento.id })),
 );
+
+const opcoesProcedimentosFiltradas = ref<{ label: string; value: string }[]>([]);
+
+watch(
+  opcoesProcedimentos,
+  (lista) => {
+    opcoesProcedimentosFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProcedimentos(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProcedimentosFiltradas.value = opcoesProcedimentos.value;
+      return;
+    }
+
+    opcoesProcedimentosFiltradas.value = opcoesProcedimentos.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const opcoesFuncionarios = computed(() =>
   funcionariosDisponiveis.value
@@ -191,10 +216,46 @@ const tituloDialog = computed(() =>
   isEdicao.value ? 'Editar agendamento' : 'Novo agendamento',
 );
 
-function formatarDatetimeLocal(data: Date): string {
-  const pad = (valor: number) => String(valor).padStart(2, '0');
+function pad2(valor: number): string {
+  return String(valor).padStart(2, '0');
+}
 
-  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}T${pad(data.getHours())}:${pad(data.getMinutes())}`;
+function formatarParteData(data: Date): string {
+  return `${data.getFullYear()}-${pad2(data.getMonth() + 1)}-${pad2(data.getDate())}`;
+}
+
+function formatarParteHora(data: Date): string {
+  return `${pad2(data.getHours())}:${pad2(data.getMinutes())}`;
+}
+
+function extrairDataHoraDeDatetimeLocal(valor: string): { data: string; hora: string } {
+  const [data = '', horaCompleta = ''] = valor.split('T');
+  return { data, hora: horaCompleta.slice(0, 5) };
+}
+
+function somarMinutosHora(hora: string, minutos: number): string {
+  const [horas = 0, mins = 0] = hora.split(':').map(Number);
+  const total = horas * 60 + mins + minutos;
+  const horaNormalizada = ((Math.floor(total / 60) % 24) + 24) % 24;
+  const minutoNormalizado = ((total % 60) + 60) % 60;
+
+  return `${pad2(horaNormalizada)}:${pad2(minutoNormalizado)}`;
+}
+
+function aplicarIntervaloNoFormulario(inicio: Date, fim: Date): void {
+  form.data = formatarParteData(inicio);
+  form.horaInicio = formatarParteHora(inicio);
+  form.horaFim = formatarParteHora(fim);
+}
+
+function aoAlterarHoraInicio(): void {
+  if (!form.horaInicio) {
+    return;
+  }
+
+  if (!form.horaFim || form.horaFim <= form.horaInicio) {
+    form.horaFim = somarMinutosHora(form.horaInicio, 30);
+  }
 }
 
 function preencherFormulario(): void {
@@ -203,8 +264,17 @@ function preencherFormulario(): void {
     form.pacienteId = props.agendamento.pacienteId;
     form.funcionarioId = props.agendamento.funcionarioId;
     form.tipo = props.agendamento.tipo;
-    form.dataInicio = deIsoParaInputDatetimeLocal(props.agendamento.dataInicio);
-    form.dataFim = deIsoParaInputDatetimeLocal(props.agendamento.dataFim);
+
+    const inicio = extrairDataHoraDeDatetimeLocal(
+      deIsoParaInputDatetimeLocal(props.agendamento.dataInicio),
+    );
+    const fim = extrairDataHoraDeDatetimeLocal(
+      deIsoParaInputDatetimeLocal(props.agendamento.dataFim),
+    );
+    form.data = inicio.data;
+    form.horaInicio = inicio.hora;
+    form.horaFim = fim.hora;
+
     form.procedimentoIds = obterProcedimentosDoAgendamento(props.agendamento).map(
       (procedimento) => procedimento.id,
     );
@@ -223,13 +293,11 @@ function preencherFormulario(): void {
   comprasAtivas.value = [];
 
   if (props.intervaloInicial) {
-    form.dataInicio = formatarDatetimeLocal(props.intervaloInicial.inicio);
-    form.dataFim = formatarDatetimeLocal(props.intervaloInicial.fim);
+    aplicarIntervaloNoFormulario(props.intervaloInicial.inicio, props.intervaloInicial.fim);
   } else {
     const agora = new Date();
     const fim = new Date(agora.getTime() + 30 * 60 * 1000);
-    form.dataInicio = formatarDatetimeLocal(agora);
-    form.dataFim = formatarDatetimeLocal(fim);
+    aplicarIntervaloNoFormulario(agora, fim);
   }
 }
 
@@ -372,8 +440,8 @@ function montarPayload() {
     pacienteId: form.pacienteId!,
     funcionarioId: form.funcionarioId!,
     tipo: form.tipo,
-    dataInicio: deInputDatetimeLocalParaIso(form.dataInicio),
-    dataFim: deInputDatetimeLocalParaIso(form.dataFim),
+    dataInicio: deInputDatetimeLocalParaIso(`${form.data}T${form.horaInicio}`),
+    dataFim: deInputDatetimeLocalParaIso(`${form.data}T${form.horaFim}`),
     procedimentoIds: exigeProcedimento.value ? form.procedimentoIds : null,
     compraPacienteId: exigeCompraPaciente.value ? form.compraPacienteId : null,
     observacao: form.observacao.trim() || null,
@@ -385,10 +453,16 @@ async function salvar(): Promise<void> {
     !form.unidadeId ||
     !form.pacienteId ||
     !form.funcionarioId ||
-    !form.dataInicio ||
-    !form.dataFim
+    !form.data ||
+    !form.horaInicio ||
+    !form.horaFim
   ) {
     notificacao.info('Preencha todos os campos obrigatórios.');
+    return;
+  }
+
+  if (form.horaFim <= form.horaInicio) {
+    notificacao.info('O horário de fim deve ser após o horário de início.');
     return;
   }
 
@@ -602,17 +676,26 @@ watch(
           <div v-if="exigeProcedimento" class="form-field-stack">
             <q-select
               v-model="form.procedimentoIds"
-              :options="opcoesProcedimentos"
+              :options="opcoesProcedimentosFiltradas"
               label="Procedimentos *"
               outlined
               multiple
               use-chips
+              use-input
+              input-debounce="200"
               emit-value
               map-options
               :loading="carregandoDados"
               :disable="salvando || opcoesProcedimentos.length === 0"
               :rules="[(v) => (Array.isArray(v) && v.length > 0) || 'Obrigatório para aplicação']"
-            />
+              @filter="filtrarProcedimentos"
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum procedimento encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
             <app-form-dependencia-alerta
               v-if="mostrarAlertaProcedimentos"
               inline
@@ -657,20 +740,31 @@ watch(
           </div>
 
           <div class="row q-col-gutter-md">
-            <div class="col-12 col-sm-6">
+            <div class="col-12 col-sm-4">
               <q-input
-                v-model="form.dataInicio"
-                type="datetime-local"
-                label="Início *"
+                v-model="form.data"
+                type="date"
+                label="Data *"
                 outlined
                 :disable="salvando"
                 :rules="[(v) => Boolean(v) || 'Obrigatório']"
               />
             </div>
-            <div class="col-12 col-sm-6">
+            <div class="col-6 col-sm-4">
               <q-input
-                v-model="form.dataFim"
-                type="datetime-local"
+                v-model="form.horaInicio"
+                type="time"
+                label="Início *"
+                outlined
+                :disable="salvando"
+                :rules="[(v) => Boolean(v) || 'Obrigatório']"
+                @update:model-value="aoAlterarHoraInicio"
+              />
+            </div>
+            <div class="col-6 col-sm-4">
+              <q-input
+                v-model="form.horaFim"
+                type="time"
                 label="Fim *"
                 outlined
                 :disable="salvando"

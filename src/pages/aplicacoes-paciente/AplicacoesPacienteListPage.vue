@@ -152,6 +152,30 @@ const opcoesProdutosFiltro = computed(() => [
   })),
 ]);
 
+const opcoesProdutosFiltroFiltradas = ref<{ label: string; value: string | null }[]>([]);
+
+watch(
+  opcoesProdutosFiltro,
+  (lista) => {
+    opcoesProdutosFiltroFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProdutosFiltro(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProdutosFiltroFiltradas.value = opcoesProdutosFiltro.value;
+      return;
+    }
+
+    opcoesProdutosFiltroFiltradas.value = opcoesProdutosFiltro.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
 const opcoesProcedimentosFiltro = computed(() => [
   { label: 'Todos os procedimentos', value: null },
   ...procedimentos.value.map((procedimento) => ({
@@ -159,6 +183,30 @@ const opcoesProcedimentosFiltro = computed(() => [
     value: procedimento.id,
   })),
 ]);
+
+const opcoesProcedimentosFiltroFiltradas = ref<{ label: string; value: string | null }[]>([]);
+
+watch(
+  opcoesProcedimentosFiltro,
+  (lista) => {
+    opcoesProcedimentosFiltroFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarProcedimentosFiltro(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesProcedimentosFiltroFiltradas.value = opcoesProcedimentosFiltro.value;
+      return;
+    }
+
+    opcoesProcedimentosFiltroFiltradas.value = opcoesProcedimentosFiltro.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
 
 const cargosPorId = computed(
   () => new Map(cargos.value.map((cargo) => [cargo.id, cargo])),
@@ -388,26 +436,44 @@ onMounted(async () => {
           <div class="col-12 col-md-4">
             <q-select
               v-model="filtroProdutoId"
-              :options="opcoesProdutosFiltro"
+              :options="opcoesProdutosFiltroFiltradas"
               label="Produto"
               outlined
               dense
               emit-value
               map-options
+              use-input
+              input-debounce="200"
+              @filter="filtrarProdutosFiltro"
               @update:model-value="carregarAplicacoes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum produto encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div class="col-12 col-md-4">
             <q-select
               v-model="filtroProcedimentoId"
-              :options="opcoesProcedimentosFiltro"
+              :options="opcoesProcedimentosFiltroFiltradas"
               label="Procedimento"
               outlined
               dense
               emit-value
               map-options
+              use-input
+              input-debounce="200"
+              @filter="filtrarProcedimentosFiltro"
               @update:model-value="carregarAplicacoes"
-            />
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum procedimento encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
           <div class="col-12 col-md-4">
             <q-select
