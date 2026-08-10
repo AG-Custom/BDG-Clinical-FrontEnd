@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router';
 
 import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
+import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { permissoes } from '@/constants/permissoes';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
 import { cargoService } from '@/services/cargo.service';
 import { funcionarioService } from '@/services/funcionario.service';
@@ -34,6 +36,18 @@ const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const { podeGerenciarAplicacoes } = useAplicador();
+const podeCriarAplicacao = usePermissao(permissoes.aplicacoes.criar);
+const podeEditarAplicacao = usePermissao(permissoes.aplicacoes.editar);
+const podeCancelarAplicacao = usePermissao(permissoes.aplicacoes.cancelar);
+const podeCriar = computed(
+  () => podeGerenciarAplicacoes.value && podeCriarAplicacao.value,
+);
+const podeEditar = computed(
+  () => podeGerenciarAplicacoes.value && podeEditarAplicacao.value,
+);
+const podeCancelar = computed(
+  () => podeGerenciarAplicacoes.value && podeCancelarAplicacao.value,
+);
 
 const aplicacoes = ref<AplicacaoPaciente[]>([]);
 const unidades = ref<Unidade[]>([]);
@@ -281,8 +295,8 @@ onMounted(async () => {
         icon="add"
         unelevated
         no-caps
-        :disable="!podeGerenciarAplicacoes"
-        :to="podeGerenciarAplicacoes ? { name: 'aplicacoes-paciente-nova' } : undefined"
+        :disable="!podeCriar"
+        :to="podeCriar ? { name: 'aplicacoes-paciente-nova' } : undefined"
       />
     </app-page-header>
 
@@ -440,8 +454,8 @@ onMounted(async () => {
           <app-table-actions-cell :cell="cell">
             <app-table-actions-menu
               :ativo="!cell.row.cancelada"
-              :pode-editar="podeGerenciarAplicacoes"
-              :pode-alterar-status="podeGerenciarAplicacoes"
+              :pode-editar="podeEditar"
+              :pode-alterar-status="podeCancelar"
               :mostrar-status="!cell.row.cancelada"
               desabilitar-label="Cancelar"
               @visualizar="abrirDialogVisualizar(cell.row)"
@@ -469,8 +483,8 @@ onMounted(async () => {
             icon="add"
             unelevated
             no-caps
-            :disable="!podeGerenciarAplicacoes"
-            :to="podeGerenciarAplicacoes ? { name: 'aplicacoes-paciente-nova' } : undefined"
+            :disable="!podeCriar"
+            :to="podeCriar ? { name: 'aplicacoes-paciente-nova' } : undefined"
           />
         </div>
       </q-card-section>

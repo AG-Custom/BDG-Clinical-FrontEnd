@@ -411,7 +411,8 @@ onMounted(() => {
               <q-item-label
                 v-if="
                   possuiPermissao(menu.movimentacoesEstoque) ||
-                  possuiPermissao(permissoes.estoque.movimentar)
+                  possuiPermissao(permissoes.estoque.movimentar) ||
+                  possuiPermissao(permissoes.estoque.ajustar)
                 "
                 header
                 class="drawer-menu__group-label"
@@ -431,7 +432,7 @@ onMounted(() => {
                 <q-item-section class="drawer-menu__label">Histórico</q-item-section>
               </q-item>
               <q-item class="drawer-menu__sub-item"
-                v-if="possuiPermissao(permissoes.estoque.movimentar)"
+                v-if="possuiPermissao(permissoes.estoque.ajustar)"
                 clickable
                 v-ripple
                 :to="{ name: 'movimentacoes-estoque-entrada' }"

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 import AppEntityAuditSection from '@/components/shared/AppEntityAuditSection.vue';
 import { useNotificacao } from '@/composables/useNotificacao';
+import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { agendamentoService } from '@/services/agendamento.service';
@@ -47,6 +48,11 @@ const emit = defineEmits<{
 
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
+const temPermissaoEditar = usePermissao(permissoes.agendamento.editar);
+const temPermissaoConfirmar = usePermissao(permissoes.agendamento.confirmar);
+const temPermissaoConcluir = usePermissao(permissoes.agendamento.concluir);
+const temPermissaoCancelar = usePermissao(permissoes.agendamento.cancelar);
+const temPermissaoFalta = usePermissao(permissoes.agendamento.registrarFalta);
 
 const processando = ref(false);
 const dialogCancelar = ref(false);
@@ -75,23 +81,35 @@ interface ProcedimentoConclusaoFormulario {
 const procedimentosConclusao = ref<ProcedimentoConclusaoFormulario[]>([]);
 
 const podeEditar = computed(
-  () => props.agendamento && isAgendamentoEditavel(props.agendamento.status),
+  () =>
+    Boolean(temPermissaoEditar.value) &&
+    Boolean(props.agendamento && isAgendamentoEditavel(props.agendamento.status)),
 );
 
-const podeConfirmar = computed(() => props.agendamento?.status === 'Agendado');
+const podeConfirmar = computed(
+  () => Boolean(temPermissaoConfirmar.value) && props.agendamento?.status === 'Agendado',
+);
 
-const podeConcluir = computed(() => props.agendamento?.status === 'Confirmado');
+const podeConcluir = computed(
+  () => Boolean(temPermissaoConcluir.value) && props.agendamento?.status === 'Confirmado',
+);
 
 const podeCancelar = computed(
   () =>
-    props.agendamento &&
-    (props.agendamento.status === 'Agendado' || props.agendamento.status === 'Confirmado'),
+    Boolean(temPermissaoCancelar.value) &&
+    Boolean(
+      props.agendamento &&
+        (props.agendamento.status === 'Agendado' || props.agendamento.status === 'Confirmado'),
+    ),
 );
 
 const podeMarcarFalta = computed(
   () =>
-    props.agendamento &&
-    (props.agendamento.status === 'Agendado' || props.agendamento.status === 'Confirmado'),
+    Boolean(temPermissaoFalta.value) &&
+    Boolean(
+      props.agendamento &&
+        (props.agendamento.status === 'Agendado' || props.agendamento.status === 'Confirmado'),
+    ),
 );
 
 const conclusaoMultipla = computed(() => procedimentosConclusao.value.length > 1);
