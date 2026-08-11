@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { permissoes } from '@/constants/permissoes';
 import { isRequisicaoCancelada, useBuscaRemota } from '@/composables/useBuscaRemota';
 import { useNotificacao } from '@/composables/useNotificacao';
+import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { produtoService } from '@/services/produto.service';
 import { movimentacaoEstoqueService } from '@/services/movimentacao-estoque.service';
@@ -34,6 +36,7 @@ type VisaoLotes = 'lista' | 'detalhe';
 const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
+const podeMovimentar = usePermissao(permissoes.estoque.movimentar);
 
 const saldos = ref<SaldoEstoque[]>([]);
 const carregando = ref(true);
@@ -202,6 +205,16 @@ function verMovimentacoes(saldo: SaldoEstoque): void {
     name: 'movimentacoes-estoque',
     query: {
       unidadeId: saldo.unidadeId,
+      produtoId: saldo.produtoId,
+    },
+  });
+}
+
+function transferirEstoque(saldo: SaldoEstoque): void {
+  router.push({
+    name: 'movimentacoes-estoque-transferencia',
+    query: {
+      unidadeOrigemId: saldo.unidadeId,
       produtoId: saldo.produtoId,
     },
   });
@@ -542,6 +555,17 @@ onMounted(async () => {
                   <q-icon name="history" color="primary" />
                 </q-item-section>
                 <q-item-section>Ver movimentações</q-item-section>
+              </q-item>
+              <q-item
+                v-if="podeMovimentar"
+                clickable
+                v-close-popup
+                @click="transferirEstoque(cell.row)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="swap_horiz" color="primary" />
+                </q-item-section>
+                <q-item-section>Transferir</q-item-section>
               </q-item>
               <q-item clickable v-close-popup @click="abrirDialogLotes(cell.row)">
                 <q-item-section avatar>

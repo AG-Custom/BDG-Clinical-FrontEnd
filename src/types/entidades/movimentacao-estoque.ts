@@ -56,6 +56,7 @@ export interface ListarMovimentacoesEstoqueParams {
   dataInicio?: string;
   dataFim?: string;
   limit?: number;
+  transferenciaEstoqueId?: string;
 }
 
 export function formatarDataMovimentacao(data: string): string {
@@ -126,6 +127,8 @@ export function obterCorOrigemEntrada(origem: string): string {
       return 'secondary';
     case 'APLICACAO_PACIENTE_CANCELAMENTO':
       return 'warning';
+    case 'TRANSFERENCIA_ESTOQUE':
+      return 'info';
     default:
       return 'grey';
   }

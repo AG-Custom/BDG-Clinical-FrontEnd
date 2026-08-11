@@ -40,6 +40,10 @@ export const movimentacaoEstoqueService = {
       query.limit = params.limit;
     }
 
+    if (params.transferenciaEstoqueId) {
+      query.transferenciaEstoqueId = params.transferenciaEstoqueId;
+    }
+
     const { data } = await api.get<ApiResponse<MovimentacaoEstoque[]>>('/api/stock-movements', {
       params: Object.keys(query).length > 0 ? query : undefined,
     });
