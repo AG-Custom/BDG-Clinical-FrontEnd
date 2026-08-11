@@ -52,6 +52,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.agenda.visualizar },
       },
       {
+        path: 'relatorios',
+        name: 'relatorios',
+        component: () => import('@/pages/relatorios/RelatoriosPage.vue'),
+        meta: { permissao: p.relatorios.visualizar },
+      },
+      {
         path: 'unidades',
         name: 'unidades',
         component: () => import('@/pages/unidades/UnidadesListPage.vue'),

@@ -110,6 +110,9 @@ export const permissoes = {
   financeiro: {
     visualizar: 'financeiro.visualizar',
   },
+  relatorios: {
+    visualizar: 'relatorio.visualizar',
+  },
 } as const;
 
 export const permissoesMenu = {
@@ -132,6 +135,7 @@ export const permissoesMenu = {
   pedidosFornecedor: permissoes.pedidosFornecedor.visualizar,
   empresas: permissoes.empresas.visualizar,
   financeiro: permissoes.financeiro.visualizar,
+  relatorios: permissoes.relatorios.visualizar,
 } as const;
 
 export const permissoesMenuEmpresa = [
