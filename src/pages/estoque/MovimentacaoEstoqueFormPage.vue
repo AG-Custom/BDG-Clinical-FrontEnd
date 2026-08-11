@@ -84,6 +84,7 @@ const form = reactive({
   quantidadeEmbalagem: null as number | null,
   loteCodigo: '',
   dataValidade: '',
+  valorUnitario: null as number | null,
   data: '',
   observacao: '',
 });
@@ -154,7 +155,9 @@ const captionSaldo = computed(() => {
   return undefined;
 });
 
-const valorEmbalagemOuCadastro = computed(() => produtoSelecionado.value?.valor ?? null);
+const valorEmbalagemOuCadastro = computed(() =>
+  isEntrada.value ? form.valorUnitario : (produtoSelecionado.value?.valor ?? null),
+);
 
 const fatorConversaoProduto = computed(() => {
   const fator = produtoSelecionado.value?.fatorEmbalagemParaEstoque;
@@ -297,6 +300,14 @@ function validarData(value: string): boolean | string {
   return Boolean(value) || 'Informe a data da movimentação';
 }
 
+function validarValorUnitario(value: number | null): boolean | string {
+  if (!isEntrada.value) return true;
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 'Informe o valor unitário';
+  }
+  return value >= 0 || 'O valor não pode ser negativo';
+}
+
 async function carregarSaldo(): Promise<void> {
   if (!form.unidadeId || !form.produtoId) {
     saldoDisponivel.value = null;
@@ -331,6 +342,7 @@ function montarPayload(): RegistrarMovimentacaoManualRequest {
       quantidadeEmbalagem: form.quantidadeEmbalagem,
       loteCodigo: form.loteCodigo.trim(),
       dataValidade: form.dataValidade,
+      valorUnitario: form.valorUnitario,
     };
   }
 
@@ -340,6 +352,7 @@ function montarPayload(): RegistrarMovimentacaoManualRequest {
     quantidade: form.quantidade!,
     data: deInputDatetimeLocalParaIso(form.data),
     observacao: form.observacao.trim() || null,
+    valorUnitario: isEntrada.value ? form.valorUnitario : null,
   };
 }
 
@@ -350,6 +363,7 @@ async function limparCamposAposSalvar(): Promise<void> {
   form.quantidadeEmbalagem = null;
   form.loteCodigo = '';
   form.dataValidade = '';
+  form.valorUnitario = null;
   form.observacao = '';
   form.data = deIsoParaInputDatetimeLocal(new Date().toISOString());
   saldoDisponivel.value = null;
@@ -439,6 +453,13 @@ watch(
   () => [form.unidadeId, form.produtoId],
   () => {
     void carregarSaldo();
+  },
+);
+
+watch(
+  () => form.produtoId,
+  () => {
+    form.valorUnitario = isEntrada.value ? (produtoSelecionado.value?.valor ?? 0) : null;
   },
 );
 
@@ -579,6 +600,20 @@ onMounted(async () => {
               >
                 {{ captionSaldo }}
               </p>
+
+              <q-input
+                v-if="isEntrada"
+                v-model.number="form.valorUnitario"
+                class="form-field--required"
+                :label="isMedicamentoEntrada ? 'Valor por embalagem' : 'Valor unitário'"
+                prefix="R$"
+                outlined
+                type="number"
+                step="0.01"
+                min="0"
+                :readonly="!podeRegistrar"
+                :rules="[validarValorUnitario]"
+              />
 
               <p
                 v-if="resumoValorMovimentacao"

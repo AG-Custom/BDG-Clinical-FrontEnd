@@ -51,12 +51,14 @@ const ROTAS_SECAO_ESTOQUE = new Set([
   'movimentacoes-estoque',
   'movimentacoes-estoque-entrada',
   'movimentacoes-estoque-saida',
+  'movimentacoes-estoque-transferencia',
 ]);
 
 const ROTAS_SECAO_MOVIMENTACOES = new Set([
   'movimentacoes-estoque',
   'movimentacoes-estoque-entrada',
   'movimentacoes-estoque-saida',
+  'movimentacoes-estoque-transferencia',
 ]);
 
 const ROTAS_SECAO_VENDAS = new Set([
@@ -452,6 +454,17 @@ onMounted(() => {
                   <q-icon name="remove_circle_outline" />
                 </q-item-section>
                 <q-item-section class="drawer-menu__label">Registrar saída</q-item-section>
+              </q-item>
+              <q-item class="drawer-menu__sub-item"
+                v-if="possuiPermissao(permissoes.estoque.movimentar)"
+                clickable
+                v-ripple
+                :to="{ name: 'movimentacoes-estoque-transferencia' }"
+              >
+                <q-item-section side class="drawer-menu__sub-icon">
+                  <q-icon name="swap_horiz" />
+                </q-item-section>
+                <q-item-section class="drawer-menu__label">Transferir estoque</q-item-section>
               </q-item>
             </q-expansion-item>
 

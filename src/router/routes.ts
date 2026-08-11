@@ -316,6 +316,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.estoque.movimentar },
       },
       {
+        path: 'movimentacoes-estoque/transferencia',
+        name: 'movimentacoes-estoque-transferencia',
+        component: () => import('@/pages/estoque/TransferenciaEstoqueFormPage.vue'),
+        meta: { permissao: p.estoque.movimentar },
+      },
+      {
         path: 'fornecedores',
         name: 'fornecedores',
         component: () => import('@/pages/fornecedores/FornecedoresListPage.vue'),
