@@ -7,6 +7,7 @@ export type TipoMovimentacaoEstoque = (typeof TIPOS_MOVIMENTACAO_ESTOQUE)[number
 export const ORIGENS_MOVIMENTACAO_ESTOQUE = [
   'PEDIDO_FORNECEDOR',
   'APLICACAO_PACIENTE',
+  'TRANSFERENCIA_ESTOQUE',
   'MANUAL',
 ] as const;
 
@@ -18,6 +19,7 @@ export const MOTIVOS_MOVIMENTACAO_ESTOQUE = [
   'Ajuste',
   'Aplicacao',
   'Perda',
+  'Transferencia',
 ] as const;
 
 export type MotivoMovimentacaoEstoque = (typeof MOTIVOS_MOVIMENTACAO_ESTOQUE)[number];
@@ -41,6 +43,7 @@ export interface MovimentacaoEstoque {
   origem: OrigemMovimentacaoEstoque | string;
   pedidoFornecedorId: string | null;
   aplicacaoPacienteId: string | null;
+  transferenciaEstoqueId?: string | null;
   observacao: string | null;
   criadoEm: string;
 }
@@ -53,6 +56,7 @@ export interface ListarMovimentacoesEstoqueParams {
   dataInicio?: string;
   dataFim?: string;
   limit?: number;
+  transferenciaEstoqueId?: string;
 }
 
 export function formatarDataMovimentacao(data: string): string {
@@ -86,6 +90,8 @@ export function formatarMotivoMovimentacao(motivo: string | null | undefined, or
       return 'Aplicação';
     case 'Perda':
       return 'Perda';
+    case 'Transferencia':
+      return 'Transferência';
     default:
       return origem ? formatarOrigemMovimentacao(origem) : motivo ?? '—';
   }
@@ -103,6 +109,8 @@ export function formatarOrigemMovimentacao(origem: string): string {
       return 'Entrada manual';
     case 'PERDA_MANUAL':
       return 'Saída manual';
+    case 'TRANSFERENCIA_ESTOQUE':
+      return 'Transferência entre unidades';
     case 'MANUAL':
       return 'Manual';
     default:
@@ -119,6 +127,8 @@ export function obterCorOrigemEntrada(origem: string): string {
       return 'secondary';
     case 'APLICACAO_PACIENTE_CANCELAMENTO':
       return 'warning';
+    case 'TRANSFERENCIA_ESTOQUE':
+      return 'info';
     default:
       return 'grey';
   }
@@ -133,6 +143,30 @@ export interface RegistrarMovimentacaoManualRequest {
   quantidadeEmbalagem?: number | null;
   loteCodigo?: string | null;
   dataValidade?: string | null;
+  valorUnitario?: number | null;
+}
+
+export interface RegistrarTransferenciaEstoqueRequest {
+  unidadeOrigemId: string;
+  unidadeDestinoId: string;
+  produtoId: string;
+  quantidade: number;
+  data: string;
+  observacao?: string | null;
+}
+
+export interface TransferenciaEstoque {
+  transferenciaId: string;
+  unidadeOrigemId: string;
+  unidadeOrigemNome: string;
+  unidadeDestinoId: string;
+  unidadeDestinoNome: string;
+  produtoId: string;
+  produtoNome: string;
+  quantidade: number;
+  data: string;
+  observacao?: string | null;
+  movimentacoes: MovimentacaoEstoque[];
 }
 
 export function deDataParaInicioDiaIso(valor: string): string {

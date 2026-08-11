@@ -52,6 +52,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.agenda.visualizar },
       },
       {
+        path: 'relatorios',
+        name: 'relatorios',
+        component: () => import('@/pages/relatorios/RelatoriosPage.vue'),
+        meta: { permissao: p.relatorios.visualizar },
+      },
+      {
         path: 'unidades',
         name: 'unidades',
         component: () => import('@/pages/unidades/UnidadesListPage.vue'),
@@ -313,6 +319,12 @@ export const routes: RouteRecordRaw[] = [
         path: 'movimentacoes-estoque/saida',
         name: 'movimentacoes-estoque-saida',
         component: () => import('@/pages/estoque/MovimentacaoEstoqueFormPage.vue'),
+        meta: { permissao: p.estoque.movimentar },
+      },
+      {
+        path: 'movimentacoes-estoque/transferencia',
+        name: 'movimentacoes-estoque-transferencia',
+        component: () => import('@/pages/estoque/TransferenciaEstoqueFormPage.vue'),
         meta: { permissao: p.estoque.movimentar },
       },
       {

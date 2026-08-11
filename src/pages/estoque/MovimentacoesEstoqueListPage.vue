@@ -18,6 +18,7 @@ import {
   deDataParaInicioDiaIso,
   formatarDataMovimentacao,
   formatarMotivoMovimentacao,
+  formatarOrigemMovimentacao,
   obterCorTipoMovimentacao,
 } from '@/types/entidades/movimentacao-estoque';
 import type { Produto } from '@/types/entidades/produto';
@@ -42,8 +43,25 @@ const filtroProdutoId = ref<string | null>(null);
 const filtroTipo = ref<TipoMovimentacaoEstoque | null>(null);
 const filtroDataInicio = ref('');
 const filtroDataFim = ref('');
+const filtroTransferenciaEstoqueId = ref<string | null>(null);
 const dialogVisualizar = ref(false);
 const movimentacaoSelecionada = ref<MovimentacaoEstoque | null>(null);
+
+const registroDetalhe = computed(() => {
+  const movimentacao = movimentacaoSelecionada.value;
+  if (!movimentacao) {
+    return null;
+  }
+
+  return {
+    ...movimentacao,
+    motivo: formatarMotivoMovimentacao(movimentacao.motivo, movimentacao.origem),
+    fonte: formatarOrigemMovimentacao(movimentacao.origem),
+    transferencia: movimentacao.transferenciaEstoqueId
+      ? `Correlação ${movimentacao.transferenciaEstoqueId.slice(0, 8).toUpperCase()}`
+      : null,
+  };
+});
 
 const mostrarInsights = computed(
   () => Boolean(filtroProdutoId.value || filtroUnidadeId.value),
@@ -161,9 +179,12 @@ function filtrarProdutosFiltro(val: string, update: (callback: () => void) => vo
 function aplicarFiltrosDaUrl(): void {
   const unidadeId = route.query.unidadeId;
   const produtoId = route.query.produtoId;
+  const transferenciaEstoqueId = route.query.transferenciaEstoqueId;
 
   filtroUnidadeId.value = typeof unidadeId === 'string' ? unidadeId : null;
   filtroProdutoId.value = typeof produtoId === 'string' ? produtoId : null;
+  filtroTransferenciaEstoqueId.value =
+    typeof transferenciaEstoqueId === 'string' ? transferenciaEstoqueId : null;
 }
 
 async function carregarFiltros(): Promise<void> {
@@ -229,6 +250,7 @@ async function carregarMovimentacoes(): Promise<void> {
         tipo: filtroTipo.value ?? undefined,
         dataInicio: filtroDataInicio.value ? deDataParaInicioDiaIso(filtroDataInicio.value) : undefined,
         dataFim: filtroDataFim.value ? deDataParaFimDiaIso(filtroDataFim.value) : undefined,
+        transferenciaEstoqueId: filtroTransferenciaEstoqueId.value ?? undefined,
         limit: LIMITE_PADRAO,
       }),
       (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
@@ -250,13 +272,24 @@ function limparFiltros(): void {
   filtroTipo.value = null;
   filtroDataInicio.value = '';
   filtroDataFim.value = '';
+  filtroTransferenciaEstoqueId.value = null;
   saldosContexto.value = [];
 
-  if (route.query.unidadeId || route.query.produtoId) {
+  if (route.query.unidadeId || route.query.produtoId || route.query.transferenciaEstoqueId) {
     void router.replace({ name: 'movimentacoes-estoque' });
   }
 
   void carregarMovimentacoes();
+}
+
+function verTransferencia(transferenciaEstoqueId: string): void {
+  void router.replace({
+    name: 'movimentacoes-estoque',
+    query: {
+      ...route.query,
+      transferenciaEstoqueId,
+    },
+  });
 }
 
 function verPedido(pedidoFornecedorId: string): void {
@@ -291,7 +324,7 @@ onMounted(async () => {
   <q-page class="page-content page-content--fluid q-pa-md">
     <app-page-header
       titulo="Movimentações de estoque"
-      subtitulo="Histórico de entradas, saídas, ajustes e perdas."
+      subtitulo="Histórico de entradas, saídas, ajustes, perdas e transferências."
     />
 
     <section
@@ -530,6 +563,17 @@ onMounted(async () => {
                 </q-item-section>
                 <q-item-section>Ver aplicação</q-item-section>
               </q-item>
+              <q-item
+                v-if="cell.row.transferenciaEstoqueId"
+                clickable
+                v-close-popup
+                @click="verTransferencia(cell.row.transferenciaEstoqueId)"
+              >
+                <q-item-section avatar>
+                  <q-icon name="swap_horiz" color="primary" />
+                </q-item-section>
+                <q-item-section>Ver transferência</q-item-section>
+              </q-item>
             </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
@@ -543,7 +587,7 @@ onMounted(async () => {
         <app-empty-state
           icon="swap_horiz"
           titulo="Nenhuma movimentação encontrada"
-          texto="Ajuste os filtros ou registre entradas e saídas manualmente."
+          texto="Ajuste os filtros ou registre entradas, saídas e transferências."
         />
       </q-card-section>
     </q-card>
@@ -552,7 +596,7 @@ onMounted(async () => {
       v-model="dialogVisualizar"
       titulo="Detalhar movimentação"
       entidade-auditoria="MovimentacaoEstoque"
-      :registro="movimentacaoSelecionada"
+      :registro="registroDetalhe"
     />
   </q-page>
 </template>

@@ -4,6 +4,8 @@ import type {
   ListarMovimentacoesEstoqueParams,
   MovimentacaoEstoque,
   RegistrarMovimentacaoManualRequest,
+  RegistrarTransferenciaEstoqueRequest,
+  TransferenciaEstoque,
 } from '@/types/entidades/movimentacao-estoque';
 
 export const movimentacaoEstoqueService = {
@@ -38,6 +40,10 @@ export const movimentacaoEstoqueService = {
       query.limit = params.limit;
     }
 
+    if (params.transferenciaEstoqueId) {
+      query.transferenciaEstoqueId = params.transferenciaEstoqueId;
+    }
+
     const { data } = await api.get<ApiResponse<MovimentacaoEstoque[]>>('/api/stock-movements', {
       params: Object.keys(query).length > 0 ? query : undefined,
     });
@@ -65,5 +71,13 @@ export const movimentacaoEstoqueService = {
     );
 
     return data.data ?? [];
+  },
+
+  async transferir(payload: RegistrarTransferenciaEstoqueRequest): Promise<TransferenciaEstoque> {
+    const { data } = await api.post<ApiResponse<TransferenciaEstoque>>(
+      '/api/stock-movements/transfer',
+      payload,
+    );
+    return data.data;
   },
 };

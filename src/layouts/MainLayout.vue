@@ -51,12 +51,14 @@ const ROTAS_SECAO_ESTOQUE = new Set([
   'movimentacoes-estoque',
   'movimentacoes-estoque-entrada',
   'movimentacoes-estoque-saida',
+  'movimentacoes-estoque-transferencia',
 ]);
 
 const ROTAS_SECAO_MOVIMENTACOES = new Set([
   'movimentacoes-estoque',
   'movimentacoes-estoque-entrada',
   'movimentacoes-estoque-saida',
+  'movimentacoes-estoque-transferencia',
 ]);
 
 const ROTAS_SECAO_VENDAS = new Set([
@@ -95,6 +97,7 @@ const mostrarAtendimento = computed(() => possuiAlguma([...modulosMenu.atendimen
 const mostrarProdutos = computed(() => possuiAlguma([...modulosMenu.produtos]));
 const mostrarEstoque = computed(() => possuiAlguma([...modulosMenu.estoque]));
 const mostrarVendas = computed(() => possuiAlguma([...modulosMenu.vendas]));
+const mostrarRelatorios = computed(() => possuiPermissao(menu.relatorios));
 const mostrarUnidades = computed(() => possuiPermissao(menu.unidades));
 const mostrarFuncionarios = computed(() => possuiAlguma([...modulosMenu.funcionarios]));
 
@@ -453,6 +456,17 @@ onMounted(() => {
                 </q-item-section>
                 <q-item-section class="drawer-menu__label">Registrar saída</q-item-section>
               </q-item>
+              <q-item class="drawer-menu__sub-item"
+                v-if="possuiPermissao(permissoes.estoque.movimentar)"
+                clickable
+                v-ripple
+                :to="{ name: 'movimentacoes-estoque-transferencia' }"
+              >
+                <q-item-section side class="drawer-menu__sub-icon">
+                  <q-icon name="swap_horiz" />
+                </q-item-section>
+                <q-item-section class="drawer-menu__label">Transferir estoque</q-item-section>
+              </q-item>
             </q-expansion-item>
 
             <q-expansion-item
@@ -491,15 +505,6 @@ onMounted(() => {
               </q-item>
               <q-item disable class="drawer-menu__sub-item">
                 <q-item-section side class="drawer-menu__sub-icon">
-                  <q-icon name="assessment" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>Relatórios</q-item-label>
-                  <q-item-label caption>Em breve</q-item-label>
-                </q-item-section>
-              </q-item>
-              <q-item disable class="drawer-menu__sub-item">
-                <q-item-section side class="drawer-menu__sub-icon">
                   <q-icon name="account_balance_wallet" />
                 </q-item-section>
                 <q-item-section>
@@ -517,6 +522,19 @@ onMounted(() => {
                 </q-item-section>
               </q-item>
             </q-expansion-item>
+
+            <q-item
+              v-if="mostrarRelatorios"
+              clickable
+              v-ripple
+              :to="{ name: 'relatorios' }"
+              class="drawer-menu__item"
+            >
+              <q-item-section side class="drawer-menu__icon">
+                <q-icon name="analytics" />
+              </q-item-section>
+              <q-item-section>Relatórios</q-item-section>
+            </q-item>
 
             <q-expansion-item
               v-if="mostrarFuncionarios"
