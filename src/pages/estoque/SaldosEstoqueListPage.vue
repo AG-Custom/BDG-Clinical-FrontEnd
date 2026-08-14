@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { permissoes } from '@/constants/permissoes';
+import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { isRequisicaoCancelada, useBuscaRemota } from '@/composables/useBuscaRemota';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
@@ -13,6 +14,7 @@ import { saldoEstoqueService } from '@/services/saldo-estoque.service';
 import { tipoProdutoService } from '@/services/tipo-produto.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { SaldoEstoque, SaldoLoteEstoque } from '@/types/entidades/saldo-estoque';
+import type { Produto } from '@/types/entidades/produto';
 import {
   formatarSaldoComUnidade,
   obterChaveSaldoEstoque,
@@ -37,6 +39,7 @@ const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const podeMovimentar = usePermissao(permissoes.estoque.movimentar);
+const podeAjustar = usePermissao(permissoes.estoque.ajustar);
 
 const saldos = ref<SaldoEstoque[]>([]);
 const carregando = ref(true);
@@ -56,6 +59,41 @@ const visaoLotes = ref<VisaoLotes>('lista');
 const loteSelecionado = ref<SaldoLoteEstoque | null>(null);
 const movimentacoesLote = ref<MovimentacaoEstoque[]>([]);
 const carregandoMovimentacoesLote = ref(false);
+const dialogAjustarSaldo = ref(false);
+const salvandoAjusteSaldo = ref(false);
+const carregandoLotesAjuste = ref(false);
+const novoSaldo = ref<number | null>(null);
+const motivoAjuste = ref('');
+const loteAjusteId = ref<string | null>(null);
+const lotesAjuste = ref<SaldoLoteEstoque[]>([]);
+const produtosPorId = ref(new Map<string, Produto>());
+
+const produtoDoSaldoSelecionado = computed(() =>
+  saldoSelecionado.value
+    ? (produtosPorId.value.get(saldoSelecionado.value.produtoId) ?? null)
+    : null,
+);
+
+const saldoSelecionadoEhMedicamento = computed(
+  () => produtoDoSaldoSelecionado.value?.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO,
+);
+
+const diferencaAjuste = computed(() => {
+  if (!saldoSelecionado.value || novoSaldo.value == null || !Number.isFinite(novoSaldo.value)) {
+    return null;
+  }
+
+  return novoSaldo.value - saldoSelecionado.value.saldoAtual;
+});
+
+const ajusteAumentaSaldo = computed(() => (diferencaAjuste.value ?? 0) > 0);
+
+const opcoesLotesAjuste = computed(() =>
+  lotesAjuste.value.map((lote) => ({
+    label: `${lote.codigo} — saldo ${formatarSaldoComUnidade(lote.saldoAtual, lote.unidadeMedidaSigla)}`,
+    value: lote.loteProdutoId,
+  })),
+);
 
 const colunas = [
   { name: 'unidade', label: 'Unidade', field: 'unidadeNome', align: 'left' as const, sortable: true },
@@ -193,6 +231,8 @@ async function carregarFiltros(): Promise<void> {
       listaProdutos.map((produto) => [produto.id, produto.tipoProdutoId]),
     );
 
+    produtosPorId.value = new Map(listaProdutos.map((produto) => [produto.id, produto]));
+
     embalagemPorProdutoId.value = new Map(
       listaProdutos
         .filter((produto) => produto.unidadeEmbalagemNome || produto.unidadeEmbalagemSigla)
@@ -219,6 +259,88 @@ async function carregarFiltros(): Promise<void> {
     ];
   } catch (error) {
     notificacao.erro(obterMensagem(error));
+  }
+}
+
+async function abrirDialogAjustarSaldo(saldo: SaldoEstoque): Promise<void> {
+  saldoSelecionado.value = saldo;
+  novoSaldo.value = saldo.saldoAtual;
+  motivoAjuste.value = '';
+  loteAjusteId.value = null;
+  lotesAjuste.value = [];
+  dialogAjustarSaldo.value = true;
+
+  if (!saldoSelecionadoEhMedicamento.value) {
+    return;
+  }
+
+  carregandoLotesAjuste.value = true;
+  try {
+    lotesAjuste.value = await saldoEstoqueService.listarLotes({
+      unidadeId: saldo.unidadeId,
+      produtoId: saldo.produtoId,
+    });
+
+    if (lotesAjuste.value.length === 1) {
+      loteAjusteId.value = lotesAjuste.value[0]?.loteProdutoId ?? null;
+    }
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    carregandoLotesAjuste.value = false;
+  }
+}
+
+function fecharDialogAjustarSaldo(): void {
+  saldoSelecionado.value = null;
+  novoSaldo.value = null;
+  motivoAjuste.value = '';
+  loteAjusteId.value = null;
+  lotesAjuste.value = [];
+}
+
+async function salvarAjusteSaldo(): Promise<void> {
+  const saldo = saldoSelecionado.value;
+  const saldoDesejado = novoSaldo.value;
+  const motivo = motivoAjuste.value.trim();
+
+  if (!saldo || saldoDesejado == null || !Number.isFinite(saldoDesejado) || saldoDesejado < 0) {
+    notificacao.erro('Informe um novo saldo válido e maior ou igual a zero.');
+    return;
+  }
+
+  if (saldoDesejado === saldo.saldoAtual) {
+    notificacao.erro('O novo saldo deve ser diferente do saldo atual.');
+    return;
+  }
+
+  if (!motivo) {
+    notificacao.erro('Informe o motivo da correção do saldo.');
+    return;
+  }
+
+  if (saldoSelecionadoEhMedicamento.value && ajusteAumentaSaldo.value && !loteAjusteId.value) {
+    notificacao.erro('Selecione o lote que receberá o acréscimo.');
+    return;
+  }
+
+  salvandoAjusteSaldo.value = true;
+  try {
+    await saldoEstoqueService.atualizar({
+      unidadeId: saldo.unidadeId,
+      produtoId: saldo.produtoId,
+      saldoDesejado,
+      observacao: motivo,
+      loteProdutoId: loteAjusteId.value,
+    });
+
+    dialogAjustarSaldo.value = false;
+    notificacao.sucesso('Saldo corrigido com sucesso.');
+    await carregarSaldos();
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    salvandoAjusteSaldo.value = false;
   }
 }
 
@@ -577,9 +699,10 @@ onMounted(async () => {
         <template #body-cell-acoes="cell">
           <app-table-actions-cell :cell="cell">
             <app-table-actions-menu
-              :mostrar-editar="false"
+              :mostrar-editar="podeAjustar"
               :mostrar-status="false"
               @visualizar="abrirDialogVisualizar(cell.row)"
+              @editar="abrirDialogAjustarSaldo(cell.row)"
             >
               <q-item clickable v-close-popup @click="verMovimentacoes(cell.row)">
                 <q-item-section avatar>
@@ -621,6 +744,111 @@ onMounted(async () => {
         />
       </q-card-section>
     </q-card>
+
+    <q-dialog v-model="dialogAjustarSaldo" persistent @hide="fecharDialogAjustarSaldo">
+      <q-card style="min-width: 420px; max-width: 560px; width: 92vw">
+        <q-card-section>
+          <div class="text-h6">Editar saldo</div>
+          <div class="text-caption text-grey-7">
+            {{ saldoSelecionado?.produtoNome }} — {{ saldoSelecionado?.unidadeNome }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none q-gutter-md">
+          <q-banner rounded class="bg-blue-1 text-primary">
+            A correção será registrada como uma nova movimentação de ajuste. O histórico anterior
+            será preservado.
+          </q-banner>
+
+          <div class="ajuste-saldo__campos-saldo">
+            <div>
+              <q-input
+                :model-value="saldoSelecionado?.saldoAtual"
+                label="Saldo atual"
+                outlined
+                readonly
+                :suffix="saldoSelecionado?.unidadeMedidaSigla"
+              />
+            </div>
+            <div>
+              <q-input
+                v-model.number="novoSaldo"
+                label="Novo saldo"
+                outlined
+                type="number"
+                min="0"
+                step="any"
+                :suffix="saldoSelecionado?.unidadeMedidaSigla"
+                autofocus
+              />
+            </div>
+          </div>
+
+          <div v-if="diferencaAjuste !== null && diferencaAjuste !== 0" class="text-body2">
+            Movimentação gerada:
+            <strong :class="diferencaAjuste > 0 ? 'text-positive' : 'text-negative'">
+              {{ diferencaAjuste > 0 ? '+' : '' }}{{
+                formatarSaldoComUnidade(
+                  diferencaAjuste,
+                  saldoSelecionado?.unidadeMedidaSigla ?? '',
+                )
+              }}
+            </strong>
+          </div>
+
+          <q-select
+            v-if="saldoSelecionadoEhMedicamento && ajusteAumentaSaldo"
+            v-model="loteAjusteId"
+            :options="opcoesLotesAjuste"
+            label="Lote que receberá o acréscimo"
+            outlined
+            emit-value
+            map-options
+            :loading="carregandoLotesAjuste"
+            :disable="carregandoLotesAjuste || opcoesLotesAjuste.length === 0"
+          />
+
+          <q-banner
+            v-if="saldoSelecionadoEhMedicamento && ajusteAumentaSaldo && !carregandoLotesAjuste && opcoesLotesAjuste.length === 0"
+            rounded
+            class="bg-orange-1 text-warning"
+          >
+            Este medicamento não possui lote disponível. Registre uma entrada com lote antes de
+            aumentar o saldo.
+          </q-banner>
+
+          <div
+            v-if="saldoSelecionadoEhMedicamento && diferencaAjuste !== null && diferencaAjuste < 0"
+            class="text-caption text-grey-7"
+          >
+            A redução será distribuída automaticamente entre os lotes pelo critério FEFO.
+          </div>
+
+          <q-input
+            v-model="motivoAjuste"
+            label="Motivo da correção"
+            outlined
+            type="textarea"
+            autogrow
+            maxlength="2000"
+            counter
+            hint="Obrigatório para auditoria."
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="primary" no-caps v-close-popup />
+          <q-btn
+            label="Confirmar ajuste"
+            color="primary"
+            unelevated
+            no-caps
+            :loading="salvandoAjusteSaldo"
+            @click="salvarAjusteSaldo"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <app-entity-details-dialog
       v-model="dialogVisualizar"
@@ -806,6 +1034,19 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.ajuste-saldo__campos-saldo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-4, 1rem);
+  margin-top: var(--ds-space-3, 0.75rem);
+}
+
+@media (max-width: 599px) {
+  .ajuste-saldo__campos-saldo {
+    grid-template-columns: 1fr;
+  }
+}
+
 .estoque-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
