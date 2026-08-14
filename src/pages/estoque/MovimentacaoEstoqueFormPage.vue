@@ -30,6 +30,24 @@ import { normalizarLista } from '@/utils/normalizar-lista';
 
 const LIMITE_LISTAGEM = 30;
 
+interface LoteEntradaFormulario {
+  id: number;
+  loteCodigo: string;
+  quantidadeEmbalagem: number | null;
+  dataValidade: string;
+}
+
+let proximoLoteId = 1;
+
+function criarLoteEntrada(): LoteEntradaFormulario {
+  return {
+    id: proximoLoteId++,
+    loteCodigo: '',
+    quantidadeEmbalagem: null,
+    dataValidade: '',
+  };
+}
+
 const route = useRoute();
 const router = useRouter();
 const notificacao = useNotificacao();
@@ -47,6 +65,7 @@ const saldoDisponivel = ref<number | null>(null);
 const siglaSaldo = ref('');
 const dadosIniciaisCarregados = ref(false);
 const formRef = ref<QForm | null>(null);
+const lotesEntrada = ref<LoteEntradaFormulario[]>([criarLoteEntrada()]);
 
 const isEntrada = computed(() => route.name === 'movimentacoes-estoque-entrada');
 const podeRegistrar = computed(() => (isEntrada.value ? podeAjustar.value : podeMovimentar.value));
@@ -81,9 +100,6 @@ const form = reactive({
   unidadeId: null as string | null,
   produtoId: null as string | null,
   quantidade: null as number | null,
-  quantidadeEmbalagem: null as number | null,
-  loteCodigo: '',
-  dataValidade: '',
   valorUnitario: null as number | null,
   data: '',
   observacao: '',
@@ -103,23 +119,23 @@ const isMedicamentoEntrada = computed(
     produtoSelecionado.value?.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.MEDICAMENTO,
 );
 
-const conversaoPreview = computed(() => {
+function conversaoPreview(lote: LoteEntradaFormulario): string | null {
   if (
     !isMedicamentoEntrada.value ||
     !produtoSelecionado.value?.fatorEmbalagemParaEstoque ||
-    form.quantidadeEmbalagem == null ||
-    form.quantidadeEmbalagem <= 0
+    lote.quantidadeEmbalagem == null ||
+    lote.quantidadeEmbalagem <= 0
   ) {
     return null;
   }
 
   const total =
-    form.quantidadeEmbalagem * produtoSelecionado.value.fatorEmbalagemParaEstoque;
+    lote.quantidadeEmbalagem * produtoSelecionado.value.fatorEmbalagemParaEstoque;
   const emb = produtoSelecionado.value.unidadeEmbalagemSigla ?? 'emb.';
   const est = produtoSelecionado.value.unidadeMedidaSigla ?? 'estoque';
 
-  return `${form.quantidadeEmbalagem} ${emb} = ${total.toLocaleString('pt-BR')} ${est}`;
-});
+  return `${lote.quantidadeEmbalagem} ${emb} = ${total.toLocaleString('pt-BR')} ${est}`;
+}
 
 const opcoesUnidades = computed(() =>
   unidadesDisponiveis.value
@@ -207,7 +223,13 @@ const valorEstimadoMovimentacao = computed(() => {
   }
 
   if (isMedicamentoEntrada.value) {
-    const qtdEmbalagem = form.quantidadeEmbalagem;
+    const qtdEmbalagem = lotesEntrada.value.reduce(
+      (total, lote) => {
+        const quantidade = Number(lote.quantidadeEmbalagem ?? 0);
+        return total + (Number.isFinite(quantidade) ? quantidade : 0);
+      },
+      0,
+    );
 
     if (qtdEmbalagem == null || Number.isNaN(qtdEmbalagem) || qtdEmbalagem <= 0) {
       return null;
@@ -317,7 +339,46 @@ function validarValidade(value: string): boolean | string {
     return true;
   }
 
-  return Boolean(value) || 'Informe a data de validade';
+  if (!value) {
+    return 'Informe a data de validade';
+  }
+
+  return converterValidadeParaIso(value) !== null || 'Informe uma data válida no formato DD/MM/AAAA';
+}
+
+function converterValidadeParaIso(value: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  if (!match) {
+    return null;
+  }
+
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+
+  if (
+    ano < 1000 ||
+    data.getUTCFullYear() !== ano ||
+    data.getUTCMonth() !== mes - 1 ||
+    data.getUTCDate() !== dia
+  ) {
+    return null;
+  }
+
+  return `${String(ano).padStart(4, '0')}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+function adicionarLote(): void {
+  lotesEntrada.value.push(criarLoteEntrada());
+}
+
+function removerLote(id: number): void {
+  if (lotesEntrada.value.length === 1) {
+    return;
+  }
+
+  lotesEntrada.value = lotesEntrada.value.filter((lote) => lote.id !== id);
 }
 
 function validarData(value: string): boolean | string {
@@ -363,10 +424,12 @@ function montarPayload(): RegistrarMovimentacaoManualRequest {
       produtoId: form.produtoId!,
       data: deInputDatetimeLocalParaIso(form.data),
       observacao: form.observacao.trim() || null,
-      quantidadeEmbalagem: form.quantidadeEmbalagem,
-      loteCodigo: form.loteCodigo.trim(),
-      dataValidade: form.dataValidade,
       valorUnitario: form.valorUnitario,
+      lotes: lotesEntrada.value.map((lote) => ({
+        loteCodigo: lote.loteCodigo.trim(),
+        quantidadeEmbalagem: lote.quantidadeEmbalagem!,
+        dataValidade: converterValidadeParaIso(lote.dataValidade)!,
+      })),
     };
   }
 
@@ -384,9 +447,7 @@ async function limparCamposAposSalvar(): Promise<void> {
   form.unidadeId = null;
   form.produtoId = null;
   form.quantidade = null;
-  form.quantidadeEmbalagem = null;
-  form.loteCodigo = '';
-  form.dataValidade = '';
+  lotesEntrada.value = [criarLoteEntrada()];
   form.valorUnitario = null;
   form.observacao = '';
   form.data = deIsoParaInputDatetimeLocal(new Date().toISOString());
@@ -484,6 +545,7 @@ watch(
   () => form.produtoId,
   () => {
     form.valorUnitario = isEntrada.value ? (produtoSelecionado.value?.valor ?? 0) : null;
+    lotesEntrada.value = [criarLoteEntrada()];
   },
 );
 
@@ -580,37 +642,93 @@ onMounted(async () => {
               </div>
 
               <template v-if="isMedicamentoEntrada">
-                <q-input
-                  v-model.number="form.quantidadeEmbalagem"
-                  class="form-field--required"
-                  :label="`Quantidade (${produtoSelecionado?.unidadeEmbalagemSigla ?? 'emb.'})`"
-                  outlined
-                  type="number"
-                  step="any"
-                  min="0"
-                  :readonly="!podeRegistrar"
-                  :rules="[validarQuantidadeEmbalagem]"
-                />
-                <q-banner v-if="conversaoPreview" dense rounded class="bg-grey-2">
-                  {{ conversaoPreview }}
-                </q-banner>
-                <q-input
-                  v-model="form.loteCodigo"
-                  class="form-field--required"
-                  label="Código do lote"
-                  outlined
-                  :readonly="!podeRegistrar"
-                  :rules="[validarLote]"
-                />
-                <q-input
-                  v-model="form.dataValidade"
-                  class="form-field--required"
-                  label="Validade do lote"
-                  outlined
-                  type="date"
-                  :readonly="!podeRegistrar"
-                  :rules="[validarValidade]"
-                />
+                <div class="row items-center q-mb-sm">
+                  <div class="text-subtitle2">Lotes da entrada</div>
+                  <q-space />
+                  <q-btn
+                    outline
+                    color="primary"
+                    icon="add"
+                    label="Adicionar lote"
+                    no-caps
+                    :disable="!podeRegistrar"
+                    @click="adicionarLote"
+                  />
+                </div>
+
+                <q-card
+                  v-for="(lote, indice) in lotesEntrada"
+                  :key="lote.id"
+                  flat
+                  bordered
+                  class="lote-entrada-card q-mb-md"
+                >
+                  <q-card-section>
+                    <div class="row items-center q-mb-sm">
+                      <div class="text-weight-medium">Lote {{ indice + 1 }}</div>
+                      <q-space />
+                      <q-btn
+                        v-if="lotesEntrada.length > 1"
+                        flat
+                        round
+                        dense
+                        color="negative"
+                        icon="delete_outline"
+                        aria-label="Remover lote"
+                        :disable="!podeRegistrar"
+                        @click="removerLote(lote.id)"
+                      />
+                    </div>
+
+                    <div class="row q-col-gutter-md">
+                      <div class="col-12 col-md-4">
+                        <q-input
+                          v-model="lote.loteCodigo"
+                          class="form-field--required"
+                          label="Código do lote"
+                          outlined
+                          :readonly="!podeRegistrar"
+                          :rules="[validarLote]"
+                        />
+                      </div>
+                      <div class="col-12 col-md-4">
+                        <q-input
+                          v-model.number="lote.quantidadeEmbalagem"
+                          class="form-field--required"
+                          :label="`Quantidade (${produtoSelecionado?.unidadeEmbalagemSigla ?? 'emb.'})`"
+                          outlined
+                          type="number"
+                          step="any"
+                          min="0"
+                          :readonly="!podeRegistrar"
+                          :rules="[validarQuantidadeEmbalagem]"
+                        />
+                      </div>
+                      <div class="col-12 col-md-4">
+                        <q-input
+                          v-model="lote.dataValidade"
+                          class="form-field--required"
+                          label="Validade"
+                          placeholder="DD/MM/AAAA"
+                          outlined
+                          mask="##/##/####"
+                          inputmode="numeric"
+                          :readonly="!podeRegistrar"
+                          :rules="[validarValidade]"
+                        />
+                      </div>
+                    </div>
+
+                    <q-banner
+                      v-if="conversaoPreview(lote)"
+                      dense
+                      rounded
+                      class="bg-grey-2"
+                    >
+                      {{ conversaoPreview(lote) }}
+                    </q-banner>
+                  </q-card-section>
+                </q-card>
               </template>
               <q-input
                 v-else
@@ -790,5 +908,9 @@ onMounted(async () => {
 
 .movimentacao-estoque-valor {
   color: var(--ds-text-secondary);
+}
+
+.lote-entrada-card {
+  background: var(--ds-surface-subtle, #fafafa);
 }
 </style>

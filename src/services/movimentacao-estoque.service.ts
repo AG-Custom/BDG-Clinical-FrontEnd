@@ -53,13 +53,13 @@ export const movimentacaoEstoqueService = {
 
   async registrarEntradaManual(
     payload: RegistrarMovimentacaoManualRequest,
-  ): Promise<MovimentacaoEstoque> {
-    const { data } = await api.post<ApiResponse<MovimentacaoEstoque>>(
+  ): Promise<MovimentacaoEstoque[]> {
+    const { data } = await api.post<ApiResponse<MovimentacaoEstoque[]>>(
       '/api/stock-movements/adjustment',
       payload,
     );
 
-    return data.data;
+    return data.data ?? [];
   },
 
   async registrarSaidaManual(

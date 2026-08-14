@@ -144,6 +144,13 @@ export interface RegistrarMovimentacaoManualRequest {
   loteCodigo?: string | null;
   dataValidade?: string | null;
   valorUnitario?: number | null;
+  lotes?: RegistrarMovimentacaoManualLoteRequest[];
+}
+
+export interface RegistrarMovimentacaoManualLoteRequest {
+  loteCodigo: string;
+  quantidadeEmbalagem: number;
+  dataValidade: string;
 }
 
 export interface RegistrarTransferenciaEstoqueRequest {

@@ -52,6 +52,7 @@ export interface InsumoManualAplicacaoRequest {
 
 export interface CriarAplicacaoProcedimentoRequest {
   procedimentoId: string;
+  compraPacienteId?: string | null;
   quantidadeUtilizada?: number | null;
   loteProdutoId?: string | null;
   consumirInsumosKit?: boolean;
