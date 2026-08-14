@@ -8,10 +8,12 @@ import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { permissoes } from '@/constants/permissoes';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { agendamentoService } from '@/services/agendamento.service';
+import { compraPacienteService } from '@/services/compra-paciente.service';
 import { procedimentoService } from '@/services/procedimento.service';
 import { produtoService } from '@/services/produto.service';
 import { saldoEstoqueService } from '@/services/saldo-estoque.service';
 import type { Agendamento, ConcluirAgendamentoRequest } from '@/types/entidades/agendamento';
+import type { CompraPaciente } from '@/types/entidades/compra-paciente';
 import {
   calcularDuracaoAgendamento,
   formatarDataCabecalhoAgendamento,
@@ -32,7 +34,6 @@ import {
 } from '@/types/entidades/saldo-estoque';
 import type { SaldoLoteEstoque } from '@/types/entidades/saldo-estoque';
 import type { ItemProcedimentoFormulario, ProcedimentoItem } from '@/types/entidades/procedimento';
-import { criarItemProcedimentoVazio } from '@/types/entidades/procedimento';
 import type { Produto } from '@/types/entidades/produto';
 import { normalizarLista } from '@/utils/normalizar-lista';
 
@@ -56,10 +57,22 @@ const temPermissaoCancelar = usePermissao(permissoes.agendamento.cancelar);
 const temPermissaoFalta = usePermissao(permissoes.agendamento.registrarFalta);
 
 const processando = ref(false);
+const carregandoConclusao = ref(false);
 const dialogCancelar = ref(false);
+const dialogConfirmarAplicacao = ref(false);
 const dialogConcluir = ref(false);
+const dialogAdicionarInsumo = ref(false);
+const dialogRemoverInsumo = ref(false);
 const motivoCancelamento = ref('');
 const produtosInsumosDisponiveis = ref<Produto[]>([]);
+const compraAgendamento = ref<CompraPaciente | null>(null);
+const procedimentoAdicionarInsumo = ref<ProcedimentoConclusaoFormulario | null>(null);
+const novoInsumoProdutoId = ref<string | null>(null);
+const procedimentoRemoverInsumo = ref<ProcedimentoConclusaoFormulario | null>(null);
+const insumoRemover = ref<ItemProcedimentoFormulario | null>(null);
+const saldosInsumosConclusao = ref<
+  Record<string, { saldoAtual: number; unidadeMedidaSigla: string }>
+>({});
 
 interface ProcedimentoConclusaoFormulario {
   procedimentoId: string;
@@ -80,6 +93,10 @@ interface ProcedimentoConclusaoFormulario {
 }
 
 const procedimentosConclusao = ref<ProcedimentoConclusaoFormulario[]>([]);
+
+const produtosInsumosPorId = computed(
+  () => new Map(produtosInsumosDisponiveis.value.map((produto) => [produto.id, produto])),
+);
 
 const podeEditar = computed(
   () =>
@@ -112,8 +129,6 @@ const podeMarcarFalta = computed(
         (props.agendamento.status === 'Agendado' || props.agendamento.status === 'Confirmado'),
     ),
 );
-
-const conclusaoMultipla = computed(() => procedimentosConclusao.value.length > 1);
 
 const nomesProcedimentos = computed(() =>
   props.agendamento ? formatarNomesProcedimentos(props.agendamento) : null,
@@ -184,16 +199,6 @@ function fechar(): void {
   emit('update:modelValue', false);
 }
 
-function obterClasseSaldoProduto(saldoAtual: number | null): string {
-  if (saldoAtual === null) {
-    return '';
-  }
-
-  return saldoAtual > 0
-    ? 'agendamento-detalhe__saldo-valor--positivo'
-    : 'agendamento-detalhe__saldo-valor--negativo';
-}
-
 function formatarErroConclusao(erro: unknown): string {
   const mensagem = obterMensagem(erro);
   const procedimentoRelacionado = procedimentosConclusao.value.find(
@@ -255,11 +260,11 @@ function opcoesInsumosManuaisConclusao(item: ProcedimentoConclusaoFormulario) {
         return false;
       }
 
-      if (selecionados.has(produto.id)) {
-        return true;
-      }
-
-      return produto.ativo && produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.INSUMO;
+      return (
+        !selecionados.has(produto.id) &&
+        produto.ativo &&
+        produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.INSUMO
+      );
     })
     .map((produto) => ({
       label: produto.nome,
@@ -297,6 +302,54 @@ function obterSiglaInsumoConclusao(produtoId: string | null): string {
     produtosInsumosDisponiveis.value.find((produto) => produto.id === produtoId)
       ?.unidadeMedidaSigla ?? ''
   );
+}
+
+function obterNomeInsumoConclusao(produtoId: string | null): string {
+  if (!produtoId) {
+    return 'Produto não informado';
+  }
+
+  return produtosInsumosPorId.value.get(produtoId)?.nome ?? produtoId;
+}
+
+function linhasSaldoConclusao(item: ProcedimentoConclusaoFormulario) {
+  const linhas = new Map<
+    string,
+    {
+      produtoId: string;
+      produtoNome: string;
+      quantidadeNecessaria: number;
+      saldoAtual: number | null;
+      sigla: string;
+    }
+  >();
+
+  if (item.produtoAplicadoId) {
+    linhas.set(item.produtoAplicadoId, {
+      produtoId: item.produtoAplicadoId,
+      produtoNome: item.produtoAplicadoNome ?? 'Medicamento',
+      quantidadeNecessaria: Number(item.quantidadeUtilizada ?? 0),
+      saldoAtual: item.saldoAtual,
+      sigla: item.unidadeMedidaSigla,
+    });
+  }
+
+  for (const insumo of item.insumosManuais) {
+    if (!insumo.produtoId) {
+      continue;
+    }
+
+    const saldo = saldosInsumosConclusao.value[insumo.produtoId];
+    linhas.set(insumo.produtoId, {
+      produtoId: insumo.produtoId,
+      produtoNome: obterNomeInsumoConclusao(insumo.produtoId),
+      quantidadeNecessaria: Number(insumo.quantidade ?? 0),
+      saldoAtual: saldo?.saldoAtual ?? null,
+      sigla: saldo?.unidadeMedidaSigla ?? obterSiglaInsumoConclusao(insumo.produtoId),
+    });
+  }
+
+  return [...linhas.values()];
 }
 
 function validarQuantidadeInsumoManual(value: number | null): boolean | string {
@@ -372,25 +425,94 @@ function camposProcedimentoConclusao(item: ProcedimentoConclusaoFormulario) {
   };
 }
 
-function adicionarInsumoManualConclusao(item: ProcedimentoConclusaoFormulario): void {
-  item.insumosManuais.push(criarItemProcedimentoVazio());
+function abrirAdicionarInsumoConclusao(item: ProcedimentoConclusaoFormulario): void {
+  procedimentoAdicionarInsumo.value = item;
+  novoInsumoProdutoId.value = null;
+  opcoesInsumosManuaisConclusaoFiltradas.value = opcoesInsumosManuaisConclusao(item);
+  dialogAdicionarInsumo.value = true;
 }
 
-function removerInsumoManualConclusao(
+function fecharAdicionarInsumoConclusao(): void {
+  dialogAdicionarInsumo.value = false;
+  procedimentoAdicionarInsumo.value = null;
+  novoInsumoProdutoId.value = null;
+}
+
+async function confirmarAdicionarInsumoConclusao(): Promise<void> {
+  const procedimento = procedimentoAdicionarInsumo.value;
+  const produtoId = novoInsumoProdutoId.value;
+  if (!procedimento || !produtoId || !props.agendamento) {
+    return;
+  }
+
+  procedimento.insumosManuais.push({ produtoId, quantidade: 1 });
+  fecharAdicionarInsumoConclusao();
+
+  if (!saldosInsumosConclusao.value[produtoId]) {
+    saldosInsumosConclusao.value[produtoId] = await carregarSaldoProduto(
+      props.agendamento.unidadeId,
+      produtoId,
+    );
+  }
+}
+
+function diminuirQuantidadeInsumoConclusao(
   item: ProcedimentoConclusaoFormulario,
   indice: number,
 ): void {
-  item.insumosManuais.splice(indice, 1);
+  const insumo = item.insumosManuais[indice];
+  if (!insumo) {
+    return;
+  }
+
+  const quantidadeAtual = Number(insumo.quantidade ?? 0);
+  if (!Number.isFinite(quantidadeAtual) || quantidadeAtual <= 1) {
+    procedimentoRemoverInsumo.value = item;
+    insumoRemover.value = insumo;
+    dialogRemoverInsumo.value = true;
+    return;
+  }
+
+  insumo.quantidade = Math.round((quantidadeAtual - 1) * 10000) / 10000;
 }
 
-function aoAlterarConsumirInsumosKitConclusao(item: ProcedimentoConclusaoFormulario): void {
-  if (item.consumirInsumosKit) {
-    item.insumosManuais = [];
+function aumentarQuantidadeInsumoConclusao(
+  item: ProcedimentoConclusaoFormulario,
+  indice: number,
+): void {
+  const insumo = item.insumosManuais[indice];
+  if (!insumo) {
+    return;
   }
+
+  const quantidadeAtual = Number(insumo.quantidade ?? 0);
+  insumo.quantidade =
+    Math.round(((Number.isFinite(quantidadeAtual) ? quantidadeAtual : 0) + 1) * 10000) / 10000;
+}
+
+function fecharRemoverInsumoConclusao(): void {
+  dialogRemoverInsumo.value = false;
+  procedimentoRemoverInsumo.value = null;
+  insumoRemover.value = null;
+}
+
+function confirmarRemoverInsumoConclusao(): void {
+  const procedimento = procedimentoRemoverInsumo.value;
+  const insumo = insumoRemover.value;
+  if (procedimento && insumo) {
+    const indice = procedimento.insumosManuais.indexOf(insumo);
+    if (indice >= 0) {
+      procedimento.insumosManuais.splice(indice, 1);
+    }
+  }
+
+  fecharRemoverInsumoConclusao();
 }
 
 async function carregarProcedimentosConclusao(): Promise<void> {
   procedimentosConclusao.value = [];
+  compraAgendamento.value = null;
+  saldosInsumosConclusao.value = {};
 
   if (!props.agendamento) {
     return;
@@ -402,7 +524,18 @@ async function carregarProcedimentosConclusao(): Promise<void> {
     return;
   }
 
+  carregandoConclusao.value = true;
   const unidadeId = props.agendamento.unidadeId;
+
+  if (props.agendamento.compraPacienteId) {
+    try {
+      compraAgendamento.value = await compraPacienteService.obter(
+        props.agendamento.compraPacienteId,
+      );
+    } catch {
+      compraAgendamento.value = null;
+    }
+  }
 
   try {
     const produtos = await produtoService.listar();
@@ -413,8 +546,9 @@ async function carregarProcedimentosConclusao(): Promise<void> {
     produtosInsumosDisponiveis.value = [];
   }
 
-  const detalhes = await Promise.all(
-    resumos.map(async (resumo) => {
+  try {
+    const detalhes = await Promise.all(
+      resumos.map(async (resumo) => {
       try {
         const procedimento = await procedimentoService.obter(resumo.id);
         const exigeQuantidade = Boolean(procedimento.produtoAplicadoId);
@@ -450,8 +584,11 @@ async function carregarProcedimentosConclusao(): Promise<void> {
           exigeLote,
           quantidadeUtilizada: null,
           loteProdutoId: null,
-          consumirInsumosKit: procedimento.itens.length > 0,
-          insumosManuais: [],
+          consumirInsumosKit: false,
+          insumosManuais: procedimento.itens.map((insumo) => ({
+            produtoId: insumo.produtoId,
+            quantidade: insumo.quantidade,
+          })),
           lotesDisponiveis,
           carregandoLotes: false,
           insumos: procedimento.itens,
@@ -468,7 +605,7 @@ async function carregarProcedimentosConclusao(): Promise<void> {
           exigeLote: false,
           quantidadeUtilizada: null,
           loteProdutoId: null,
-          consumirInsumosKit: true,
+          consumirInsumosKit: false,
           insumosManuais: [],
           lotesDisponiveis: [],
           carregandoLotes: false,
@@ -478,11 +615,33 @@ async function carregarProcedimentosConclusao(): Promise<void> {
           saldoAtual: null,
           unidadeMedidaSigla: '',
         };
-      }
-    }),
-  );
+        }
+      }),
+    );
 
-  procedimentosConclusao.value = detalhes;
+    procedimentosConclusao.value = detalhes;
+
+    const idsInsumos = [
+      ...new Set(
+        detalhes.flatMap((item) =>
+          item.insumosManuais
+            .map((insumo) => insumo.produtoId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ),
+    ];
+    const saldos = await Promise.all(
+      idsInsumos.map(async (produtoId) => ({
+        produtoId,
+        saldo: await carregarSaldoProduto(unidadeId, produtoId),
+      })),
+    );
+    saldosInsumosConclusao.value = Object.fromEntries(
+      saldos.map(({ produtoId, saldo }) => [produtoId, saldo]),
+    );
+  } finally {
+    carregandoConclusao.value = false;
+  }
 }
 
 function montarPayloadConclusao(): ConcluirAgendamentoRequest {
@@ -612,6 +771,17 @@ function abrirEdicao(): void {
 }
 
 function abrirDialogConcluir(): void {
+  if (props.agendamento?.tipo === 'Aplicacao') {
+    dialogConfirmarAplicacao.value = true;
+    return;
+  }
+
+  dialogConcluir.value = true;
+  void carregarProcedimentosConclusao();
+}
+
+function abrirModalAplicacao(): void {
+  dialogConfirmarAplicacao.value = false;
   dialogConcluir.value = true;
   void carregarProcedimentosConclusao();
 }
@@ -621,7 +791,10 @@ watch(
   (aberto) => {
     if (!aberto) {
       dialogCancelar.value = false;
+      dialogConfirmarAplicacao.value = false;
       dialogConcluir.value = false;
+      dialogAdicionarInsumo.value = false;
+      dialogRemoverInsumo.value = false;
       motivoCancelamento.value = '';
     }
   },
@@ -827,10 +1000,37 @@ watch(
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="dialogConfirmarAplicacao" persistent>
+    <q-card class="agendamento-aplicacao-confirmacao">
+      <q-card-section class="row items-start no-wrap q-gutter-md">
+        <q-avatar color="primary" text-color="white" icon="vaccines" />
+        <div>
+          <div class="text-h6">Realizar aplicação?</div>
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            Este é um agendamento de aplicação. Deseja registrar a aplicação agora antes de concluir?
+          </div>
+        </div>
+      </q-card-section>
+      <q-card-actions align="right" class="q-pa-md q-pt-none">
+        <q-btn flat label="Não, voltar" color="primary" no-caps v-close-popup />
+        <q-btn
+          unelevated
+          label="Sim, fazer aplicação"
+          color="primary"
+          icon-right="arrow_forward"
+          no-caps
+          @click="abrirModalAplicacao"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <q-dialog v-model="dialogConcluir" persistent>
-    <q-card style="min-width: 320px; max-width: 95vw">
+    <q-card class="agendamento-aplicacao-modal">
       <q-card-section>
-        <div class="text-h6">Concluir agendamento</div>
+        <div class="text-h5 text-weight-medium">
+          {{ exibirTextoConclusaoAplicacao ? 'Registrar aplicação' : 'Concluir agendamento' }}
+        </div>
         <p v-if="exibirTextoConclusaoAplicacao" class="text-body2 q-mt-sm agendamento-detalhe__texto-conclusao">
           <template v-if="produtosAplicacaoConclusao.length === 0">
             Ao concluir, serão registradas as aplicações e movimentações de estoque.
@@ -850,21 +1050,72 @@ watch(
           </template>
         </p>
       </q-card-section>
-      <q-card-section class="q-gutter-md">
+      <q-separator />
+      <q-card-section class="q-gutter-md agendamento-aplicacao-modal__conteudo scroll">
+        <div v-if="agendamento" class="row q-col-gutter-md">
+          <div class="col-12 col-md-6">
+            <q-input :model-value="agendamento.unidadeNome" label="Unidade" outlined readonly />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-input :model-value="agendamento.pacienteNome" label="Paciente" outlined readonly />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-input :model-value="agendamento.funcionarioNome" label="Aplicador" outlined readonly />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-input
+              :model-value="formatarDataHoraAgendamento(agendamento.dataInicio)"
+              label="Data da aplicação"
+              outlined
+              readonly
+            />
+          </div>
+        </div>
+
+        <q-card
+          v-if="compraAgendamento"
+          flat
+          bordered
+          class="agendamento-aplicacao-modal__compra"
+        >
+          <q-card-section>
+            <div class="text-caption text-grey-7">Pacote/compra vinculado ao agendamento</div>
+            <div class="text-subtitle1 text-weight-medium">{{ compraAgendamento.pacoteNome }}</div>
+            <div class="row q-col-gutter-md q-mt-sm">
+              <div
+                v-for="saldo in compraAgendamento.saldo.produtos"
+                :key="saldo.produtoId"
+                class="col-12 col-sm-6"
+              >
+                <strong>{{ saldo.produtoNome }}:</strong>
+                {{ formatarSaldoComUnidade(saldo.quantidadeRestante, saldo.unidadeMedida) }} restantes
+                <span class="text-grey-7">
+                  (de {{ formatarSaldoComUnidade(saldo.quantidadeContratada, saldo.unidadeMedida) }})
+                </span>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <div v-if="carregandoConclusao" class="flex flex-center q-pa-xl">
+          <q-spinner color="primary" size="42px" />
+        </div>
+
         <div
           v-for="procedimento in procedimentosConclusao"
           :key="procedimento.procedimentoId"
-          class="agendamento-detalhe__procedimento-conclusao"
+          class="agendamento-detalhe__procedimento-conclusao agendamento-aplicacao-modal__procedimento-conclusao"
         >
-          <div v-if="conclusaoMultipla" class="text-subtitle2 q-mb-xs">
+          <div class="text-h6 q-mb-sm">
             {{ procedimento.nome }}
           </div>
 
           <template v-if="procedimento.exigeQuantidade">
             <div
               v-if="procedimento.produtoAplicadoNome"
-              class="agendamento-detalhe__produto-nome agendamento-detalhe__produto-nome--destaque"
+              class="text-body2 q-mb-xs"
             >
+              <span class="text-weight-medium">Produto aplicado:</span>
               {{ procedimento.produtoAplicadoNome }}
             </div>
             <q-input
@@ -893,122 +1144,124 @@ watch(
                   : 'Opcional por enquanto — informe se já houver entrada com lote.'
               "
             />
-            <p
-              v-if="agendamento && procedimento.saldoAtual !== null"
-              class="agendamento-detalhe__saldo-unidade"
-            >
-              Saldo na unidade {{ agendamento.unidadeNome }}:
-              <span
-                class="agendamento-detalhe__saldo-valor"
-                :class="obterClasseSaldoProduto(procedimento.saldoAtual)"
-              >
-                {{
-                  formatarSaldoComUnidade(
-                    procedimento.saldoAtual,
-                    procedimento.unidadeMedidaSigla,
-                  )
-                }}
-              </span>
-            </p>
           </template>
 
-          <q-toggle
-            v-if="procedimento.insumos.length > 0"
-            v-model="procedimento.consumirInsumosKit"
-            class="q-mt-sm"
-            label="Usar insumos do kit"
-            color="primary"
-            :disable="processando"
-            @update:model-value="aoAlterarConsumirInsumosKitConclusao(procedimento)"
-          />
-
-          <div
-            v-if="procedimento.consumirInsumosKit && procedimento.insumos.length > 0"
-            class="q-mt-xs text-body2 agendamento-detalhe__insumos-kit"
-          >
-            {{
-              procedimento.insumos
-                .map((item) => `${item.produtoNome || item.produtoId} (${item.quantidade})`)
-                .join(', ')
-            }}
-          </div>
-
-          <div v-if="!procedimento.consumirInsumosKit" class="q-mt-sm">
-            <div class="row items-center q-mb-xs">
-              <div class="text-body2 text-weight-medium">Insumos manuais</div>
+          <div class="q-mt-md">
+            <div class="row items-center q-mb-sm">
+              <div>
+                <div class="text-weight-medium">Produtos utilizados</div>
+                <div class="text-caption text-grey-7">
+                  O kit é uma sugestão inicial. Ajuste os produtos e quantidades desta aplicação.
+                </div>
+              </div>
               <q-space />
               <q-btn
                 flat
                 dense
                 color="primary"
                 icon="add"
-                label="Adicionar"
+                label="Adicionar insumo"
                 no-caps
                 :disable="processando"
-                @click="adicionarInsumoManualConclusao(procedimento)"
+                @click="abrirAdicionarInsumoConclusao(procedimento)"
               />
             </div>
 
-            <div
-              v-for="(insumo, indice) in procedimento.insumosManuais"
-              :key="indice"
-              class="row q-col-gutter-sm items-start q-mb-xs"
+            <q-markup-table
+              v-if="procedimento.insumosManuais.length > 0"
+              flat
+              bordered
+              dense
+              class="agendamento-aplicacao-modal__insumos"
             >
-              <div class="col-12 col-sm-7">
-                <q-select
-                  v-model="insumo.produtoId"
-                  :options="opcoesInsumosManuaisConclusaoFiltradas"
-                  label="Insumo"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                  use-input
-                  input-debounce="200"
-                  :disable="processando"
-                  @filter="(val, update) => filtrarInsumosManuaisConclusao(val, update, procedimento)"
+              <thead>
+                <tr>
+                  <th class="text-left">Produto</th>
+                  <th class="text-right">Quantidade usada</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(insumo, indice) in procedimento.insumosManuais"
+                  :key="insumo.produtoId || indice"
                 >
-                  <template #no-option>
-                    <q-item>
-                      <q-item-section class="text-grey">Nenhum insumo encontrado</q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-              <div class="col-8 col-sm-3">
-                <q-input
-                  v-model.number="insumo.quantidade"
-                  label="Qtd"
-                  type="number"
-                  outlined
-                  dense
-                  min="0.01"
-                  step="any"
-                  :disable="processando"
-                >
-                  <template v-if="insumo.produtoId" #append>
-                    <span class="agendamento-detalhe__insumos-kit">
-                      {{ obterSiglaInsumoConclusao(insumo.produtoId) }}
-                    </span>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-4 col-sm-2 flex flex-center">
-                <app-table-action-button
-                  acao="excluir"
-                  rotulo="Remover insumo"
-                  :disable="processando"
-                  @click="removerInsumoManualConclusao(procedimento, indice)"
-                />
-              </div>
-            </div>
+                  <td class="text-left text-weight-medium">
+                    {{ obterNomeInsumoConclusao(insumo.produtoId) }}
+                  </td>
+                  <td class="text-right">
+                    <div class="agendamento-aplicacao-modal__quantidade-insumo">
+                      <q-btn
+                        round
+                        flat
+                        dense
+                        size="sm"
+                        color="negative"
+                        icon="remove"
+                        aria-label="Diminuir quantidade ou remover insumo"
+                        :disable="processando"
+                        @click="diminuirQuantidadeInsumoConclusao(procedimento, indice)"
+                      >
+                        <q-tooltip>
+                          {{ Number(insumo.quantidade ?? 0) <= 1 ? 'Remover insumo' : 'Diminuir quantidade' }}
+                        </q-tooltip>
+                      </q-btn>
+                      <span class="agendamento-aplicacao-modal__quantidade-valor">
+                        {{ Number(insumo.quantidade ?? 0).toLocaleString('pt-BR') }}
+                        {{ obterSiglaInsumoConclusao(insumo.produtoId) }}
+                      </span>
+                      <q-btn
+                        round
+                        flat
+                        dense
+                        size="sm"
+                        color="primary"
+                        icon="add"
+                        aria-label="Aumentar quantidade do insumo"
+                        :disable="processando"
+                        @click="aumentarQuantidadeInsumoConclusao(procedimento, indice)"
+                      >
+                        <q-tooltip>Aumentar quantidade</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
 
             <div
               v-if="procedimento.insumosManuais.length === 0"
-              class="text-body2 agendamento-detalhe__insumos-kit"
+              class="text-body2 agendamento-aplicacao-modal__vazio"
             >
-              Nenhum insumo manual. A baixa será apenas do medicamento.
+              Nenhum produto adicional. A baixa será apenas do medicamento aplicado.
             </div>
+          </div>
+
+          <div v-if="linhasSaldoConclusao(procedimento).length > 0" class="q-mt-md">
+            <div class="text-weight-medium q-mb-xs">Saldo na unidade</div>
+            <q-markup-table flat bordered dense>
+              <thead>
+                <tr>
+                  <th class="text-left">Produto</th>
+                  <th class="text-right">Necessário</th>
+                  <th class="text-right">Disponível</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="itemSaldo in linhasSaldoConclusao(procedimento)" :key="itemSaldo.produtoId">
+                  <td>{{ itemSaldo.produtoNome }}</td>
+                  <td class="text-right">
+                    {{ formatarSaldoComUnidade(itemSaldo.quantidadeNecessaria, itemSaldo.sigla) }}
+                  </td>
+                  <td class="text-right">
+                    {{
+                      itemSaldo.saldoAtual !== null
+                        ? formatarSaldoComUnidade(itemSaldo.saldoAtual, itemSaldo.sigla)
+                        : '—'
+                    }}
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
           </div>
         </div>
       </q-card-section>
@@ -1016,11 +1269,73 @@ watch(
         <q-btn flat label="Voltar" color="primary" no-caps :disable="processando" v-close-popup />
         <q-btn
           unelevated
-          label="Concluir"
+          :label="exibirTextoConclusaoAplicacao ? 'Concluir e registrar aplicação' : 'Concluir'"
           color="positive"
           no-caps
-          :disable="processando"
+          :loading="processando"
+          :disable="carregandoConclusao"
           @click="concluir"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="dialogAdicionarInsumo" persistent>
+    <q-card style="width: 460px; max-width: 92vw">
+      <q-card-section>
+        <div class="text-h6">Adicionar insumo</div>
+        <div class="text-body2 text-grey-7 q-mt-xs">Selecione o produto que foi utilizado.</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-select
+          v-model="novoInsumoProdutoId"
+          :options="opcoesInsumosManuaisConclusaoFiltradas"
+          label="Insumo *"
+          outlined
+          emit-value
+          map-options
+          use-input
+          input-debounce="200"
+          autofocus
+          @filter="(val, update) => procedimentoAdicionarInsumo && filtrarInsumosManuaisConclusao(val, update, procedimentoAdicionarInsumo)"
+        >
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey">Nenhum insumo encontrado</q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+      </q-card-section>
+      <q-card-actions align="right" class="q-pa-md q-pt-none">
+        <q-btn flat label="Cancelar" color="primary" no-caps @click="fecharAdicionarInsumoConclusao" />
+        <q-btn
+          unelevated
+          label="Adicionar"
+          color="primary"
+          no-caps
+          :disable="!novoInsumoProdutoId"
+          @click="confirmarAdicionarInsumoConclusao"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="dialogRemoverInsumo" persistent>
+    <q-card style="width: 440px; max-width: 92vw">
+      <q-card-section>
+        <div class="text-h6">Remover insumo?</div>
+        <div class="text-body2 text-grey-7 q-mt-xs">
+          Deseja remover {{ obterNomeInsumoConclusao(insumoRemover?.produtoId ?? null) }} dos produtos utilizados?
+        </div>
+      </q-card-section>
+      <q-card-actions align="right" class="q-pa-md q-pt-none">
+        <q-btn flat label="Cancelar" color="primary" no-caps @click="fecharRemoverInsumoConclusao" />
+        <q-btn
+          unelevated
+          label="Remover"
+          color="negative"
+          no-caps
+          @click="confirmarRemoverInsumoConclusao"
         />
       </q-card-actions>
     </q-card>
@@ -1265,6 +1580,75 @@ watch(
 
     &--negativo {
       color: var(--ds-color-error-500);
+    }
+  }
+}
+
+.agendamento-aplicacao-confirmacao {
+  max-width: 92vw;
+  width: 480px;
+}
+
+.agendamento-aplicacao-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  max-width: 96vw;
+  width: 1120px;
+
+  &__conteudo {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--ds-space-5, 24px);
+  }
+
+  &__compra {
+    background: var(--ds-bg-subtle);
+  }
+
+  &__procedimento-conclusao {
+    border: 1px solid var(--ds-border-default, #e0e0e0);
+    border-radius: var(--ds-radius-lg, 16px);
+    padding: var(--ds-space-4, 16px);
+  }
+
+  &__insumos {
+    border-radius: var(--ds-radius-md, 12px);
+    overflow: hidden;
+  }
+
+  &__quantidade-insumo {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--ds-space-2, 8px);
+    justify-content: flex-end;
+  }
+
+  &__quantidade-valor {
+    min-width: 90px;
+    text-align: center;
+  }
+
+  &__vazio {
+    background: var(--ds-bg-subtle);
+    border-radius: var(--ds-radius-md, 12px);
+    color: var(--ds-text-secondary);
+    padding: var(--ds-space-3, 12px);
+  }
+}
+
+@media (max-width: 599px) {
+  .agendamento-aplicacao-modal {
+    max-height: 96vh;
+    max-width: 98vw;
+    width: 98vw;
+
+    &__conteudo {
+      padding: var(--ds-space-3, 12px);
+    }
+
+    &__quantidade-valor {
+      min-width: 72px;
     }
   }
 }
