@@ -51,20 +51,33 @@ let ultimoPeriodoEmitido: string | null = null;
 
 const horarioAtivo = computed(() => props.configHorario?.possuiHorario === true);
 
+const COR_EVENTO_AGUARDANDO_CONFIRMACAO =
+  'color-mix(in srgb, var(--ds-brand-primary) 14%, var(--ds-bg-surface))';
+
 const eventos = computed<EventInput[]>(() =>
-  props.agendamentos.map((agendamento) => ({
-    id: agendamento.id,
-    title: agendamento.pacienteNome,
-    start: parsearDataBackend(agendamento.dataInicio),
-    end: parsearDataBackend(agendamento.dataFim),
-    backgroundColor: obterCorEventoAgendamento(agendamento.status),
-    borderColor: obterCorEventoAgendamento(agendamento.status),
-    extendedProps: { agendamento },
-    classNames:
-      agendamento.status === 'Cancelado' || agendamento.status === 'Faltou'
-        ? ['agenda-calendar__evento--inativo']
-        : [],
-  })),
+  props.agendamentos.map((agendamento) => {
+    const aguardandoConfirmacao = agendamento.status === 'Agendado';
+    const inativo = agendamento.status === 'Cancelado' || agendamento.status === 'Faltou';
+
+    return {
+      id: agendamento.id,
+      title: agendamento.pacienteNome,
+      start: parsearDataBackend(agendamento.dataInicio),
+      end: parsearDataBackend(agendamento.dataFim),
+      backgroundColor: aguardandoConfirmacao
+        ? COR_EVENTO_AGUARDANDO_CONFIRMACAO
+        : obterCorEventoAgendamento(agendamento.status),
+      borderColor: aguardandoConfirmacao
+        ? 'var(--ds-brand-primary)'
+        : obterCorEventoAgendamento(agendamento.status),
+      textColor: aguardandoConfirmacao ? 'var(--ds-brand-primary)' : '#fff',
+      extendedProps: { agendamento },
+      classNames: [
+        ...(aguardandoConfirmacao ? ['agenda-calendar__evento--aguardando-confirmacao'] : []),
+        ...(inativo ? ['agenda-calendar__evento--inativo'] : []),
+      ],
+    };
+  }),
 );
 
 function escaparHtml(valor: string): string {
@@ -336,6 +349,16 @@ watch(
 
   :deep(.fc-daygrid-event) {
     white-space: normal;
+  }
+
+  :deep(.agenda-calendar__evento--aguardando-confirmacao) {
+    border-width: 1px;
+    box-shadow: inset 3px 0 0 var(--ds-brand-primary);
+
+    .agenda-evento-card__hora,
+    .agenda-evento-card__meta {
+      opacity: 0.82;
+    }
   }
 
   :deep(.agenda-calendar__evento--inativo) {
