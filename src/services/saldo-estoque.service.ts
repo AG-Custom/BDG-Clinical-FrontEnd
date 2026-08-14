@@ -3,11 +3,16 @@ import type { ApiResponse } from '@/types/api/api';
 import type {
   ListarSaldosEstoqueParams,
   ListarSaldosLoteParams,
+  AtualizarSaldoEstoqueRequest,
   SaldoEstoque,
   SaldoLoteEstoque,
 } from '@/types/entidades/saldo-estoque';
 
 export const saldoEstoqueService = {
+  async atualizar(payload: AtualizarSaldoEstoqueRequest): Promise<void> {
+    await api.put<ApiResponse<unknown>>('/api/stock-balances', payload);
+  },
+
   async listar(params: ListarSaldosEstoqueParams = {}): Promise<SaldoEstoque[]> {
     const query: Record<string, string | boolean | number> = {};
 

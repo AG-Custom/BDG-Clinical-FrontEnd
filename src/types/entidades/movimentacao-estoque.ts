@@ -107,6 +107,8 @@ export function formatarOrigemMovimentacao(origem: string): string {
       return 'Estorno de aplicação';
     case 'AJUSTE_MANUAL':
       return 'Entrada manual';
+    case 'CORRECAO_SALDO':
+      return 'Correção de saldo';
     case 'PERDA_MANUAL':
       return 'Saída manual';
     case 'TRANSFERENCIA_ESTOQUE':
@@ -123,6 +125,7 @@ export function obterCorOrigemEntrada(origem: string): string {
     case 'PEDIDO_FORNECEDOR':
       return 'primary';
     case 'AJUSTE_MANUAL':
+    case 'CORRECAO_SALDO':
     case 'MANUAL':
       return 'secondary';
     case 'APLICACAO_PACIENTE_CANCELAMENTO':
@@ -144,6 +147,13 @@ export interface RegistrarMovimentacaoManualRequest {
   loteCodigo?: string | null;
   dataValidade?: string | null;
   valorUnitario?: number | null;
+  lotes?: RegistrarMovimentacaoManualLoteRequest[];
+}
+
+export interface RegistrarMovimentacaoManualLoteRequest {
+  loteCodigo: string;
+  quantidadeEmbalagem: number;
+  dataValidade: string;
 }
 
 export interface RegistrarTransferenciaEstoqueRequest {

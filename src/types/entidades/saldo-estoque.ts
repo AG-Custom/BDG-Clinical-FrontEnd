@@ -44,6 +44,14 @@ export interface ListarSaldosLoteParams {
   produtoId?: string;
 }
 
+export interface AtualizarSaldoEstoqueRequest {
+  unidadeId: string;
+  produtoId: string;
+  saldoDesejado: number;
+  observacao: string;
+  loteProdutoId?: string | null;
+}
+
 export function formatarSaldoComUnidade(saldo: number, sigla: string): string {
   const siglaFormatada = sigla.trim();
 
