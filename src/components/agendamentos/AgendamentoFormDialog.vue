@@ -7,10 +7,8 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
-import { compraPacienteService } from '@/services/compra-paciente.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
-import { procedimentoService } from '@/services/procedimento.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Agendamento, TipoAgendamento } from '@/types/entidades/agendamento';
 import {
@@ -18,16 +16,9 @@ import {
   deInputDatetimeLocalParaIso,
   deIsoParaInputDatetimeLocal,
   obterLabelTipoAgendamento,
-  obterProcedimentosDoAgendamento,
 } from '@/types/entidades/agendamento';
-import type { CompraPaciente } from '@/types/entidades/compra-paciente';
-import {
-  formatarOpcaoCompraAtiva,
-  formatarResumoSaldoProdutos,
-} from '@/types/entidades/compra-paciente';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import type { Paciente } from '@/types/entidades/paciente';
-import type { Procedimento } from '@/types/entidades/procedimento';
 import type { Unidade } from '@/types/entidades/unidade';
 import { normalizarLista } from '@/utils/normalizar-lista';
 
@@ -51,10 +42,7 @@ const salvando = ref(false);
 const dialogPaciente = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const pacientesDisponiveis = ref<Paciente[]>([]);
-const procedimentosDisponiveis = ref<Procedimento[]>([]);
 const funcionariosDisponiveis = ref<Funcionario[]>([]);
-const comprasAtivas = ref<CompraPaciente[]>([]);
-const carregandoCompras = ref(false);
 const dadosIniciaisCarregados = ref(false);
 
 const isEdicao = computed(() => Boolean(props.agendamento?.id));
@@ -67,8 +55,6 @@ const form = reactive({
   data: '',
   horaInicio: '',
   horaFim: '',
-  procedimentoIds: [] as string[],
-  compraPacienteId: null as string | null,
   observacao: '',
 });
 
@@ -95,36 +81,6 @@ watch(
   },
   { immediate: true },
 );
-
-const opcoesProcedimentos = computed(() =>
-  procedimentosDisponiveis.value
-    .filter((procedimento) => procedimento.ativo)
-    .map((procedimento) => ({ label: procedimento.nome, value: procedimento.id })),
-);
-
-const opcoesProcedimentosFiltradas = ref<{ label: string; value: string }[]>([]);
-
-watch(
-  opcoesProcedimentos,
-  (lista) => {
-    opcoesProcedimentosFiltradas.value = lista;
-  },
-  { immediate: true },
-);
-
-function filtrarProcedimentos(val: string, update: (callback: () => void) => void): void {
-  update(() => {
-    const termo = val.trim().toLowerCase();
-    if (!termo) {
-      opcoesProcedimentosFiltradas.value = opcoesProcedimentos.value;
-      return;
-    }
-
-    opcoesProcedimentosFiltradas.value = opcoesProcedimentos.value.filter((opcao) =>
-      opcao.label.toLowerCase().includes(termo),
-    );
-  });
-}
 
 const opcoesFuncionarios = computed(() =>
   funcionariosDisponiveis.value
@@ -175,37 +131,6 @@ const opcoesTipos = computed(() =>
     label: obterLabelTipoAgendamento(tipo),
     value: tipo,
   })),
-);
-
-const exigeProcedimento = computed(() => form.tipo === 'Aplicacao');
-const exigeCompraPaciente = computed(() => form.tipo === 'Aplicacao');
-
-const opcoesComprasAtivas = computed(() =>
-  comprasAtivas.value.map((compra) => ({
-    label: formatarOpcaoCompraAtiva(compra),
-    value: compra.id,
-  })),
-);
-
-const compraSelecionada = computed(
-  () => comprasAtivas.value.find((compra) => compra.id === form.compraPacienteId) ?? null,
-);
-
-const mostrarAlertaCompras = computed(
-  () =>
-    exigeCompraPaciente.value &&
-    Boolean(form.pacienteId) &&
-    !carregandoCompras.value &&
-    !carregandoDados.value &&
-    comprasAtivas.value.length === 0,
-);
-
-const mostrarAlertaProcedimentos = computed(
-  () =>
-    exigeProcedimento.value &&
-    dadosIniciaisCarregados.value &&
-    !carregandoDados.value &&
-    opcoesProcedimentos.value.length === 0,
 );
 
 const mostrarBoxNovoPaciente = computed(
@@ -275,10 +200,6 @@ function preencherFormulario(): void {
     form.horaInicio = inicio.hora;
     form.horaFim = fim.hora;
 
-    form.procedimentoIds = obterProcedimentosDoAgendamento(props.agendamento).map(
-      (procedimento) => procedimento.id,
-    );
-    form.compraPacienteId = props.agendamento.compraPacienteId;
     form.observacao = props.agendamento.observacao ?? '';
     return;
   }
@@ -287,10 +208,7 @@ function preencherFormulario(): void {
   form.pacienteId = null;
   form.funcionarioId = null;
   form.tipo = 'Consulta';
-  form.procedimentoIds = [];
-  form.compraPacienteId = null;
   form.observacao = '';
-  comprasAtivas.value = [];
 
   if (props.intervaloInicial) {
     aplicarIntervaloNoFormulario(props.intervaloInicial.inicio, props.intervaloInicial.fim);
@@ -313,34 +231,6 @@ async function carregarPacientesDaUnidade(): Promise<void> {
     );
   } catch (erro) {
     notificacao.erro(obterMensagem(erro));
-  }
-}
-
-async function carregarComprasAtivasDoPaciente(): Promise<void> {
-  if (!form.pacienteId || !exigeCompraPaciente.value) {
-    comprasAtivas.value = [];
-    return;
-  }
-
-  carregandoCompras.value = true;
-
-  try {
-    comprasAtivas.value = normalizarLista(
-      await compraPacienteService.listarAtivasPorPaciente(form.pacienteId),
-    );
-
-    if (
-      form.compraPacienteId &&
-      !comprasAtivas.value.some((compra) => compra.id === form.compraPacienteId)
-    ) {
-      const compra = await compraPacienteService.obter(form.compraPacienteId);
-      comprasAtivas.value = [compra, ...comprasAtivas.value];
-    }
-  } catch (erro) {
-    comprasAtivas.value = [];
-    notificacao.erro(obterMensagem(erro));
-  } finally {
-    carregandoCompras.value = false;
   }
 }
 
@@ -381,13 +271,7 @@ async function carregarDependencias(): Promise<void> {
   carregandoDados.value = true;
 
   try {
-    const [unidades, procedimentos] = await Promise.all([
-      unidadeService.listar(),
-      procedimentoService.listar(),
-    ]);
-
-    unidadesDisponiveis.value = normalizarLista(unidades);
-    procedimentosDisponiveis.value = normalizarLista(procedimentos);
+    unidadesDisponiveis.value = normalizarLista(await unidadeService.listar());
     dadosIniciaisCarregados.value = true;
 
     if (form.unidadeId) {
@@ -397,14 +281,6 @@ async function carregarDependencias(): Promise<void> {
     notificacao.erro(obterMensagem(erro));
   } finally {
     carregandoDados.value = false;
-  }
-}
-
-async function recarregarProcedimentos(): Promise<void> {
-  try {
-    procedimentosDisponiveis.value = normalizarLista(await procedimentoService.listar());
-  } catch (erro) {
-    notificacao.erro(obterMensagem(erro));
   }
 }
 
@@ -427,11 +303,6 @@ function aoPacienteCriado(paciente: Paciente): void {
   }
 
   form.pacienteId = paciente.id;
-  form.compraPacienteId = null;
-
-  if (exigeCompraPaciente.value) {
-    void carregarComprasAtivasDoPaciente();
-  }
 }
 
 function montarPayload() {
@@ -442,8 +313,6 @@ function montarPayload() {
     tipo: form.tipo,
     dataInicio: deInputDatetimeLocalParaIso(`${form.data}T${form.horaInicio}`),
     dataFim: deInputDatetimeLocalParaIso(`${form.data}T${form.horaFim}`),
-    procedimentoIds: exigeProcedimento.value ? form.procedimentoIds : null,
-    compraPacienteId: exigeCompraPaciente.value ? form.compraPacienteId : null,
     observacao: form.observacao.trim() || null,
   };
 }
@@ -463,16 +332,6 @@ async function salvar(): Promise<void> {
 
   if (form.horaFim <= form.horaInicio) {
     notificacao.info('O horário de fim deve ser após o horário de início.');
-    return;
-  }
-
-  if (exigeProcedimento.value && form.procedimentoIds.length === 0) {
-    notificacao.info('Selecione ao menos um procedimento para agendamentos de aplicação.');
-    return;
-  }
-
-  if (exigeCompraPaciente.value && !form.compraPacienteId) {
-    notificacao.info('Selecione a compra do pacote para agendamentos de aplicação.');
     return;
   }
 
@@ -525,9 +384,6 @@ watch(
       await garantirFuncionarioNaLista(props.agendamento.funcionarioId);
     }
 
-    if (exigeCompraPaciente.value && form.pacienteId) {
-      await carregarComprasAtivasDoPaciente();
-    }
   },
 );
 
@@ -535,45 +391,12 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
   if (unidadeAnterior && novaUnidade !== unidadeAnterior) {
     form.funcionarioId = null;
     form.pacienteId = null;
-    form.compraPacienteId = null;
-    comprasAtivas.value = [];
   }
 
   if (dadosIniciaisCarregados.value) {
     await Promise.all([carregarPacientesDaUnidade(), carregarFuncionariosDaUnidade()]);
   }
 });
-
-watch(
-  () => form.pacienteId,
-  async (novoPaciente, pacienteAnterior) => {
-    if (pacienteAnterior && novoPaciente !== pacienteAnterior) {
-      form.compraPacienteId = null;
-    }
-
-    if (exigeCompraPaciente.value && novoPaciente) {
-      await carregarComprasAtivasDoPaciente();
-    } else if (!exigeCompraPaciente.value) {
-      comprasAtivas.value = [];
-    }
-  },
-);
-
-watch(
-  () => form.tipo,
-  async (novoTipo) => {
-    if (novoTipo !== 'Aplicacao') {
-      form.procedimentoIds = [];
-      form.compraPacienteId = null;
-      comprasAtivas.value = [];
-      return;
-    }
-
-    if (form.pacienteId) {
-      await carregarComprasAtivasDoPaciente();
-    }
-  },
-);
 </script>
 
 <template>
@@ -673,72 +496,6 @@ watch(
             :disable="salvando"
           />
 
-          <div v-if="exigeProcedimento" class="form-field-stack">
-            <q-select
-              v-model="form.procedimentoIds"
-              :options="opcoesProcedimentosFiltradas"
-              label="Procedimentos *"
-              outlined
-              multiple
-              use-chips
-              use-input
-              input-debounce="200"
-              emit-value
-              map-options
-              :loading="carregandoDados"
-              :disable="salvando || opcoesProcedimentos.length === 0"
-              :rules="[(v) => (Array.isArray(v) && v.length > 0) || 'Obrigatório para aplicação']"
-              @filter="filtrarProcedimentos"
-            >
-              <template #no-option>
-                <q-item>
-                  <q-item-section class="text-grey">Nenhum procedimento encontrado</q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-            <app-form-dependencia-alerta
-              v-if="mostrarAlertaProcedimentos"
-              inline
-              mensagem="Nenhum procedimento cadastrado. Cadastre um procedimento antes de agendar uma aplicação."
-              rotulo-acao="Cadastrar procedimento"
-              :destino="{ name: 'procedimentos-novo' }"
-              @atualizar="recarregarProcedimentos"
-            />
-          </div>
-
-          <div v-if="exigeCompraPaciente" class="form-field-stack">
-            <q-select
-              v-model="form.compraPacienteId"
-              :options="opcoesComprasAtivas"
-              label="Compra do pacote *"
-              outlined
-              emit-value
-              map-options
-              :loading="carregandoCompras"
-              :disable="salvando || !form.pacienteId || opcoesComprasAtivas.length === 0"
-              :rules="[(v) => Boolean(v) || 'Obrigatório para aplicação']"
-              hint="Compra ativa que será debitada na aplicação."
-            />
-            <div
-              v-if="compraSelecionada?.saldo"
-              class="text-caption text-grey-7"
-            >
-              Saldo: {{ formatarResumoSaldoProdutos(compraSelecionada.saldo) }}
-            </div>
-            <app-form-dependencia-alerta
-              v-if="mostrarAlertaCompras"
-              inline
-              mensagem="Nenhuma compra ativa para este paciente. Registre uma compra de pacote antes de agendar a aplicação."
-              rotulo-acao="Registrar compra"
-              :destino="
-                form.pacienteId
-                  ? { name: 'pacientes-compras-nova', params: { id: form.pacienteId } }
-                  : { name: 'pacientes' }
-              "
-              @atualizar="carregarComprasAtivasDoPaciente"
-            />
-          </div>
-
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-4">
               <q-input
@@ -792,10 +549,6 @@ watch(
           color="primary"
           no-caps
           :loading="salvando"
-          :disable="
-            (exigeProcedimento && opcoesProcedimentos.length === 0) ||
-            (exigeCompraPaciente && opcoesComprasAtivas.length === 0)
-          "
           @click="salvar"
         />
       </q-card-actions>
