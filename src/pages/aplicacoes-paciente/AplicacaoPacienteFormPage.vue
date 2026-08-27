@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
@@ -1802,12 +1803,12 @@ onMounted(async () => {
               </div>
             </div>
             <div class="col-12 col-md-6">
-              <q-input
+              <app-date-input
                 v-model="form.dataAplicacao"
                 class="form-field--required"
                 label="Data da aplicação"
                 outlined
-                type="datetime-local"
+                com-horario
                 :readonly="!podeEditarCampos"
                 :rules="[validarDataAplicacao]"
               />

@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { QForm } from 'quasar';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
@@ -331,12 +332,12 @@ onMounted(() => {
             :rules="[validarQuantidade]"
           />
 
-          <q-input
+          <app-date-input
             v-model="form.data"
             class="form-field--required"
             label="Data da transferência"
             outlined
-            type="datetime-local"
+            com-horario
             :readonly="formDesabilitado"
             :disable="formDesabilitado"
             :rules="[(v) => Boolean(v) || 'Informe a data e hora da transferência']"

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import AppMetricCard from '@/components/design-system/AppMetricCard.vue';
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { relatorioService } from '@/services/relatorio.service';
 import type { RelatorioOperacional } from '@/types/entidades/relatorio';
 
@@ -60,8 +61,8 @@ onMounted(carregar);
       <p class="text-grey-7 q-mt-sm q-mb-lg">Acompanhe a operação e a movimentação de estoque da clínica.</p>
 
       <q-card flat bordered class="q-mb-lg"><q-card-section class="row q-col-gutter-md items-end">
-        <div class="col-12 col-sm-4"><q-input v-model="dataInicio" outlined dense type="date" label="Data inicial" /></div>
-        <div class="col-12 col-sm-4"><q-input v-model="dataFim" outlined dense type="date" label="Data final" /></div>
+        <div class="col-12 col-sm-4"><app-date-input v-model="dataInicio" outlined dense label="Data inicial" /></div>
+        <div class="col-12 col-sm-4"><app-date-input v-model="dataFim" outlined dense label="Data final" /></div>
         <div class="col-12 col-sm-auto row q-gutter-sm">
           <q-btn unelevated color="primary" label="Aplicar período" :loading="carregando" @click="carregar" />
           <q-btn flat color="primary" label="Semana atual" @click="usarSemanaAtual" />

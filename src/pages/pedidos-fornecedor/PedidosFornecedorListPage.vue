@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
@@ -498,12 +499,11 @@ onMounted(async () => {
               outlined
               dense
             />
-            <q-input
+            <app-date-input
               v-model="lotesRecebimento[item.produtoId].dataValidade"
               label="Validade"
               outlined
               dense
-              type="date"
             />
             <q-input
               v-model.number="lotesRecebimento[item.produtoId].quantidadeEmbalagem"
