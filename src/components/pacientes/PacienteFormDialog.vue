@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { pacienteService } from '@/services/paciente.service';
@@ -187,11 +188,10 @@ watch(
               />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input
+              <app-date-input
                 v-model="form.dataNascimento"
                 label="Data de nascimento"
                 outlined
-                type="date"
                 :disable="salvando"
               />
             </div>

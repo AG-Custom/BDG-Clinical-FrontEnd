@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
@@ -436,12 +437,12 @@ onMounted(async () => {
             />
           </div>
 
-          <q-input
+          <app-date-input
             v-model="form.dataCompra"
             class="form-field--required"
             label="Data da compra"
             outlined
-            type="datetime-local"
+            com-horario
             :readonly="!podeCriar"
             :rules="[validarDataCompra]"
           />

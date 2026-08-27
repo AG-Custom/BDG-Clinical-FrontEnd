@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { QForm } from 'quasar';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { usePermissao } from '@/composables/usePermissao';
@@ -339,34 +340,7 @@ function validarValidade(value: string): boolean | string {
     return true;
   }
 
-  if (!value) {
-    return 'Informe a data de validade';
-  }
-
-  return converterValidadeParaIso(value) !== null || 'Informe uma data válida no formato DD/MM/AAAA';
-}
-
-function converterValidadeParaIso(value: string): string | null {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
-  if (!match) {
-    return null;
-  }
-
-  const dia = Number(match[1]);
-  const mes = Number(match[2]);
-  const ano = Number(match[3]);
-  const data = new Date(Date.UTC(ano, mes - 1, dia));
-
-  if (
-    ano < 1000 ||
-    data.getUTCFullYear() !== ano ||
-    data.getUTCMonth() !== mes - 1 ||
-    data.getUTCDate() !== dia
-  ) {
-    return null;
-  }
-
-  return `${String(ano).padStart(4, '0')}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+  return Boolean(value) || 'Informe a data de validade';
 }
 
 function adicionarLote(): void {
@@ -428,7 +402,7 @@ function montarPayload(): RegistrarMovimentacaoManualRequest {
       lotes: lotesEntrada.value.map((lote) => ({
         loteCodigo: lote.loteCodigo.trim(),
         quantidadeEmbalagem: lote.quantidadeEmbalagem!,
-        dataValidade: converterValidadeParaIso(lote.dataValidade)!,
+        dataValidade: lote.dataValidade,
       })),
     };
   }
@@ -705,14 +679,11 @@ onMounted(async () => {
                         />
                       </div>
                       <div class="col-12 col-md-4">
-                        <q-input
+                        <app-date-input
                           v-model="lote.dataValidade"
                           class="form-field--required"
                           label="Validade"
-                          placeholder="DD/MM/AAAA"
                           outlined
-                          mask="##/##/####"
-                          inputmode="numeric"
                           :readonly="!podeRegistrar"
                           :rules="[validarValidade]"
                         />
@@ -773,12 +744,12 @@ onMounted(async () => {
                 {{ resumoValorMovimentacao }}
               </p>
 
-              <q-input
+              <app-date-input
                 v-model="form.data"
                 class="form-field--required"
                 label="Data da movimentação"
                 outlined
-                type="datetime-local"
+                com-horario
                 :readonly="!podeRegistrar"
                 :rules="[validarData]"
               />

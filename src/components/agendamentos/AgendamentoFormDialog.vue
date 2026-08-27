@@ -2,6 +2,7 @@
 import { computed, reactive, ref, toRef, watch } from 'vue';
 
 import PacienteFormDialog from '@/components/pacientes/PacienteFormDialog.vue';
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
@@ -498,9 +499,8 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
 
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-4">
-              <q-input
+              <app-date-input
                 v-model="form.data"
-                type="date"
                 label="Data *"
                 outlined
                 :disable="salvando"

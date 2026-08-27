@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { useAplicador } from '@/composables/useAplicador';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
@@ -510,23 +511,21 @@ onMounted(async () => {
             />
           </div>
           <div class="col-12 col-md-4">
-            <q-input
+            <app-date-input
               v-model="filtroDataInicio"
               label="Data início"
               outlined
               dense
-              type="date"
               clearable
               @update:model-value="carregarAplicacoes"
             />
           </div>
           <div class="col-12 col-md-4">
-            <q-input
+            <app-date-input
               v-model="filtroDataFim"
               label="Data fim"
               outlined
               dense
-              type="date"
               clearable
               @update:model-value="carregarAplicacoes"
             />

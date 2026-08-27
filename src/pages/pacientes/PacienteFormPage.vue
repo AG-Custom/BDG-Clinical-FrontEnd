@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
 import { usePermissao } from '@/composables/usePermissao';
 import { useNotificacao } from '@/composables/useNotificacao';
@@ -295,11 +296,10 @@ onMounted(async () => {
               />
             </div>
             <div class="col-12 col-md-6">
-              <q-input
+              <app-date-input
                 v-model="form.dataNascimento"
                 label="Data de nascimento"
                 outlined
-                type="date"
                 :readonly="!podeSalvar"
               />
             </div>
