@@ -7,6 +7,7 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { permissoes } from '@/constants/permissoes';
+import { REDIRECIONAMENTO_APLICACAO } from '@/constants/agendamentos';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
 import { cargoService } from '@/services/cargo.service';
@@ -1290,13 +1291,46 @@ function aoAlterarQuantidadeProcedimento(item: ProcedimentoNaFormulario): void {
   void atualizarSaldosProcedimento(item);
 }
 
+function obterQueryString(nome: string): string | null {
+  const valor = route.query[nome];
+  return typeof valor === 'string' && valor.trim() ? valor : null;
+}
+
+async function preencherDadosDoAgendamento(): Promise<void> {
+  const { parametros } = REDIRECIONAMENTO_APLICACAO;
+  const unidadeId = obterQueryString(parametros.unidadeId);
+  const pacienteId = obterQueryString(parametros.pacienteId);
+  const aplicadorId = obterQueryString(parametros.aplicadorId);
+  const dataAplicacao = obterQueryString(parametros.dataAplicacao);
+
+  if (unidadeId) {
+    form.unidadeId = unidadeId;
+    await Promise.all([carregarPacientesDaUnidade(), carregarAplicadoresDaUnidade()]);
+  }
+
+  if (pacienteId) {
+    await garantirPacienteNaLista(pacienteId);
+    form.pacienteId = pacienteId;
+    await carregarComprasAtivasDoPaciente();
+  }
+
+  if (aplicadorId) {
+    await garantirAplicadorNaLista(aplicadorId);
+    form.aplicadorId = aplicadorId;
+  }
+
+  form.dataAplicacao = dataAplicacao
+    ? deIsoParaInputDatetimeLocal(dataAplicacao)
+    : deIsoParaInputDatetimeLocal(new Date().toISOString());
+}
+
 onMounted(async () => {
   await carregarDadosIniciais();
 
   if (isEdicao.value) {
     await carregarAplicacao();
   } else {
-    form.dataAplicacao = deIsoParaInputDatetimeLocal(new Date().toISOString());
+    await preencherDadosDoAgendamento();
   }
 });
 </script>
