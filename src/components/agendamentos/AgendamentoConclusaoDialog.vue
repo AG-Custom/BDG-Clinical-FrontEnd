@@ -4,6 +4,10 @@ import { useRouter } from 'vue-router';
 
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import {
+  REDIRECIONAMENTO_APLICACAO,
+  TEXTOS_AGENDAMENTO,
+} from '@/constants/agendamentos';
 import { agendamentoService } from '@/services/agendamento.service';
 import type { Agendamento } from '@/types/entidades/agendamento';
 
@@ -21,6 +25,8 @@ const router = useRouter();
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const processando = ref(false);
+const textos = TEXTOS_AGENDAMENTO.decisaoAplicacao;
+const textoComum = TEXTOS_AGENDAMENTO.comum;
 
 function fechar(): void {
   emit('update:modelValue', false);
@@ -33,11 +39,11 @@ async function irParaAplicacao(): Promise<void> {
   processando.value = true;
   try {
     await agendamentoService.concluir(agendamento.id, { registrarAplicacao: false });
-    notificacao.sucesso('Agendamento concluído. Abrindo a aplicação.');
+    notificacao.sucesso(textos.concluidoComRedirecionamento);
     fechar();
     emit('concluido');
     await router.push({
-      name: 'aplicacoes-paciente-nova',
+      name: REDIRECIONAMENTO_APLICACAO.rotaNovaAplicacao,
       query: {
         pacienteId: agendamento.pacienteId,
         unidadeId: agendamento.unidadeId,
@@ -59,7 +65,7 @@ async function concluirSemAplicacao(): Promise<void> {
   processando.value = true;
   try {
     await agendamentoService.concluir(agendamento.id, { registrarAplicacao: false });
-    notificacao.sucesso('Atendimento concluído sem registrar aplicação.');
+    notificacao.sucesso(textos.concluidoSemAplicacao);
     fechar();
     emit('concluido');
   } catch (erro) {
@@ -81,10 +87,10 @@ async function concluirSemAplicacao(): Promise<void> {
         <div class="row items-start no-wrap">
           <q-avatar color="primary" text-color="white" icon="vaccines" size="52px" />
           <div class="col q-ml-md">
-            <div class="text-h6">Realizar aplicação?</div>
+            <div class="text-h6">{{ textos.titulo }}</div>
             <div class="text-body2 text-grey-7 q-mt-xs">
-              Este é um agendamento para <strong>{{ agendamento?.pacienteNome }}</strong>.
-              Deseja realizar a aplicação agora ou concluir o agendamento sem registrá-la?
+              {{ textos.descricaoInicio }} <strong>{{ agendamento?.pacienteNome }}</strong>.
+              {{ textos.descricaoFim }}
             </div>
           </div>
           <q-btn
@@ -92,7 +98,7 @@ async function concluirSemAplicacao(): Promise<void> {
             round
             dense
             icon="close"
-            aria-label="Fechar"
+            :aria-label="textoComum.fechar"
             :disable="processando"
             @click="fechar"
           />
@@ -102,7 +108,7 @@ async function concluirSemAplicacao(): Promise<void> {
       <q-card-actions align="right" class="decisao-aplicacao__acoes">
         <q-btn
           flat
-          label="Concluir sem aplicação"
+          :label="textos.concluirSemAplicacao"
           color="positive"
           icon="task_alt"
           no-caps
@@ -111,7 +117,7 @@ async function concluirSemAplicacao(): Promise<void> {
         />
         <q-btn
           unelevated
-          label="Ir para aplicação"
+          :label="textos.irParaAplicacao"
           color="primary"
           icon-right="arrow_forward"
           no-caps

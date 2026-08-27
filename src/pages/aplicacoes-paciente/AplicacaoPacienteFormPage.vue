@@ -7,6 +7,7 @@ import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { permissoes } from '@/constants/permissoes';
+import { REDIRECIONAMENTO_APLICACAO } from '@/constants/agendamentos';
 import { CODIGOS_TIPO_PRODUTO } from '@/constants/tipos-produto';
 import { aplicacaoPacienteService } from '@/services/aplicacao-paciente.service';
 import { cargoService } from '@/services/cargo.service';
@@ -1296,10 +1297,11 @@ function obterQueryString(nome: string): string | null {
 }
 
 async function preencherDadosDoAgendamento(): Promise<void> {
-  const unidadeId = obterQueryString('unidadeId');
-  const pacienteId = obterQueryString('pacienteId');
-  const aplicadorId = obterQueryString('aplicadorId');
-  const dataAplicacao = obterQueryString('dataAplicacao');
+  const { parametros } = REDIRECIONAMENTO_APLICACAO;
+  const unidadeId = obterQueryString(parametros.unidadeId);
+  const pacienteId = obterQueryString(parametros.pacienteId);
+  const aplicadorId = obterQueryString(parametros.aplicadorId);
+  const dataAplicacao = obterQueryString(parametros.dataAplicacao);
 
   if (unidadeId) {
     form.unidadeId = unidadeId;

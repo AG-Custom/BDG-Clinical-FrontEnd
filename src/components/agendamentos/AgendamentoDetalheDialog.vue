@@ -6,6 +6,7 @@ import AppEntityAuditSection from '@/components/shared/AppEntityAuditSection.vue
 import { useNotificacao } from '@/composables/useNotificacao';
 import { usePermissao } from '@/composables/usePermissao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { TEXTOS_AGENDAMENTO } from '@/constants/agendamentos';
 import { permissoes } from '@/constants/permissoes';
 import { agendamentoService } from '@/services/agendamento.service';
 import type { Agendamento } from '@/types/entidades/agendamento';
@@ -47,6 +48,9 @@ const processando = ref(false);
 const dialogCancelar = ref(false);
 const dialogConcluir = ref(false);
 const motivoCancelamento = ref('');
+const textos = TEXTOS_AGENDAMENTO.detalhe;
+const textoComum = TEXTOS_AGENDAMENTO.comum;
+const textosNotificacao = TEXTOS_AGENDAMENTO.notificacoes;
 
 const podeEditar = computed(
   () =>
@@ -104,6 +108,12 @@ const quantidadeProcedimentos = computed(() =>
   props.agendamento ? obterProcedimentosDoAgendamento(props.agendamento).length : 0,
 );
 
+const textoAplicacoesRegistradas = computed(() =>
+  quantidadeAplicacoes.value > 1
+    ? textos.aplicacoesRegistradas(quantidadeAplicacoes.value)
+    : textos.aplicacaoRegistrada,
+);
+
 const corStatus = computed(() =>
   props.agendamento ? obterCorEventoAgendamento(props.agendamento.status) : 'var(--ds-brand-primary)',
 );
@@ -148,7 +158,7 @@ async function confirmar(): Promise<void> {
 
   try {
     await agendamentoService.confirmar(props.agendamento.id);
-    notificacao.sucesso('Agendamento confirmado.');
+    notificacao.sucesso(textosNotificacao.confirmado);
     emit('atualizado');
     fechar();
   } catch (erro) {
@@ -160,7 +170,7 @@ async function confirmar(): Promise<void> {
 
 async function cancelar(): Promise<void> {
   if (!props.agendamento || !motivoCancelamento.value.trim()) {
-    notificacao.info('Informe o motivo do cancelamento.');
+    notificacao.info(textosNotificacao.motivoCancelamentoObrigatorio);
     return;
   }
 
@@ -170,7 +180,7 @@ async function cancelar(): Promise<void> {
     await agendamentoService.cancelar(props.agendamento.id, {
       motivo: motivoCancelamento.value.trim(),
     });
-    notificacao.sucesso('Agendamento cancelado.');
+    notificacao.sucesso(textosNotificacao.cancelado);
     dialogCancelar.value = false;
     motivoCancelamento.value = '';
     emit('atualizado');
@@ -191,7 +201,7 @@ async function marcarFalta(): Promise<void> {
 
   try {
     await agendamentoService.marcarFalta(props.agendamento.id);
-    notificacao.sucesso('Falta registrada.');
+    notificacao.sucesso(textosNotificacao.faltaRegistrada);
     emit('atualizado');
     fechar();
   } catch (erro) {
@@ -220,7 +230,7 @@ async function abrirDialogConcluir(): Promise<void> {
   processando.value = true;
   try {
     await agendamentoService.concluir(agendamento.id);
-    notificacao.sucesso('Agendamento concluído.');
+    notificacao.sucesso(textosNotificacao.concluido);
     emit('atualizado');
     fechar();
   } catch (erro) {
@@ -262,7 +272,14 @@ watch(
             <span>{{ obterLabelTipoAgendamento(agendamento.tipo) }}</span>
           </div>
           <q-space />
-          <q-btn flat round dense icon="close" aria-label="Fechar" @click="fechar" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            :aria-label="textoComum.fechar"
+            @click="fechar"
+          />
         </div>
 
         <h2 class="agendamento-detalhe__titulo">{{ agendamento.pacienteNome }}</h2>
@@ -289,7 +306,7 @@ watch(
             {{ iniciaisPaciente }}
           </div>
           <div class="agendamento-detalhe__secao-conteudo">
-            <div class="agendamento-detalhe__secao-label">Paciente</div>
+            <div class="agendamento-detalhe__secao-label">{{ textos.paciente }}</div>
             <div class="agendamento-detalhe__secao-valor">{{ agendamento.pacienteNome }}</div>
           </div>
         </div>
@@ -299,7 +316,7 @@ watch(
             {{ iniciaisFuncionario }}
           </div>
           <div class="agendamento-detalhe__secao-conteudo">
-            <div class="agendamento-detalhe__secao-label">Profissional</div>
+            <div class="agendamento-detalhe__secao-label">{{ textos.profissional }}</div>
             <div class="agendamento-detalhe__secao-valor">{{ agendamento.funcionarioNome }}</div>
           </div>
         </div>
@@ -307,7 +324,7 @@ watch(
         <div class="agendamento-detalhe__secao">
           <q-icon name="apartment" size="20px" class="agendamento-detalhe__icone-secao" />
           <div class="agendamento-detalhe__secao-conteudo">
-            <div class="agendamento-detalhe__secao-label">Unidade</div>
+            <div class="agendamento-detalhe__secao-label">{{ textos.unidade }}</div>
             <div class="agendamento-detalhe__secao-valor">{{ agendamento.unidadeNome }}</div>
           </div>
         </div>
@@ -316,21 +333,21 @@ watch(
           <q-icon name="vaccines" size="20px" class="agendamento-detalhe__icone-secao" />
           <div class="agendamento-detalhe__secao-conteudo">
             <div class="agendamento-detalhe__secao-label">
-              {{ quantidadeProcedimentos > 1 ? 'Procedimentos' : 'Procedimento' }}
+              {{ quantidadeProcedimentos > 1 ? textos.procedimentos : textos.procedimento }}
             </div>
             <div class="agendamento-detalhe__secao-valor">{{ nomesProcedimentos }}</div>
           </div>
         </div>
 
         <div v-if="agendamento.observacao" class="agendamento-detalhe__observacao">
-          <div class="agendamento-detalhe__secao-label">Observações</div>
+          <div class="agendamento-detalhe__secao-label">{{ textos.observacoes }}</div>
           <p class="agendamento-detalhe__observacao-texto">{{ agendamento.observacao }}</p>
         </div>
 
         <div v-if="agendamento.motivoCancelamento" class="agendamento-detalhe__alerta">
           <q-icon name="block" size="18px" />
           <div>
-            <div class="agendamento-detalhe__secao-label">Motivo do cancelamento</div>
+            <div class="agendamento-detalhe__secao-label">{{ textos.motivoCancelamento }}</div>
             <div class="agendamento-detalhe__secao-valor">{{ agendamento.motivoCancelamento }}</div>
           </div>
         </div>
@@ -338,11 +355,7 @@ watch(
         <div v-if="possuiAplicacoes" class="agendamento-detalhe__info-extra">
           <q-icon name="check_circle" size="16px" color="positive" />
           <span>
-            {{
-              quantidadeAplicacoes > 1
-                ? `${quantidadeAplicacoes} aplicações registradas no prontuário`
-                : 'Aplicação registrada no prontuário'
-            }}
+            {{ textoAplicacoesRegistradas }}
           </span>
         </div>
       </q-card-section>
@@ -353,7 +366,7 @@ watch(
         <app-entity-audit-section
           :ativo="modelValue"
           :registro-id="agendamento.id"
-          entidade-auditoria="Agendamento"
+          :entidade-auditoria="textos.entidadeAuditoria"
           :criado-em="agendamento.criadoEm"
           :atualizado-em="agendamento.atualizadoEm"
           :id-usuario-criacao-fallback="agendamento.criadoPorId"
@@ -365,7 +378,7 @@ watch(
         <q-btn
           v-if="podeMarcarFalta"
           flat
-          label="Registrar falta"
+          :label="textos.registrarFalta"
           icon="person_off"
           color="warning"
           no-caps
@@ -375,7 +388,7 @@ watch(
         <q-btn
           v-if="podeCancelar"
           flat
-          label="Cancelar"
+          :label="textos.cancelar"
           icon="block"
           color="negative"
           no-caps
@@ -385,7 +398,7 @@ watch(
         <q-space />
         <q-btn
           flat
-          label="Editar"
+          :label="textos.editar"
           icon="edit"
           color="primary"
           no-caps
@@ -395,7 +408,7 @@ watch(
         <q-btn
           v-if="podeConfirmar"
           unelevated
-          label="Confirmar"
+          :label="textos.confirmar"
           icon="check"
           color="primary"
           no-caps
@@ -405,7 +418,7 @@ watch(
         <q-btn
           v-if="podeConcluir"
           unelevated
-          label="Concluir atendimento"
+          :label="textos.concluirAtendimento"
           icon="task_alt"
           color="positive"
           no-caps
@@ -419,13 +432,13 @@ watch(
   <q-dialog v-model="dialogCancelar" persistent>
     <q-card style="min-width: 320px">
       <q-card-section>
-        <div class="text-h6">Cancelar agendamento</div>
-        <p class="text-body2 q-mt-sm">Informe o motivo do cancelamento.</p>
+        <div class="text-h6">{{ textos.cancelarTitulo }}</div>
+        <p class="text-body2 q-mt-sm">{{ textos.cancelarInstrucao }}</p>
       </q-card-section>
       <q-card-section>
         <q-input
           v-model="motivoCancelamento"
-          label="Motivo *"
+          :label="textos.motivoObrigatorio"
           type="textarea"
           outlined
           autogrow
@@ -433,10 +446,17 @@ watch(
         />
       </q-card-section>
       <q-card-actions align="right">
-        <q-btn flat label="Voltar" color="primary" no-caps :disable="processando" v-close-popup />
+        <q-btn
+          flat
+          :label="textos.voltar"
+          color="primary"
+          no-caps
+          :disable="processando"
+          v-close-popup
+        />
         <q-btn
           unelevated
-          label="Confirmar cancelamento"
+          :label="textos.confirmarCancelamento"
           color="negative"
           no-caps
           :disable="processando"
