@@ -80,13 +80,16 @@ export interface InsumoManualConclusaoRequest {
 
 export interface ProcedimentoConclusaoRequest {
   procedimentoId: string;
+  compraPacienteId?: string | null;
   quantidadeUtilizada?: number | null;
+  peso?: number | null;
   loteProdutoId?: string | null;
   consumirInsumosKit?: boolean;
   insumosManuais?: InsumoManualConclusaoRequest[] | null;
 }
 
 export interface ConcluirAgendamentoRequest {
+  registrarAplicacao?: boolean;
   compraPacienteId?: string | null;
   quantidadeUtilizada?: number | null;
   peso?: number | null;
@@ -94,6 +97,8 @@ export interface ConcluirAgendamentoRequest {
   consumirInsumosKit?: boolean;
   insumosManuais?: InsumoManualConclusaoRequest[] | null;
   procedimentos?: ProcedimentoConclusaoRequest[];
+  observacao?: string | null;
+  sintomaIds?: string[] | null;
 }
 
 export interface CancelarAgendamentoRequest {

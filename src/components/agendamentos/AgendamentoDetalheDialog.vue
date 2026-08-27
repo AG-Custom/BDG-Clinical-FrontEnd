@@ -208,8 +208,26 @@ function abrirEdicao(): void {
   }
 }
 
-function abrirDialogConcluir(): void {
-  dialogConcluir.value = true;
+async function abrirDialogConcluir(): Promise<void> {
+  const agendamento = props.agendamento;
+  if (!agendamento) return;
+
+  if (agendamento.tipo === 'Aplicacao') {
+    dialogConcluir.value = true;
+    return;
+  }
+
+  processando.value = true;
+  try {
+    await agendamentoService.concluir(agendamento.id);
+    notificacao.sucesso('Agendamento concluído.');
+    emit('atualizado');
+    fechar();
+  } catch (erro) {
+    notificacao.erro(obterMensagem(erro));
+  } finally {
+    processando.value = false;
+  }
 }
 
 function aoConcluirAgendamento(): void {

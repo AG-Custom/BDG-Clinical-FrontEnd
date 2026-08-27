@@ -1290,13 +1290,45 @@ function aoAlterarQuantidadeProcedimento(item: ProcedimentoNaFormulario): void {
   void atualizarSaldosProcedimento(item);
 }
 
+function obterQueryString(nome: string): string | null {
+  const valor = route.query[nome];
+  return typeof valor === 'string' && valor.trim() ? valor : null;
+}
+
+async function preencherDadosDoAgendamento(): Promise<void> {
+  const unidadeId = obterQueryString('unidadeId');
+  const pacienteId = obterQueryString('pacienteId');
+  const aplicadorId = obterQueryString('aplicadorId');
+  const dataAplicacao = obterQueryString('dataAplicacao');
+
+  if (unidadeId) {
+    form.unidadeId = unidadeId;
+    await Promise.all([carregarPacientesDaUnidade(), carregarAplicadoresDaUnidade()]);
+  }
+
+  if (pacienteId) {
+    await garantirPacienteNaLista(pacienteId);
+    form.pacienteId = pacienteId;
+    await carregarComprasAtivasDoPaciente();
+  }
+
+  if (aplicadorId) {
+    await garantirAplicadorNaLista(aplicadorId);
+    form.aplicadorId = aplicadorId;
+  }
+
+  form.dataAplicacao = dataAplicacao
+    ? deIsoParaInputDatetimeLocal(dataAplicacao)
+    : deIsoParaInputDatetimeLocal(new Date().toISOString());
+}
+
 onMounted(async () => {
   await carregarDadosIniciais();
 
   if (isEdicao.value) {
     await carregarAplicacao();
   } else {
-    form.dataAplicacao = deIsoParaInputDatetimeLocal(new Date().toISOString());
+    await preencherDadosDoAgendamento();
   }
 });
 </script>
