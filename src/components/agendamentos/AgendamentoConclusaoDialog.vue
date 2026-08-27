@@ -17,7 +17,8 @@ import {
   obterProcedimentosDoAgendamento,
 } from '@/types/entidades/agendamento';
 import type { CompraPaciente } from '@/types/entidades/compra-paciente';
-import type { ItemProcedimentoFormulario } from '@/types/entidades/procedimento';
+import { formatarOpcaoCompraAtiva } from '@/types/entidades/compra-paciente';
+import type { ItemProcedimentoFormulario, Procedimento } from '@/types/entidades/procedimento';
 import {
   formatarMensagemEstoqueInsuficiente,
   formatarSaldoComUnidade,
@@ -46,6 +47,10 @@ const dialogAdicionarInsumo = ref(false);
 const dialogRemoverInsumo = ref(false);
 const produtosInsumos = ref<Produto[]>([]);
 const compra = ref<CompraPaciente | null>(null);
+const comprasAtivas = ref<CompraPaciente[]>([]);
+const compraPacienteId = ref<string | null>(null);
+const procedimentosDisponiveis = ref<Procedimento[]>([]);
+const procedimentoIds = ref<string[]>([]);
 const procedimentos = ref<ProcedimentoConclusaoFormulario[]>([]);
 const procedimentoAdicionar = ref<ProcedimentoConclusaoFormulario | null>(null);
 const novoInsumoProdutoId = ref<string | null>(null);
@@ -57,6 +62,17 @@ const saldosInsumos = ref<
 >({});
 
 const isAplicacao = computed(() => props.agendamento?.tipo === 'Aplicacao');
+const opcoesCompras = computed(() =>
+  comprasAtivas.value.map((item) => ({
+    label: formatarOpcaoCompraAtiva(item),
+    value: item.id,
+  })),
+);
+const opcoesProcedimentos = computed(() =>
+  procedimentosDisponiveis.value
+    .filter((item) => item.ativo)
+    .map((item) => ({ label: item.nome, value: item.id })),
+);
 const produtosPorId = computed(
   () => new Map(produtosInsumos.value.map((produto) => [produto.id, produto])),
 );
@@ -290,11 +306,79 @@ async function carregarProcedimento(
   }
 }
 
-async function carregarFormulario(): Promise<void> {
-  const agendamento = props.agendamento;
-  if (!agendamento) {
+async function carregarSaldosDosInsumos(unidadeId: string): Promise<void> {
+  const ids = [
+    ...new Set(
+      procedimentos.value.flatMap((item) =>
+        item.insumosManuais
+          .map((insumo) => insumo.produtoId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ),
+  ];
+  const saldos = await Promise.all(
+    ids.map(async (produtoId) => ({
+      produtoId,
+      saldo: await carregarSaldoProduto(unidadeId, produtoId),
+    })),
+  );
+  saldosInsumos.value = Object.fromEntries(
+    saldos.map(({ produtoId, saldo }) => [produtoId, saldo]),
+  );
+}
+
+async function carregarCompraSelecionada(): Promise<void> {
+  if (!compraPacienteId.value) {
+    compra.value = null;
     return;
   }
+
+  compra.value =
+    comprasAtivas.value.find((item) => item.id === compraPacienteId.value) ??
+    (await compraPacienteService.obter(compraPacienteId.value));
+}
+
+async function carregarProcedimentosSelecionados(): Promise<void> {
+  const agendamento = props.agendamento;
+  if (!agendamento) return;
+
+  const resumos = procedimentoIds.value.map((id) => ({
+    id,
+    nome: procedimentosDisponiveis.value.find((item) => item.id === id)?.nome ?? 'Procedimento',
+  }));
+  procedimentos.value = await Promise.all(
+    resumos.map((resumo) => carregarProcedimento(resumo, agendamento.unidadeId)),
+  );
+  await carregarSaldosDosInsumos(agendamento.unidadeId);
+}
+
+async function aoAlterarCompra(): Promise<void> {
+  carregando.value = true;
+  try {
+    await carregarCompraSelecionada();
+  } catch (erro) {
+    compra.value = null;
+    notificacao.erro(obterMensagem(erro));
+  } finally {
+    carregando.value = false;
+  }
+}
+
+async function aoAlterarProcedimentos(): Promise<void> {
+  carregando.value = true;
+  try {
+    await carregarProcedimentosSelecionados();
+  } catch (erro) {
+    procedimentos.value = [];
+    notificacao.erro(obterMensagem(erro));
+  } finally {
+    carregando.value = false;
+  }
+}
+
+async function carregarFormulario(): Promise<void> {
+  const agendamento = props.agendamento;
+  if (!agendamento) return;
 
   carregando.value = true;
   procedimentos.value = [];
@@ -302,40 +386,30 @@ async function carregarFormulario(): Promise<void> {
   saldosInsumos.value = {};
 
   try {
-    const [produtos, compraCarregada] = await Promise.all([
+    const [produtos, compras, procedimentosCadastrados] = await Promise.all([
       produtoService.listar().catch((): Produto[] => []),
-      agendamento.compraPacienteId
-        ? compraPacienteService.obter(agendamento.compraPacienteId).catch(() => null)
-        : Promise.resolve(null),
+      isAplicacao.value
+        ? compraPacienteService.listarAtivasPorPaciente(agendamento.pacienteId)
+        : Promise.resolve([]),
+      isAplicacao.value ? procedimentoService.listar() : Promise.resolve([]),
     ]);
     produtosInsumos.value = normalizarLista(produtos).filter(
       (produto) => produto.tipoProdutoCodigo === CODIGOS_TIPO_PRODUTO.INSUMO,
     );
-    compra.value = compraCarregada;
+    comprasAtivas.value = normalizarLista(compras);
+    procedimentosDisponiveis.value = normalizarLista(procedimentosCadastrados);
+    compraPacienteId.value = agendamento.compraPacienteId;
+    procedimentoIds.value = obterProcedimentosDoAgendamento(agendamento).map((item) => item.id);
 
-    const resumos = obterProcedimentosDoAgendamento(agendamento);
-    procedimentos.value = await Promise.all(
-      resumos.map((resumo) => carregarProcedimento(resumo, agendamento.unidadeId)),
-    );
+    if (
+      compraPacienteId.value &&
+      !comprasAtivas.value.some((item) => item.id === compraPacienteId.value)
+    ) {
+      const compraAgendada = await compraPacienteService.obter(compraPacienteId.value);
+      comprasAtivas.value = [compraAgendada, ...comprasAtivas.value];
+    }
 
-    const ids = [
-      ...new Set(
-        procedimentos.value.flatMap((item) =>
-          item.insumosManuais
-            .map((insumo) => insumo.produtoId)
-            .filter((id): id is string => Boolean(id)),
-        ),
-      ),
-    ];
-    const saldos = await Promise.all(
-      ids.map(async (produtoId) => ({
-        produtoId,
-        saldo: await carregarSaldoProduto(agendamento.unidadeId, produtoId),
-      })),
-    );
-    saldosInsumos.value = Object.fromEntries(
-      saldos.map(({ produtoId, saldo }) => [produtoId, saldo]),
-    );
+    await Promise.all([carregarCompraSelecionada(), carregarProcedimentosSelecionados()]);
   } finally {
     carregando.value = false;
   }
@@ -367,12 +441,12 @@ function camposProcedimento(item: ProcedimentoConclusaoFormulario) {
 }
 
 function montarPayload(): ConcluirAgendamentoRequest {
-  if (procedimentos.value.length <= 1) {
-    const item = procedimentos.value[0];
-    return item ? camposProcedimento(item) : {};
+  if (!isAplicacao.value) {
+    return {};
   }
 
   return {
+    compraPacienteId: compraPacienteId.value,
     procedimentos: procedimentos.value.map((item) => ({
       procedimentoId: item.procedimentoId,
       ...camposProcedimento(item),
@@ -393,6 +467,16 @@ function formatarErro(erro: unknown): string {
 
 async function concluir(): Promise<void> {
   if (!props.agendamento) return;
+
+  if (isAplicacao.value && !compraPacienteId.value) {
+    notificacao.info('Selecione a compra do pacote utilizada na aplicação.');
+    return;
+  }
+
+  if (isAplicacao.value && procedimentos.value.length === 0) {
+    notificacao.info('Selecione ao menos um procedimento realizado.');
+    return;
+  }
 
   if (procedimentos.value.some((item) => item.exigeQuantidade && item.quantidadeUtilizada === null)) {
     notificacao.info('Informe a quantidade aplicada em todos os procedimentos com medicamento.');
@@ -506,9 +590,56 @@ watch(
           </div>
         </div>
 
+        <div v-if="isAplicacao" class="row q-col-gutter-md">
+          <div class="col-12">
+            <q-select
+              v-model="compraPacienteId"
+              :options="opcoesCompras"
+              label="Compra do pacote utilizada *"
+              outlined
+              emit-value
+              map-options
+              :disable="processando || carregando"
+              :loading="carregando"
+              hint="O saldo será debitado somente ao registrar a aplicação."
+              @update:model-value="aoAlterarCompra"
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">
+                    Nenhuma compra ativa encontrada para este paciente
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </div>
+          <div class="col-12">
+            <q-select
+              v-model="procedimentoIds"
+              :options="opcoesProcedimentos"
+              label="Procedimentos realizados *"
+              outlined
+              multiple
+              use-chips
+              emit-value
+              map-options
+              :disable="processando || carregando"
+              :loading="carregando"
+              hint="Selecione um ou mais kits utilizados nesta aplicação."
+              @update:model-value="aoAlterarProcedimentos"
+            >
+              <template #no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Nenhum procedimento ativo encontrado</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </div>
+        </div>
+
         <q-card v-if="compra" flat bordered class="conclusao-agendamento__compra">
           <q-card-section>
-            <div class="text-caption text-grey-7">Pacote/compra vinculado ao agendamento</div>
+            <div class="text-caption text-grey-7">Pacote/compra selecionado para a aplicação</div>
             <div class="text-subtitle1 text-weight-medium">{{ compra.pacoteNome }}</div>
             <div class="row q-col-gutter-md q-mt-sm">
               <div v-for="saldo in compra.saldo.produtos" :key="saldo.produtoId" class="col-12 col-sm-6">

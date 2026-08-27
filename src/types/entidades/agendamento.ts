@@ -66,7 +66,7 @@ export interface CriarAgendamentoRequest {
   dataFim: string;
   procedimentoId?: string | null;
   procedimentoIds?: string[] | null;
-  /** Obrigatório quando tipo = Aplicacao */
+  /** Mantido para compatibilidade com agendamentos antigos; a compra é escolhida na realização. */
   compraPacienteId?: string | null;
   observacao?: string | null;
 }
@@ -87,6 +87,7 @@ export interface ProcedimentoConclusaoRequest {
 }
 
 export interface ConcluirAgendamentoRequest {
+  compraPacienteId?: string | null;
   quantidadeUtilizada?: number | null;
   peso?: number | null;
   loteProdutoId?: string | null;
