@@ -42,6 +42,7 @@ const ROTAS_SECAO_PRODUTOS = new Set([
 
 const ROTAS_SECAO_ESTOQUE = new Set([
   'saldos-estoque',
+  'lotes-estoque',
   'fornecedores',
   'fornecedores-novo',
   'fornecedores-editar',
@@ -387,6 +388,17 @@ onMounted(() => {
                   <q-icon name="widgets" />
                 </q-item-section>
                 <q-item-section class="drawer-menu__label">Saldos</q-item-section>
+              </q-item>
+              <q-item class="drawer-menu__sub-item"
+                v-if="possuiPermissao(menu.estoque)"
+                clickable
+                v-ripple
+                :to="{ name: 'lotes-estoque' }"
+              >
+                <q-item-section side class="drawer-menu__sub-icon">
+                  <q-icon name="qr_code_2" />
+                </q-item-section>
+                <q-item-section class="drawer-menu__label">Lotes</q-item-section>
               </q-item>
               <q-item class="drawer-menu__sub-item"
                 v-if="possuiPermissao(menu.fornecedores)"

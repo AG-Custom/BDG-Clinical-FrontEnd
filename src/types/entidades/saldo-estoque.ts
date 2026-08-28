@@ -42,6 +42,7 @@ export interface ListarSaldosEstoqueParams {
 export interface ListarSaldosLoteParams {
   unidadeId?: string;
   produtoId?: string;
+  signal?: AbortSignal;
 }
 
 export interface AtualizarSaldoEstoqueRequest {

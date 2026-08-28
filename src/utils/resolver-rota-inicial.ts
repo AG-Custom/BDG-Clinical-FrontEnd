@@ -20,6 +20,7 @@ const ROTAS_INICIAIS: RotaInicialCandidata[] = [
   { name: 'tipos-produto', permissao: permissoesMenu.tiposProduto },
   { name: 'unidades-medida', permissao: permissoesMenu.unidadesMedida },
   { name: 'saldos-estoque', permissao: permissoesMenu.estoque },
+  { name: 'lotes-estoque', permissao: permissoesMenu.estoque },
   { name: 'movimentacoes-estoque', permissao: permissoesMenu.movimentacoesEstoque },
   { name: 'fornecedores', permissao: permissoesMenu.fornecedores },
   { name: 'pedidos-fornecedor', permissao: permissoesMenu.pedidosFornecedor },

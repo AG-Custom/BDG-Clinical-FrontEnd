@@ -304,6 +304,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.estoque.visualizar },
       },
       {
+        path: 'lotes-estoque',
+        name: 'lotes-estoque',
+        component: () => import('@/pages/estoque/LotesEstoqueListPage.vue'),
+        meta: { permissao: p.estoque.visualizar },
+      },
+      {
         path: 'movimentacoes-estoque',
         name: 'movimentacoes-estoque',
         component: () => import('@/pages/estoque/MovimentacoesEstoqueListPage.vue'),

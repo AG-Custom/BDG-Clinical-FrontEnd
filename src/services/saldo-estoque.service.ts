@@ -61,6 +61,7 @@ export const saldoEstoqueService = {
 
     const { data } = await api.get<ApiResponse<SaldoLoteEstoque[]>>('/api/stock-balances/lots', {
       params: Object.keys(query).length > 0 ? query : undefined,
+      signal: params.signal,
     });
 
     return data.data ?? [];
