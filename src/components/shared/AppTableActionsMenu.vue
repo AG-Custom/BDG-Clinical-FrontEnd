@@ -63,7 +63,7 @@ const statusClass = computed(() => (props.ativo ? 'table-actions-menu__icon--dan
         >
           <q-item-section avatar>
             <span class="table-actions-menu__icon table-actions-menu__icon--view">
-              <q-icon name="visibility" />
+              <q-icon name="visibility" size="18px" />
             </span>
           </q-item-section>
           <q-item-section>Visualizar</q-item-section>
@@ -78,7 +78,7 @@ const statusClass = computed(() => (props.ativo ? 'table-actions-menu__icon--dan
         >
           <q-item-section avatar>
             <span class="table-actions-menu__icon table-actions-menu__icon--edit">
-              <q-icon name="edit" />
+              <q-icon name="edit" size="18px" />
             </span>
           </q-item-section>
           <q-item-section>Editar</q-item-section>
@@ -93,7 +93,7 @@ const statusClass = computed(() => (props.ativo ? 'table-actions-menu__icon--dan
         >
           <q-item-section avatar>
             <span class="table-actions-menu__icon" :class="statusClass">
-              <q-icon :name="statusIcon" />
+              <q-icon :name="statusIcon" size="18px" />
             </span>
           </q-item-section>
           <q-item-section>{{ statusLabel }}</q-item-section>
@@ -118,22 +118,33 @@ const statusClass = computed(() => (props.ativo ? 'table-actions-menu__icon--dan
   min-width: 168px;
   padding: 8px 0;
 }
+</style>
+
+<style lang="scss">
+.table-actions-menu .q-item__section--avatar {
+  min-width: 30px;
+  padding-right: 12px;
+}
 
 .table-actions-menu__icon {
   display: inline-flex;
+  flex: 0 0 30px;
   width: 30px;
   height: 30px;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-actions-menu__icon .q-icon {
   font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
 }
 
-.table-actions-menu__icon--view {
-  background: #dff5ee;
-  color: #008766;
-}
-
+.table-actions-menu__icon--view,
 .table-actions-menu__icon--edit {
   background: #dff5ee;
   color: #008766;

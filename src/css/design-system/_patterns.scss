@@ -93,6 +93,14 @@
   margin-bottom: var(--ds-space-2);
 }
 
+.page-header__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ds-space-2);
+}
+
 .page-content {
   max-width: var(--ds-layout-content-max);
 }

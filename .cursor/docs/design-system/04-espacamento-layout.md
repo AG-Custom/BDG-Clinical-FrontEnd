@@ -57,9 +57,9 @@ Quasar: `$generic-border-radius: 8px` e `$button-border-radius: 8px`.
 |-------|-------|----------|
 | `--ds-layout-header-height` | 56px | Toolbar do header |
 | `--ds-layout-drawer-width` | 280px | Menu lateral |
-| `--ds-layout-content-max` | 1280px | Largura máxima do conteúdo |
-| `--ds-layout-form-max` | 720px | Largura máxima de formulários simples |
-| `--ds-layout-form-wide-max` | 960px | Formulários com grids/tabelas |
+| `--ds-layout-content-max` | 1280px | Só se **não** houver `--fluid` / `--form` (evitar; preferir um modificador) |
+| `--ds-layout-form-max` | 720px | CRUD simples (`page-content--form`) |
+| `--ds-layout-form-wide-max` | 960px | CRUD com grade (`page-content--form-wide`) |
 | `--ds-layout-auth-panel-max` | 420px | Painel login/cadastro |
 | `--ds-layout-page-padding` | 24px | Padding externo de páginas |
 
@@ -79,15 +79,16 @@ Quasar: `$generic-border-radius: 8px` e `$button-border-radius: 8px`.
 ┌─────────────────────────────────────────────┐
 │ Header (56px, bg-white, bordered)           │
 ├──────────┬──────────────────────────────────┤
-│ Drawer   │ Page content (padding)           │
-│ (280px)  │ max-width: 1280px                │
+│ Drawer   │ Page content (q-pa-md)           │
+│ (280px)  │ --fluid = 100% da área útil      │
+│          │ --form 720px / --form-wide 960px │
 │          │                                  │
 └──────────┴──────────────────────────────────┘
 ```
 
 - Header: `bg-white text-dark`, botão menu + título + avatar
 - Drawer: `show-if-above`, `bordered`, brand no topo
-- Conteúdo: `<q-page padding class="page-content">`
+- Conteúdo: `<q-page class="page-content page-content--fluid q-pa-md">` nas telas operacionais; `--form` / `--form-wide` só em cadastro create/edit
 
 ### AuthLayout
 

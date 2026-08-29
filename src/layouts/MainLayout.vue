@@ -26,6 +26,11 @@ const ROTAS_SECAO_ATENDIMENTO = new Set([
   'sintomas',
   'sintomas-novo',
   'sintomas-editar',
+  'pacientes-prontuario',
+  'pacientes-prontuario-atendimento',
+  'modelos-anamnese',
+  'modelos-anamnese-novo',
+  'modelos-anamnese-editar',
 ]);
 
 const ROTAS_SECAO_PRODUTOS = new Set([
@@ -312,6 +317,17 @@ onMounted(() => {
                   <q-icon name="healing" />
                 </q-item-section>
                 <q-item-section>Sintomas</q-item-section>
+              </q-item>
+              <q-item class="drawer-menu__sub-item"
+                v-if="possuiPermissao(menu.modelosAnamnese)"
+                clickable
+                v-ripple
+                :to="{ name: 'modelos-anamnese' }"
+              >
+                <q-item-section side class="drawer-menu__sub-icon">
+                  <q-icon name="assignment" />
+                </q-item-section>
+                <q-item-section>Modelos de anamnese</q-item-section>
               </q-item>
             </q-expansion-item>
 

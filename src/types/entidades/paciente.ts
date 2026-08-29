@@ -13,6 +13,13 @@ export interface EnderecoPaciente {
   uf: string | null;
 }
 
+export type SexoPaciente = 'Feminino' | 'Masculino';
+
+export const OPCOES_SEXO_PACIENTE: { label: string; value: SexoPaciente }[] = [
+  { label: 'Feminino', value: 'Feminino' },
+  { label: 'Masculino', value: 'Masculino' },
+];
+
 export interface Paciente {
   id: string;
   unidadeId: string;
@@ -23,6 +30,7 @@ export interface Paciente {
   telefone: string | null;
   email: string | null;
   dataNascimento: string | null;
+  sexo: SexoPaciente | null;
   endereco: EnderecoPaciente | null;
   observacao: string | null;
   ativo: boolean;
@@ -38,6 +46,7 @@ export interface CriarPacienteRequest {
   telefone?: string | null;
   email?: string | null;
   dataNascimento?: string | null;
+  sexo?: SexoPaciente | null;
   endereco?: EnderecoPaciente | null;
   observacao?: string | null;
 }
@@ -50,6 +59,7 @@ export interface AtualizarPacienteRequest {
   telefone?: string | null;
   email?: string | null;
   dataNascimento?: string | null;
+  sexo?: SexoPaciente | null;
   endereco?: EnderecoPaciente | null;
   observacao?: string | null;
 }

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 import AppEntityAuditSection from '@/components/shared/AppEntityAuditSection.vue';
+import { permissoes } from '@/constants/permissoes';
+import { usePermissao } from '@/composables/usePermissao';
 import type { Paciente } from '@/types/entidades/paciente';
 import {
   formatarCep,
@@ -23,6 +26,9 @@ const emit = defineEmits<{
   'update:modelValue': [valor: boolean];
 }>();
 
+const router = useRouter();
+const podeVerProntuario = usePermissao(permissoes.prontuario.visualizar);
+
 const aberto = computed({
   get: () => props.modelValue,
   set: (valor: boolean) => emit('update:modelValue', valor),
@@ -42,6 +48,15 @@ const temEndereco = computed(() => possuiEnderecoPaciente(paciente.value?.endere
 
 function fechar(): void {
   emit('update:modelValue', false);
+}
+
+function abrirProntuario(): void {
+  if (!paciente.value) {
+    return;
+  }
+
+  emit('update:modelValue', false);
+  void router.push({ name: 'pacientes-prontuario', params: { id: paciente.value.id } });
 }
 </script>
 
@@ -74,6 +89,10 @@ function fechar(): void {
             <div class="paciente-detalhe__campo">
               <span>Data de nascimento</span>
               <strong>{{ formatarDataNascimento(paciente.dataNascimento) }}</strong>
+            </div>
+            <div class="paciente-detalhe__campo">
+              <span>Sexo</span>
+              <strong>{{ textoOuTraco(paciente.sexo) }}</strong>
             </div>
             <div class="paciente-detalhe__campo paciente-detalhe__campo--full">
               <span>Unidades</span>
@@ -152,6 +171,14 @@ function fechar(): void {
 
       <q-card-actions align="right" class="paciente-detalhe__acoes">
         <q-btn flat color="primary" label="Fechar" no-caps @click="fechar" />
+        <q-btn
+          v-if="podeVerProntuario"
+          unelevated
+          color="primary"
+          label="Prontuário"
+          no-caps
+          @click="abrirProntuario"
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>

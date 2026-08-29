@@ -100,6 +100,36 @@ export const routes: RouteRecordRaw[] = [
         meta: { permissao: p.pacientes.editar },
       },
       {
+        path: 'pacientes/:id/prontuario',
+        name: 'pacientes-prontuario',
+        component: () => import('@/pages/prontuario/ProntuarioPastaPage.vue'),
+        meta: { permissao: p.prontuario.visualizar },
+      },
+      {
+        path: 'pacientes/:id/prontuario/atendimentos/:atendimentoId',
+        name: 'pacientes-prontuario-atendimento',
+        component: () => import('@/pages/prontuario/ProntuarioAtendimentoPage.vue'),
+        meta: { permissao: p.prontuario.visualizar },
+      },
+      {
+        path: 'modelos-anamnese',
+        name: 'modelos-anamnese',
+        component: () => import('@/pages/prontuario/ModelosAnamneseListPage.vue'),
+        meta: { permissao: p.prontuario.gerenciarModelos },
+      },
+      {
+        path: 'modelos-anamnese/novo',
+        name: 'modelos-anamnese-novo',
+        component: () => import('@/pages/prontuario/ModeloAnamneseFormPage.vue'),
+        meta: { permissao: p.prontuario.gerenciarModelos },
+      },
+      {
+        path: 'modelos-anamnese/:id/editar',
+        name: 'modelos-anamnese-editar',
+        component: () => import('@/pages/prontuario/ModeloAnamneseFormPage.vue'),
+        meta: { permissao: p.prontuario.gerenciarModelos },
+      },
+      {
         path: 'pacientes/:id/compras',
         name: 'pacientes-compras',
         component: () => import('@/pages/pacientes/PacienteComprasListPage.vue'),

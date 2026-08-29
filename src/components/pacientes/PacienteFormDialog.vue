@@ -9,7 +9,9 @@ import {
   montarEnderecoPaciente,
   normalizarCpf,
   UFS_BRASIL,
+  OPCOES_SEXO_PACIENTE,
   type Paciente,
+  type SexoPaciente,
 } from '@/types/entidades/paciente';
 
 const props = defineProps<{
@@ -27,6 +29,7 @@ const { obterMensagem } = useTratarErroFormulario();
 
 const salvando = ref(false);
 const opcoesUf = [...UFS_BRASIL];
+const opcoesSexo = OPCOES_SEXO_PACIENTE;
 
 const form = reactive({
   nome: '',
@@ -34,6 +37,7 @@ const form = reactive({
   telefone: '',
   email: '',
   dataNascimento: '',
+  sexo: null as SexoPaciente | null,
   cep: '',
   logradouro: '',
   numero: '',
@@ -50,6 +54,7 @@ function limparFormulario(): void {
   form.telefone = '';
   form.email = '';
   form.dataNascimento = '';
+  form.sexo = null;
   form.cep = '';
   form.logradouro = '';
   form.numero = '';
@@ -98,6 +103,7 @@ function montarPayload() {
     telefone: form.telefone.trim() || null,
     email: form.email.trim() || null,
     dataNascimento: form.dataNascimento || null,
+    sexo: form.sexo,
     endereco: montarEnderecoPaciente({
       cep: form.cep,
       logradouro: form.logradouro,
@@ -196,6 +202,19 @@ watch(
               />
             </div>
           </div>
+
+          <q-select
+            v-model="form.sexo"
+            :options="opcoesSexo"
+            option-label="label"
+            option-value="value"
+            emit-value
+            map-options
+            label="Sexo"
+            outlined
+            clearable
+            :disable="salvando"
+          />
 
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">

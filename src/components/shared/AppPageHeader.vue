@@ -14,6 +14,8 @@ defineProps<{
       <h1>{{ titulo }}</h1>
       <p v-if="subtitulo">{{ subtitulo }}</p>
     </div>
-    <slot />
+    <div v-if="$slots.default" class="page-header__acoes">
+      <slot />
+    </div>
   </header>
 </template>

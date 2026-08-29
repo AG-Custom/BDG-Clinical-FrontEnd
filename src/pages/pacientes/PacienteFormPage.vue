@@ -14,6 +14,8 @@ import {
   normalizarCpf,
   obterUnidadeIdsDoPaciente,
   UFS_BRASIL,
+  OPCOES_SEXO_PACIENTE,
+  type SexoPaciente,
 } from '@/types/entidades/paciente';
 import type { Unidade } from '@/types/entidades/unidade';
 
@@ -31,6 +33,7 @@ const salvando = ref(false);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const dadosIniciaisCarregados = ref(false);
 const opcoesUf = [...UFS_BRASIL];
+const opcoesSexo = OPCOES_SEXO_PACIENTE;
 
 const isEdicao = computed(() => route.name === 'pacientes-editar');
 const pacienteId = computed(() => route.params.id as string | undefined);
@@ -42,6 +45,7 @@ const form = reactive({
   telefone: '',
   email: '',
   dataNascimento: '',
+  sexo: null as SexoPaciente | null,
   cep: '',
   logradouro: '',
   numero: '',
@@ -105,6 +109,7 @@ function montarPayload() {
     telefone: form.telefone.trim() || null,
     email: form.email.trim() || null,
     dataNascimento: form.dataNascimento || null,
+    sexo: form.sexo || null,
     endereco: montarEnderecoPaciente({
       cep: form.cep,
       logradouro: form.logradouro,
@@ -165,6 +170,7 @@ async function carregarPaciente(): Promise<void> {
     form.telefone = paciente.telefone ?? '';
     form.email = paciente.email ?? '';
     form.dataNascimento = paciente.dataNascimento ?? '';
+    form.sexo = paciente.sexo ?? null;
     form.cep = paciente.endereco?.cep ?? '';
     form.logradouro = paciente.endereco?.logradouro ?? '';
     form.numero = paciente.endereco?.numero ?? '';
@@ -300,6 +306,20 @@ onMounted(async () => {
                 v-model="form.dataNascimento"
                 label="Data de nascimento"
                 outlined
+                :readonly="!podeSalvar"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-select
+                v-model="form.sexo"
+                :options="opcoesSexo"
+                option-label="label"
+                option-value="value"
+                emit-value
+                map-options
+                label="Sexo"
+                outlined
+                clearable
                 :readonly="!podeSalvar"
               />
             </div>

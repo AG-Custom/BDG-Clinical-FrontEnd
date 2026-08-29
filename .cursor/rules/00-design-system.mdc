@@ -48,12 +48,28 @@ Stack: **Vue 3 + Quasar 2 + TypeScript + SCSS**.
 - Layout autenticado: `MainLayout` com drawer 260px
 - Layout auth: `AuthLayout` + `AppAuthShell`
 
+## Largura da página (`q-page`)
+
+Toda página autenticada usa `page-content q-pa-md` **mais um modificador de largura**. Sem o modificador, o conteúdo fica preso em 1280px e parece “menor” que o resto do sistema.
+
+| Classe | Largura | Quando usar |
+|--------|---------|-------------|
+| `page-content--fluid` | 100% da área útil | Listagens, dashboard, pasta do paciente, **sessão de atendimento**, aplicação no paciente, detalhe operacional com abas/tabelas |
+| `page-content--form` | 720px | CRUD simples (novo/editar cadastro: sintoma, produto, paciente) |
+| `page-content--form-wide` | 960px | CRUD com grade de linhas (pacote, procedimento, pedido, modelo de anamnese) |
+
+**Proibido:** tela operacional (atendimento, prontuário, agenda, listagem) com `--form` ou `--form-wide`. Esses modificadores são só para cadastro create/edit.
+
+Referência: `.cursor/docs/design-system/06-padroes-pagina.md`.
+
 ## Anti-padrões
 
 | Incorreto | Correto |
 |-----------|---------|
 | `color: #667085` | `color: var(--ds-text-secondary)` |
 | `padding: 14px` | `padding: var(--ds-space-3)` ou `q-pa-md` |
+| `q-page class="page-content"` sem modificador | `page-content--fluid` (operacional) ou `--form` / `--form-wide` (cadastro) |
+| Atendimento / prontuário com `--form-wide` | `page-content--fluid` |
 | Duplicar layout auth manualmente | `<app-auth-shell>` |
 | Criar `LoginCard.vue` ad-hoc | Estender `AppAuthShell` |
 

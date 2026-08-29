@@ -40,6 +40,16 @@ sequenceDiagram
 | `Pacote` | `PacotesListPage` |
 | `AplicacaoPaciente` | `AplicacoesPacienteListPage` |
 | `HorarioFuncionamentoUnidade` | `HorarioFuncionamentoUnidadePanel` (log ainda não gravado no backend) |
+| `Prontuario` | `ProntuarioPastaPage` |
+| `AtendimentoClinico` | `ProntuarioAtendimentoPage` |
+| `AnotacaoClinica` | aba Anotações do prontuário |
+| `ModeloAnamnese` | `ModelosAnamneseListPage` |
+| `RegistroAnamnese` | aba Anamnese |
+| `AvaliacaoCorporal` | aba Avaliação |
+| `AnexoClinico` | abas Exames e Documentos |
+| `FotoComparativa` | aba Fotos |
+| `CalculoEnergeticoRegistro` | aba VENTA |
+| `RegraBolsoRegistro` | aba VENTA |
 
 ## Serviços front
 

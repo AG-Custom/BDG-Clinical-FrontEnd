@@ -113,6 +113,18 @@ export const permissoes = {
   relatorios: {
     visualizar: 'relatorio.visualizar',
   },
+  prontuario: {
+    visualizar: 'prontuario.visualizar',
+    criarAtendimento: 'prontuario.atendimento.criar',
+    editarAtendimento: 'prontuario.atendimento.editar',
+    editarAnamnese: 'prontuario.anamnese.editar',
+    gerenciarModelos: 'prontuario.modelo_anamnese.gerenciar',
+    criarAvaliacao: 'prontuario.avaliacao.criar',
+    enviarExame: 'prontuario.exame.enviar',
+    enviarFoto: 'prontuario.foto.enviar',
+    editarDocumento: 'prontuario.documento.editar',
+    criarAnotacao: 'prontuario.anotacao.criar',
+  },
 } as const;
 
 export const permissoesMenu = {
@@ -136,6 +148,8 @@ export const permissoesMenu = {
   empresas: permissoes.empresas.visualizar,
   financeiro: permissoes.financeiro.visualizar,
   relatorios: permissoes.relatorios.visualizar,
+  prontuario: permissoes.prontuario.visualizar,
+  modelosAnamnese: permissoes.prontuario.gerenciarModelos,
 } as const;
 
 export const permissoesMenuEmpresa = [
@@ -149,6 +163,8 @@ export const modulosMenu = {
     permissoesMenu.aplicacoes,
     permissoesMenu.procedimentos,
     permissoesMenu.sintomas,
+    permissoesMenu.prontuario,
+    permissoesMenu.modelosAnamnese,
   ],
   produtos: [
     permissoesMenu.produtos,

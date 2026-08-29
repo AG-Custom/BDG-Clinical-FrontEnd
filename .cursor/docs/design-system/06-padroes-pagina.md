@@ -34,10 +34,10 @@ AppAuthPanel
 
 ## Dashboard
 
-**Layout:** `MainLayout` → `q-page.page-content`
+**Layout:** `MainLayout` → `q-page.page-content.page-content--fluid`
 
 ```
-q-page (padding)
+q-page.page-content.page-content--fluid q-pa-md
 ├── AppPageHeader (titulo + subtitulo)
 ├── row q-col-gutter-md (métricas)
 │   └── AppMetricCard × N
@@ -64,7 +64,7 @@ q-page (padding)
 Template para telas de listagem futuras:
 
 ```
-q-page.page-content (padding)
+q-page.page-content.page-content--fluid q-pa-md
 ├── AppPageHeader
 │   ├── titulo + subtitulo
 │   └── q-btn "Novo" (slot direito)
@@ -107,11 +107,15 @@ q-page.page-content.page-content--form (padding)
 │       └── row com botões (Salvar + Cancelar)
 ```
 
-Formulários com grids/tabelas de linhas (ex.: pedido ao fornecedor): usar `page-content--form-wide` (960px). Listagens continuam com `page-content--fluid`.
+Formulários com grids/tabelas de linhas (ex.: pedido ao fornecedor, modelo de anamnese): usar `page-content--form-wide` (960px).
+
+Telas **operacionais** (listagem, pasta do prontuário, sessão de atendimento, aplicação no paciente, dashboard) usam `page-content--fluid` — largura total da área útil, não 720/960px.
 
 ### Convenções de formulário
 
-- Largura: `page-content--form` (720px) ou `page-content--form-wide` (960px) — nunca `--fluid` em forms
+- Cadastro create/edit: `page-content--form` (720px) ou `page-content--form-wide` (960px)
+- Workspace operacional (abas, tabelas, atendimento): `page-content--fluid` — **não** usar `--form` / `--form-wide`
+- Sempre informar um modificador; `page-content` sozinho limita a 1280px e quebra o alinhamento com o restante do sistema
 - Campos obrigatórios: classe `form-field--required` + validação via `:rules`
 - Campos opcionais: label limpo, sem sufixo "(opcional)"
 - Erros de API: `useTratarErroFormulario()` + `useNotificacao()`
@@ -130,10 +134,26 @@ Quando o formulário depende de outro cadastro (produto, unidade, aplicador etc.
 
 ---
 
-## Detalhe (view)
+## Detalhe / workspace operacional
+
+Pasta do paciente, sessão de atendimento clínico, detalhe de compra, aplicação — qualquer tela de **trabalho** com abas, tabelas ou vários cards.
 
 ```
-q-page.page-content (padding)
+q-page.page-content.page-content--fluid q-pa-md
+├── AppPageHeader
+│   ├── titulo da tela
+│   ├── subtitulo com o contexto (ex.: nome do paciente)
+│   └── ações agrupadas (voltar + ação principal)
+├── q-card / abas / tabela
+```
+
+- Largura: **sempre** `page-content--fluid`
+- Referência: `ProntuarioPastaPage.vue`, `ProntuarioAtendimentoPage.vue`, `AplicacaoPacienteFormPage.vue`
+
+## Detalhe (view de cadastro)
+
+```
+q-page.page-content.page-content--fluid q-pa-md
 ├── AppPageHeader
 │   ├── titulo (nome da entidade)
 │   └── ações (Editar, Excluir)
@@ -188,7 +208,7 @@ q-page (centralizado)
 1. Escolher layout (`MainLayout` ou `AuthLayout`)
 2. Adicionar rota em `src/router/routes.ts`
 3. Usar `AppPageHeader` (páginas internas)
-4. Aplicar classe `page-content` no `q-page`
+4. Aplicar `page-content` **e** o modificador de largura: `--fluid` (operacional), `--form` ou `--form-wide` (cadastro)
 5. Consumir tokens — zero hex hardcoded
 6. Reutilizar componentes App* existentes
 7. Validar responsividade nos breakpoints sm e md

@@ -26,6 +26,7 @@ const podeCriar = usePermissao(permissoes.pacientes.criar);
 const podeEditar = usePermissao(permissoes.pacientes.editar);
 const podeDesativar = usePermissao(permissoes.pacientes.desativar);
 const podeVerCompras = usePermissao(permissoes.comprasPaciente.visualizar);
+const podeVerProntuario = usePermissao(permissoes.prontuario.visualizar);
 
 const pacientes = ref<Paciente[]>([]);
 const unidades = ref<Unidade[]>([]);
@@ -185,6 +186,10 @@ function verComprasPaciente(id: string): void {
   router.push({ name: 'compras', query: { pacienteId: id } });
 }
 
+function verProntuarioPaciente(id: string): void {
+  router.push({ name: 'pacientes-prontuario', params: { id } });
+}
+
 onMounted(async () => {
   await carregarUnidades();
   await carregarPacientes();
@@ -306,13 +311,28 @@ onMounted(async () => {
               @ativar="abrirDialogReativar(cell.row)"
             >
               <q-item
+                v-if="podeVerProntuario"
+                clickable
+                v-close-popup
+                @click="verProntuarioPaciente(cell.row.id)"
+              >
+                <q-item-section avatar>
+                  <span class="table-actions-menu__icon table-actions-menu__icon--view">
+                    <q-icon name="assignment" size="18px" />
+                  </span>
+                </q-item-section>
+                <q-item-section>Prontuário</q-item-section>
+              </q-item>
+              <q-item
                 v-if="podeVerCompras"
                 clickable
                 v-close-popup
                 @click="verComprasPaciente(cell.row.id)"
               >
                 <q-item-section avatar>
-                  <q-icon name="shopping_bag" color="primary" />
+                  <span class="table-actions-menu__icon table-actions-menu__icon--view">
+                    <q-icon name="shopping_bag" size="18px" />
+                  </span>
                 </q-item-section>
                 <q-item-section>Compras</q-item-section>
               </q-item>

@@ -8,7 +8,7 @@ Documento gerado a partir da análise do código em `src/router`, páginas, serv
 - Admin tem bypass total.
 - Funcionário precisa da chave exata OU de um filho hierárquico (ex.: `agenda.visualizar.equipe` satisfaz `agenda.visualizar`).
 - Wildcards no cargo funcionam (ex.: `agenda.*`).
-- Módulo licenciado também é checado (AGENDAMENTOS, PACIENTES, ESTOQUE, APLICACOES, FINANCEIRO, CORE).
+- Módulo licenciado (AGENDAMENTOS, PACIENTES, ESTOQUE, APLICACOES, FINANCEIRO, CORE, PRONTUARIO).
 - Envelope: `{ data, success, message }`.
 - Erro de permissão: HTTP 403 com `message: "Usuário sem permissão para esta operação."`
 
@@ -246,6 +246,47 @@ Ver seção Dashboard para dependências cruzadas e problemas.
 **Dependências cruzadas:** `GET /api/units` — só `{id,nome}`; alternativa `paciente.criar`.
 
 **Problemas atuais:** nenhum crítico além de cruzada com unidades.
+
+---
+
+## Prontuário — pasta `/pacientes/:id/prontuario`
+
+**Objetivo da tela:** Pasta do paciente (alergias, resumo, timeline, lista de atendimentos, gráficos de evolução).
+
+**Permissão mínima (guard):** `prontuario.visualizar`
+
+**Chamadas na montagem:**
+
+| Ordem | Método | Endpoint | Para quê |
+|-------|--------|----------|----------|
+| 1 | GET | `/api/patients/{id}` | Cabeçalho |
+| 2 | GET | `/api/patients/{id}/medical-record/summary` | Resumo + timeline |
+| 3 | GET | `/api/patients/{id}/clinical-encounters` | Tabela |
+| 4 | GET | `/api/patients/{id}/body-evolution` | Gráficos |
+| 5 | GET | `/api/units` | Novo atendimento |
+| 6 | GET | `/api/employees` | Novo atendimento |
+
+**Ações:** PATCH pasta (`prontuario.atendimento.editar`); POST atendimento (`prontuario.atendimento.criar`).
+
+**Dependências cruzadas:** unidades e funcionários só para o dialog “Novo atendimento”.
+
+---
+
+## Atendimento clínico `/pacientes/:id/prontuario/atendimentos/:atendimentoId`
+
+**Guard:** `prontuario.visualizar`
+
+**Montagem:** GET encounter (com timeline), notes, anamneses, templates, avaliações, anexos, fotos, VENTA, regra de bolso.
+
+**Ações por aba:** notes (`prontuario.anotacao.criar`), anamnese (`prontuario.anamnese.editar`), avaliação (`prontuario.avaliacao.criar`), exames (`prontuario.exame.enviar`), fotos (`prontuario.foto.enviar`), documentos (`prontuario.documento.editar`), VENTA/bolso (`prontuario.atendimento.editar`).
+
+---
+
+## Modelos de anamnese `/modelos-anamnese`
+
+**Guard:** `prontuario.modelo_anamnese.gerenciar`
+
+**Montagem:** GET `/api/anamnese-templates`. Form: GET/POST/PUT; lista: DELETE para desativar.
 
 ---
 
