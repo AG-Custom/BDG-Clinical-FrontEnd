@@ -11,7 +11,7 @@ const STATUS_COMPRA_POR_NUMERO: Record<number, StatusCompraPaciente> = {
   4: 'Vencido',
 };
 
-export const NIVEIS_SALDO_COMPRA = ['ok', 'baixo', 'sem_saldo'] as const;
+export const NIVEIS_SALDO_COMPRA = ['ok', 'baixo', 'parcial', 'sem_saldo'] as const;
 
 export type NivelSaldoCompra = (typeof NIVEIS_SALDO_COMPRA)[number];
 
@@ -236,7 +236,13 @@ export function obterNivelSaldoCompra(
     return 'sem_saldo';
   }
 
-  if (niveis.some((nivel) => nivel === 'baixo' || nivel === 'sem_saldo')) {
+  const algumZerado = niveis.some((nivel) => nivel === 'sem_saldo');
+  const algumDisponivel = niveis.some((nivel) => nivel !== 'sem_saldo');
+  if (algumZerado && algumDisponivel) {
+    return 'parcial';
+  }
+
+  if (niveis.some((nivel) => nivel === 'baixo')) {
     return 'baixo';
   }
 
@@ -247,6 +253,8 @@ export function obterLabelNivelSaldo(nivel: NivelSaldoCompra): string {
   switch (nivel) {
     case 'sem_saldo':
       return 'Sem saldo';
+    case 'parcial':
+      return 'Saldo parcial';
     case 'baixo':
       return 'Saldo baixo';
     default:
@@ -258,6 +266,8 @@ export function obterCorNivelSaldo(nivel: NivelSaldoCompra): string {
   switch (nivel) {
     case 'sem_saldo':
       return 'negative';
+    case 'parcial':
+      return 'info';
     case 'baixo':
       return 'warning';
     default:

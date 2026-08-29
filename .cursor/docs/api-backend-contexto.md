@@ -2112,9 +2112,9 @@ Tipos: `Compra` | `Aplicacao` | `CancelamentoAplicacao` | `AjusteManual` | `Canc
 
 ### PUT `/api/patient-purchases/{id}/balance` — `compra_paciente.editar`
 
-Ajusta a quantidade contratada (`item_pacote.quantidade_total`) e a quantidade utilizada de uma compra com **pacote exclusivo** (1 compra → 1 pacote). O restante é recalculado. Pode reabrir compra `Concluido` → `Ativo` (ou o inverso) conforme o novo saldo.
+Ajusta a quantidade contratada e a quantidade utilizada **somente dos itens desta compra** (`item_compra_paciente`). O restante é recalculado. Pode reabrir compra `Concluido` → `Ativo` (ou o inverso) conforme o novo saldo. Duas compras do mesmo pacote comercial não compartilham saldo.
 
-A utilizada informada é o **total desejado**. O backend persiste a diferença em `item_pacote.quantidade_utilizada_base`; o total exibido é `base + soma das aplicações`.
+A utilizada informada é o **total desejado**. O backend persiste a diferença em `item_compra_paciente.quantidade_utilizada_base`; o total exibido é `base + soma das aplicações`.
 
 ```json
 {
@@ -2128,12 +2128,16 @@ A utilizada informada é o **total desejado**. O backend persiste a diferença e
 | Campo | Obrigatório | Regra |
 |-------|-------------|-------|
 | `itens` | Sim | Ao menos um item |
-| `itens[].produtoId` | Sim | Produto existente no pacote da compra |
+| `itens[].produtoId` | Sim | Produto existente nos itens desta compra |
 | `itens[].quantidadeContratada` | Sim | `> 0` e `>= quantidadeUtilizada` |
 | `itens[].quantidadeUtilizada` | Sim | `>= 0` |
-| `motivo` | Não | Máx. 2000 caracteres |
+| `motivo` | Sim | Máx. 2000 caracteres |
 
-**Erros comuns (400):** compra cancelada; pacote compartilhado por mais de uma compra; quantidade abaixo da utilizada. **404** se a compra não existir no tenant.
+**Erros comuns (400):** compra cancelada; produto ausente nos itens da compra; quantidade abaixo da utilizada; motivo omitido. **404** se a compra não existir no tenant.
+
+### POST `/api/patient-purchases/reconcile-items` — `compra_paciente.editar`
+
+Backfill das compras antigas sem `item_compra_paciente`. Query `dryRun` (default `true`) só gera o relatório; `dryRun=false` persiste os itens reconstruídos. **Não** roda automaticamente com a migration.
 
 ### POST `/api/patient-purchases/{id}/cancel` — `compra_paciente.cancelar`
 

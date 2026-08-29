@@ -93,6 +93,10 @@ function validar(): string | null {
     }
   }
 
+  if (!motivo.value.trim()) {
+    return 'Informe o motivo do ajuste de saldo.';
+  }
+
   if (motivo.value.length > 2000) {
     return 'O motivo deve ter no máximo 2000 caracteres.';
   }
@@ -172,8 +176,7 @@ watch(
 
       <q-card-section class="q-gutter-md">
         <div class="text-body2 text-secondary">
-          Altera a quantidade contratada e a utilizada. O restante é recalculado.
-          Só funciona para pacote exclusivo desta compra.
+          Altera a quantidade contratada e a utilizada desta compra. O restante é recalculado.
         </div>
 
         <div v-if="!itens.length" class="text-body2 text-secondary">
@@ -233,7 +236,7 @@ watch(
 
         <q-input
           v-model="motivo"
-          label="Motivo (opcional)"
+          label="Motivo"
           placeholder="Ex.: Correção de saldo migrado"
           outlined
           type="textarea"

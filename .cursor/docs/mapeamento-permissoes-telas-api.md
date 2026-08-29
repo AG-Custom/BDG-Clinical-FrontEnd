@@ -603,6 +603,7 @@ Ver seção Dashboard para dependências cruzadas e problemas.
 | Nova compra | — | navega para form | `compra_paciente.criar` |
 | Visualizar | GET | `/api/patient-purchases/{id}` + `/history` → tela `/compras/:id` | `compra_paciente.visualizar` |
 | Ajustar saldo | PUT | `/api/patient-purchases/{id}/balance` | `compra_paciente.editar` |
+| Reconciliar itens (backfill, após aplicar schema) | POST | `/api/patient-purchases/reconcile-items` | `compra_paciente.editar` |
 | Cancelar compra | POST | `/api/patient-purchases/{id}/cancel` | `compra_paciente.cancelar` |
 
 **Form nova compra** (`/compras/nova`, `/pacientes/:id/compras/nova`): `POST /api/patients/{id}/purchases` — `compra_paciente.criar`.
