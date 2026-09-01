@@ -334,6 +334,8 @@ function alterarVisualizacao(novaVisualizacao: VisualizacaoAgenda): void {
 }
 
 onMounted(async () => {
+  void import('@/components/agendamentos/AgendamentoFormDialog.vue');
+  void import('@/components/agendamentos/AgendamentoDetalheDialog.vue');
   await carregarFiltros();
 });
 </script>
@@ -588,7 +590,7 @@ onMounted(async () => {
   align-items: center;
   display: flex;
   justify-content: center;
-  min-height: 480px;
+  min-height: 920px;
 }
 
 .agenda-page__agenda-placeholder-text {

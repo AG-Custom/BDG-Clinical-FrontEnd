@@ -1,0 +1,52 @@
+---
+description: Padrão de QDialog — abertura instantânea, sem animação, sem dialog aninhado
+alwaysApply: true
+---
+
+# Modais (QDialog) — AG Clinical
+
+O modal deve **aparecer em até 100ms**. Animação, overlay empilhado e spinner nos campos criam a sensação de sistema lento, sobretudo em cima de telas pesadas (agenda, tabelas).
+
+## Obrigatório em todo `q-dialog` operacional
+
+```vue
+<q-dialog
+  persistent
+  transition-show="none"
+  transition-hide="none"
+>
+```
+
+Exceção de animação: login, landing, marketing, onboarding.
+
+## Proibido
+
+- `q-dialog` **dentro** de outro `q-dialog` (dois backdrops, dois focus-traps)
+- Transição padrão do Quasar (`scale` / fade) em fluxos operacionais
+- `:loading` em `q-select` / `q-input` enquanto o modal já está aberto
+- Spinner no botão Salvar — usar `:disable` + rótulo (`Salvar` / `Salvando`)
+- Refetch da mesma lista toda vez que o dialog abre
+
+## Form secundário no mesmo modal
+
+Cadastro auxiliar (paciente, tag, item de linha, etc.) **não** abre outro dialog.
+
+Trocar o conteúdo do **mesmo** `q-card`: painel interno, título próprio, **Voltar** / X retorna ao form principal.
+
+Referência: [`AgendamentoFormDialog.vue`](src/components/agendamentos/AgendamentoFormDialog.vue) (`painel`: `agendamento` | `tag` | `paciente`).
+
+## Dados
+
+- Mostrar o form na hora; opções dos selects entram quando a API responder
+- Cachear listas após a primeira carga; recarregar só se o filtro (ex.: unidade) mudar
+- Dialog em `defineAsyncComponent`: fazer preload no `onMounted` da página hospedeira
+
+```ts
+onMounted(() => {
+  void import('@/components/agendamentos/AgendamentoFormDialog.vue');
+});
+```
+
+## Visualizar / Detalhar
+
+Mesmas transições `none`. Auditoria: regra `22-auditoria-visualizar.mdc`.

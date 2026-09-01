@@ -25,6 +25,7 @@ export const TEXTOS_AGENDAMENTO = {
     unidade: 'Unidade',
     procedimento: 'Procedimento',
     procedimentos: 'Procedimentos',
+    tags: 'Tags',
     observacoes: 'Observações',
     motivoCancelamento: 'Motivo do cancelamento',
     aplicacaoRegistrada: 'Aplicação registrada no prontuário',

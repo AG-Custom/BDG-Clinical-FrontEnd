@@ -30,6 +30,12 @@ export interface ProcedimentoAgendamentoResumo {
   nome: string;
 }
 
+export interface TagAgendamentoResumo {
+  id: string;
+  nome: string;
+  cor: string;
+}
+
 export interface Agendamento {
   id: string;
   unidadeId: string;
@@ -42,6 +48,7 @@ export interface Agendamento {
   procedimentoId: string | null;
   procedimentoNome: string | null;
   procedimentos?: ProcedimentoAgendamentoResumo[];
+  tags?: TagAgendamentoResumo[];
   tipo: TipoAgendamento;
   status: StatusAgendamento;
   dataInicio: string;
@@ -69,6 +76,7 @@ export interface CriarAgendamentoRequest {
   /** Mantido para compatibilidade com agendamentos antigos; a compra é escolhida na realização. */
   compraPacienteId?: string | null;
   observacao?: string | null;
+  tagIds?: string[] | null;
 }
 
 export type AtualizarAgendamentoRequest = CriarAgendamentoRequest;
@@ -247,6 +255,84 @@ export function obterCorEventoAgendamento(status: StatusAgendamento): string {
     default:
       return 'var(--ds-color-primary-600)';
   }
+}
+
+export function obterTagsDoAgendamento(agendamento: Agendamento): TagAgendamentoResumo[] {
+  return agendamento.tags ?? [];
+}
+
+export function obterPrimeiraTagAgendamento(agendamento: Agendamento): TagAgendamentoResumo | null {
+  return obterTagsDoAgendamento(agendamento)[0] ?? null;
+}
+
+function expandirHex(hex: string): string | null {
+  const trimmed = hex.trim();
+
+  if (/^#[0-9A-Fa-f]{6}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^#[0-9A-Fa-f]{3}$/.test(trimmed)) {
+    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`;
+  }
+
+  return null;
+}
+
+export function obterCorTextoParaFundoHex(hex: string): string {
+  const normalizado = expandirHex(hex);
+
+  if (!normalizado) {
+    return '#fff';
+  }
+
+  const r = Number.parseInt(normalizado.slice(1, 3), 16);
+  const g = Number.parseInt(normalizado.slice(3, 5), 16);
+  const b = Number.parseInt(normalizado.slice(5, 7), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return yiq >= 150 ? 'var(--ds-text-primary)' : '#fff';
+}
+
+export function obterEstiloEventoAgendamento(agendamento: Agendamento): {
+  backgroundColor: string;
+  borderColor: string;
+  textColor: string;
+} {
+  const tag = obterPrimeiraTagAgendamento(agendamento);
+  const aguardandoConfirmacao = agendamento.status === 'Agendado';
+
+  if (tag) {
+    if (aguardandoConfirmacao) {
+      return {
+        backgroundColor: `color-mix(in srgb, ${tag.cor} 14%, var(--ds-bg-surface))`,
+        borderColor: tag.cor,
+        textColor: tag.cor,
+      };
+    }
+
+    return {
+      backgroundColor: tag.cor,
+      borderColor: tag.cor,
+      textColor: obterCorTextoParaFundoHex(tag.cor),
+    };
+  }
+
+  if (aguardandoConfirmacao) {
+    return {
+      backgroundColor: 'color-mix(in srgb, var(--ds-brand-primary) 14%, var(--ds-bg-surface))',
+      borderColor: 'var(--ds-brand-primary)',
+      textColor: 'var(--ds-brand-primary)',
+    };
+  }
+
+  const corStatus = obterCorEventoAgendamento(agendamento.status);
+
+  return {
+    backgroundColor: corStatus,
+    borderColor: corStatus,
+    textColor: '#fff',
+  };
 }
 
 export function isAgendamentoEditavel(status: StatusAgendamento): boolean {

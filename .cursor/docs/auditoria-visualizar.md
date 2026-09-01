@@ -37,6 +37,7 @@ sequenceDiagram
 | `Unidade` | `UnidadesListPage` |
 | `Procedimento` | `ProcedimentosListPage` |
 | `Sintoma` | `SintomasListPage` |
+| `TagAgendamento` | `TagAgendamentoFormDialog` (criar/editar no agendamento; sem listagem Visualizar) |
 | `Pacote` | `PacotesListPage` |
 | `AplicacaoPaciente` | `AplicacoesPacienteListPage` |
 | `HorarioFuncionamentoUnidade` | `HorarioFuncionamentoUnidadePanel` (log ainda não gravado no backend) |

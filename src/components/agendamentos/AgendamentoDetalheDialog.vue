@@ -18,10 +18,13 @@ import {
   formatarNomesProcedimentos,
   isAgendamentoEditavel,
   obterCorEventoAgendamento,
+  obterCorTextoParaFundoHex,
   obterIconeTipoAgendamento,
   obterIniciaisNome,
   obterLabelTipoAgendamento,
+  obterPrimeiraTagAgendamento,
   obterProcedimentosDoAgendamento,
+  obterTagsDoAgendamento,
   temAplicacoesRegistradas,
 } from '@/types/entidades/agendamento';
 
@@ -88,6 +91,10 @@ const nomesProcedimentos = computed(() =>
   props.agendamento ? formatarNomesProcedimentos(props.agendamento) : null,
 );
 
+const tagsAgendamento = computed(() =>
+  props.agendamento ? obterTagsDoAgendamento(props.agendamento) : [],
+);
+
 const possuiAplicacoes = computed(() =>
   props.agendamento ? temAplicacoesRegistradas(props.agendamento) : false,
 );
@@ -114,9 +121,15 @@ const textoAplicacoesRegistradas = computed(() =>
     : textos.aplicacaoRegistrada,
 );
 
-const corStatus = computed(() =>
-  props.agendamento ? obterCorEventoAgendamento(props.agendamento.status) : 'var(--ds-brand-primary)',
-);
+const corStatus = computed(() => {
+  if (!props.agendamento) {
+    return 'var(--ds-brand-primary)';
+  }
+
+  const tag = obterPrimeiraTagAgendamento(props.agendamento);
+
+  return tag?.cor ?? obterCorEventoAgendamento(props.agendamento.status);
+});
 
 const dataCabecalho = computed(() =>
   props.agendamento ? formatarDataCabecalhoAgendamento(props.agendamento.dataInicio) : '',
@@ -260,6 +273,8 @@ watch(
 <template>
   <q-dialog
     :model-value="modelValue && Boolean(agendamento)"
+    transition-show="none"
+    transition-hide="none"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card v-if="agendamento" class="agendamento-detalhe">
@@ -336,6 +351,26 @@ watch(
               {{ quantidadeProcedimentos > 1 ? textos.procedimentos : textos.procedimento }}
             </div>
             <div class="agendamento-detalhe__secao-valor">{{ nomesProcedimentos }}</div>
+          </div>
+        </div>
+
+        <div v-if="tagsAgendamento.length > 0" class="agendamento-detalhe__secao">
+          <q-icon name="label" size="20px" class="agendamento-detalhe__icone-secao" />
+          <div class="agendamento-detalhe__secao-conteudo">
+            <div class="agendamento-detalhe__secao-label">{{ textos.tags }}</div>
+            <div class="agendamento-detalhe__tags">
+              <span
+                v-for="tag in tagsAgendamento"
+                :key="tag.id"
+                class="agendamento-detalhe__tag"
+                :style="{
+                  backgroundColor: tag.cor,
+                  color: obterCorTextoParaFundoHex(tag.cor),
+                }"
+              >
+                {{ tag.nome }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -429,7 +464,7 @@ watch(
     </q-card>
   </q-dialog>
 
-  <q-dialog v-model="dialogCancelar" persistent>
+  <q-dialog v-model="dialogCancelar" persistent transition-show="none" transition-hide="none">
     <q-card style="min-width: 320px">
       <q-card-section>
         <div class="text-h6">{{ textos.cancelarTitulo }}</div>

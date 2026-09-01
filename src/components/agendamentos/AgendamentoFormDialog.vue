@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue';
 
+import TagAgendamentoFormDialog from '@/components/agendamentos/TagAgendamentoFormDialog.vue';
 import PacienteFormDialog from '@/components/pacientes/PacienteFormDialog.vue';
 import AppDateInput from '@/components/shared/AppDateInput.vue';
 import { permissoes } from '@/constants/permissoes';
@@ -10,6 +11,7 @@ import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
 import { agendamentoService } from '@/services/agendamento.service';
 import { funcionarioService } from '@/services/funcionario.service';
 import { pacienteService } from '@/services/paciente.service';
+import { tagAgendamentoService } from '@/services/tag-agendamento.service';
 import { unidadeService } from '@/services/unidade.service';
 import type { Agendamento, TipoAgendamento } from '@/types/entidades/agendamento';
 import {
@@ -20,6 +22,7 @@ import {
 } from '@/types/entidades/agendamento';
 import type { Funcionario } from '@/types/entidades/funcionario';
 import type { Paciente } from '@/types/entidades/paciente';
+import type { TagAgendamento } from '@/types/entidades/tag-agendamento';
 import type { Unidade } from '@/types/entidades/unidade';
 import { normalizarLista } from '@/utils/normalizar-lista';
 
@@ -37,14 +40,21 @@ const emit = defineEmits<{
 const notificacao = useNotificacao();
 const { obterMensagem } = useTratarErroFormulario();
 const podeCriarPaciente = usePermissao(permissoes.pacientes.criar);
+const podeCriarTag = usePermissao(permissoes.tagsAgendamento.criar);
+const podeEditarTag = usePermissao(permissoes.tagsAgendamento.editar);
 
-const carregandoDados = ref(false);
 const salvando = ref(false);
-const dialogPaciente = ref(false);
+const painel = ref<'agendamento' | 'tag' | 'paciente'>('agendamento');
+const tagEmEdicao = ref<TagAgendamento | null>(null);
+const selectTags = ref<{ hidePopup?: () => void } | null>(null);
 const unidadesDisponiveis = ref<Unidade[]>([]);
 const pacientesDisponiveis = ref<Paciente[]>([]);
 const funcionariosDisponiveis = ref<Funcionario[]>([]);
+const tagsDisponiveis = ref<TagAgendamento[]>([]);
 const dadosIniciaisCarregados = ref(false);
+const unidadeListasId = ref<string | null>(null);
+
+let ignorarMudancaUnidade = false;
 
 const isEdicao = computed(() => Boolean(props.agendamento?.id));
 
@@ -57,6 +67,7 @@ const form = reactive({
   horaInicio: '',
   horaFim: '',
   observacao: '',
+  tagIds: [] as string[],
 });
 
 const unidadeIdSelecionada = toRef(form, 'unidadeId');
@@ -134,6 +145,42 @@ const opcoesTipos = computed(() =>
   })),
 );
 
+const opcoesTags = computed(() =>
+  tagsDisponiveis.value.map((tag) => ({
+    label: tag.nome,
+    value: tag.id,
+    cor: tag.cor,
+  })),
+);
+
+const opcoesTagsFiltradas = ref<{ label: string; value: string; cor: string }[]>([]);
+
+watch(
+  opcoesTags,
+  (lista) => {
+    opcoesTagsFiltradas.value = lista;
+  },
+  { immediate: true },
+);
+
+function filtrarTags(val: string, update: (callback: () => void) => void): void {
+  update(() => {
+    const termo = val.trim().toLowerCase();
+    if (!termo) {
+      opcoesTagsFiltradas.value = opcoesTags.value;
+      return;
+    }
+
+    opcoesTagsFiltradas.value = opcoesTags.value.filter((opcao) =>
+      opcao.label.toLowerCase().includes(termo),
+    );
+  });
+}
+
+const mostrarBoxNovaTag = computed(
+  () => props.modelValue && dadosIniciaisCarregados.value && podeCriarTag.value,
+);
+
 const mostrarBoxNovoPaciente = computed(
   () => props.modelValue && Boolean(form.unidadeId) && podeCriarPaciente.value,
 );
@@ -185,6 +232,8 @@ function aoAlterarHoraInicio(): void {
 }
 
 function preencherFormulario(): void {
+  ignorarMudancaUnidade = true;
+
   if (props.agendamento) {
     form.unidadeId = props.agendamento.unidadeId;
     form.pacienteId = props.agendamento.pacienteId;
@@ -202,6 +251,8 @@ function preencherFormulario(): void {
     form.horaFim = fim.hora;
 
     form.observacao = props.agendamento.observacao ?? '';
+    form.tagIds = props.agendamento.tags?.map((tag) => tag.id) ?? [];
+    ignorarMudancaUnidade = false;
     return;
   }
 
@@ -210,6 +261,7 @@ function preencherFormulario(): void {
   form.funcionarioId = null;
   form.tipo = 'Consulta';
   form.observacao = '';
+  form.tagIds = [];
 
   if (props.intervaloInicial) {
     aplicarIntervaloNoFormulario(props.intervaloInicial.inicio, props.intervaloInicial.fim);
@@ -218,6 +270,8 @@ function preencherFormulario(): void {
     const fim = new Date(agora.getTime() + 30 * 60 * 1000);
     aplicarIntervaloNoFormulario(agora, fim);
   }
+
+  ignorarMudancaUnidade = false;
 }
 
 async function carregarPacientesDaUnidade(): Promise<void> {
@@ -268,25 +322,75 @@ async function garantirFuncionarioNaLista(funcionarioId: string): Promise<void> 
   funcionariosDisponiveis.value = [funcionario, ...funcionariosDisponiveis.value];
 }
 
-async function carregarDependencias(): Promise<void> {
-  carregandoDados.value = true;
+function garantirTagsDoAgendamento(): void {
+  const extras = props.agendamento?.tags ?? [];
+  if (extras.length === 0) {
+    return;
+  }
 
-  try {
-    unidadesDisponiveis.value = normalizarLista(await unidadeService.listar());
-    dadosIniciaisCarregados.value = true;
+  const porId = new Map(tagsDisponiveis.value.map((tag) => [tag.id, tag]));
+  let mudou = false;
 
-    if (form.unidadeId) {
-      await Promise.all([carregarPacientesDaUnidade(), carregarFuncionariosDaUnidade()]);
+  for (const tag of extras) {
+    if (!porId.has(tag.id)) {
+      porId.set(tag.id, {
+        id: tag.id,
+        nome: tag.nome,
+        cor: tag.cor,
+        ativo: false,
+      });
+      mudou = true;
     }
-  } catch (erro) {
-    notificacao.erro(obterMensagem(erro));
-  } finally {
-    carregandoDados.value = false;
+  }
+
+  if (mudou) {
+    tagsDisponiveis.value = [...porId.values()];
   }
 }
 
+async function carregarTags(): Promise<void> {
+  try {
+    tagsDisponiveis.value = normalizarLista(await tagAgendamentoService.listar());
+    garantirTagsDoAgendamento();
+  } catch (erro) {
+    notificacao.erro(obterMensagem(erro));
+  }
+}
+
+async function carregarListasDaUnidade(): Promise<void> {
+  if (!form.unidadeId) {
+    pacientesDisponiveis.value = [];
+    funcionariosDisponiveis.value = [];
+    unidadeListasId.value = null;
+    return;
+  }
+
+  if (form.unidadeId === unidadeListasId.value) {
+    return;
+  }
+
+  await Promise.all([carregarPacientesDaUnidade(), carregarFuncionariosDaUnidade()]);
+  unidadeListasId.value = form.unidadeId;
+}
+
+async function carregarDependencias(): Promise<void> {
+  try {
+    const [unidades] = await Promise.all([unidadeService.listar(), carregarTags()]);
+    unidadesDisponiveis.value = normalizarLista(unidades);
+    dadosIniciaisCarregados.value = true;
+    await carregarListasDaUnidade();
+  } catch (erro) {
+    notificacao.erro(obterMensagem(erro));
+  }
+}
+
+function voltarPainelAgendamento(): void {
+  painel.value = 'agendamento';
+  tagEmEdicao.value = null;
+}
+
 function fechar(): void {
-  dialogPaciente.value = false;
+  voltarPainelAgendamento();
   emit('update:modelValue', false);
 }
 
@@ -295,7 +399,7 @@ function abrirCadastroPaciente(): void {
     return;
   }
 
-  dialogPaciente.value = true;
+  painel.value = 'paciente';
 }
 
 function aoPacienteCriado(paciente: Paciente): void {
@@ -304,6 +408,44 @@ function aoPacienteCriado(paciente: Paciente): void {
   }
 
   form.pacienteId = paciente.id;
+  voltarPainelAgendamento();
+}
+
+function abrirCadastroTag(): void {
+  selectTags.value?.hidePopup?.();
+  tagEmEdicao.value = null;
+  painel.value = 'tag';
+}
+
+function abrirEdicaoTag(tagId: string): void {
+  const tag = tagsDisponiveis.value.find((item) => item.id === tagId);
+  if (!tag) {
+    return;
+  }
+
+  selectTags.value?.hidePopup?.();
+  tagEmEdicao.value = tag;
+  painel.value = 'tag';
+}
+
+function aoTagSalva(tag: TagAgendamento): void {
+  const jaExiste = tagsDisponiveis.value.some((item) => item.id === tag.id);
+
+  if (jaExiste) {
+    tagsDisponiveis.value = tagsDisponiveis.value.map((item) =>
+      item.id === tag.id ? tag : item,
+    );
+    voltarPainelAgendamento();
+    return;
+  }
+
+  tagsDisponiveis.value = [tag, ...tagsDisponiveis.value];
+
+  if (!form.tagIds.includes(tag.id)) {
+    form.tagIds = [...form.tagIds, tag.id];
+  }
+
+  voltarPainelAgendamento();
 }
 
 function montarPayload() {
@@ -315,6 +457,7 @@ function montarPayload() {
     dataInicio: deInputDatetimeLocalParaIso(`${form.data}T${form.horaInicio}`),
     dataFim: deInputDatetimeLocalParaIso(`${form.data}T${form.horaFim}`),
     observacao: form.observacao.trim() || null,
+    tagIds: form.tagIds,
   };
 }
 
@@ -362,7 +505,7 @@ watch(
   () => props.modelValue,
   async (aberto) => {
     if (!aberto) {
-      dialogPaciente.value = false;
+      voltarPainelAgendamento();
       return;
     }
 
@@ -370,11 +513,9 @@ watch(
 
     if (!dadosIniciaisCarregados.value) {
       await carregarDependencias();
-    } else if (form.unidadeId) {
-      await Promise.all([carregarPacientesDaUnidade(), carregarFuncionariosDaUnidade()]);
     } else {
-      pacientesDisponiveis.value = [];
-      funcionariosDisponiveis.value = [];
+      garantirTagsDoAgendamento();
+      await carregarListasDaUnidade();
     }
 
     if (props.agendamento?.pacienteId) {
@@ -384,18 +525,21 @@ watch(
     if (props.agendamento?.funcionarioId) {
       await garantirFuncionarioNaLista(props.agendamento.funcionarioId);
     }
-
   },
 );
 
 watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
+  if (ignorarMudancaUnidade) {
+    return;
+  }
+
   if (unidadeAnterior && novaUnidade !== unidadeAnterior) {
     form.funcionarioId = null;
     form.pacienteId = null;
   }
 
   if (dadosIniciaisCarregados.value) {
-    await Promise.all([carregarPacientesDaUnidade(), carregarFuncionariosDaUnidade()]);
+    await carregarListasDaUnidade();
   }
 });
 </script>
@@ -404,162 +548,237 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
   <q-dialog
     :model-value="modelValue"
     persistent
+    transition-show="none"
+    transition-hide="none"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card class="agendamento-form-dialog" style="width: 560px; max-width: 95vw">
-      <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">{{ tituloDialog }}</div>
-        <q-space />
-        <q-btn flat round dense icon="close" aria-label="Fechar" @click="fechar" />
-      </q-card-section>
+      <template v-if="painel === 'agendamento'">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ tituloDialog }}</div>
+          <q-space />
+          <q-btn flat round dense icon="close" aria-label="Fechar" @click="fechar" />
+        </q-card-section>
 
-      <q-card-section>
-        <q-form class="form-stack" @submit.prevent="salvar">
-          <q-select
-            v-model="form.unidadeId"
-            :options="opcoesUnidades"
-            label="Unidade *"
-            outlined
-            emit-value
-            map-options
-            :loading="carregandoDados"
-            :disable="salvando"
-            :rules="[(v) => Boolean(v) || 'Obrigatório']"
-          />
-
-          <div class="form-field-stack">
+        <q-card-section>
+          <q-form class="form-stack" @submit.prevent="salvar">
             <q-select
-              v-model="form.pacienteId"
-              :options="opcoesPacientesFiltradas"
-              label="Paciente *"
+              v-model="form.unidadeId"
+              :options="opcoesUnidades"
+              label="Unidade *"
+              outlined
+              emit-value
+              map-options
+              :disable="salvando"
+              :rules="[(v) => Boolean(v) || 'Obrigatório']"
+            />
+
+            <div class="form-field-stack">
+              <q-select
+                v-model="form.pacienteId"
+                :options="opcoesPacientesFiltradas"
+                label="Paciente *"
+                outlined
+                emit-value
+                map-options
+                use-input
+                input-debounce="200"
+                :disable="salvando || !form.unidadeId"
+                :rules="[(v) => Boolean(v) || 'Obrigatório']"
+                @filter="filtrarPacientes"
+              >
+                <template #no-option>
+                  <q-item>
+                    <q-item-section class="text-grey">Nenhum paciente encontrado</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+
+              <div v-if="mostrarBoxNovoPaciente" class="agendamento-form-dialog__box-paciente">
+                <p class="agendamento-form-dialog__box-paciente-texto">
+                  Deseja cadastrar um novo paciente?
+                </p>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  label="Cadastrar paciente"
+                  icon="person_add"
+                  :disable="salvando"
+                  @click="abrirCadastroPaciente"
+                />
+              </div>
+            </div>
+
+            <q-select
+              v-model="form.funcionarioId"
+              :options="opcoesFuncionariosFiltradas"
+              label="Profissional *"
               outlined
               emit-value
               map-options
               use-input
               input-debounce="200"
-              :loading="carregandoDados"
               :disable="salvando || !form.unidadeId"
               :rules="[(v) => Boolean(v) || 'Obrigatório']"
-              @filter="filtrarPacientes"
+              @filter="filtrarFuncionarios"
             >
               <template #no-option>
                 <q-item>
-                  <q-item-section class="text-grey">Nenhum paciente encontrado</q-item-section>
+                  <q-item-section class="text-grey">Nenhum profissional encontrado</q-item-section>
                 </q-item>
               </template>
             </q-select>
 
-            <div v-if="mostrarBoxNovoPaciente" class="agendamento-form-dialog__box-paciente">
-              <p class="agendamento-form-dialog__box-paciente-texto">
-                Deseja cadastrar um novo paciente?
-              </p>
-              <q-btn
-                flat
-                dense
-                no-caps
-                color="primary"
-                label="Cadastrar paciente"
-                icon="person_add"
-                :disable="salvando"
-                @click="abrirCadastroPaciente"
-              />
+            <q-select
+              v-model="form.tipo"
+              :options="opcoesTipos"
+              label="Tipo *"
+              outlined
+              emit-value
+              map-options
+              :disable="salvando"
+            />
+
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-sm-4">
+                <app-date-input
+                  v-model="form.data"
+                  label="Data *"
+                  outlined
+                  :disable="salvando"
+                  :rules="[(v) => Boolean(v) || 'Obrigatório']"
+                />
+              </div>
+              <div class="col-6 col-sm-4">
+                <q-input
+                  v-model="form.horaInicio"
+                  type="time"
+                  label="Início *"
+                  outlined
+                  :disable="salvando"
+                  :rules="[(v) => Boolean(v) || 'Obrigatório']"
+                  @update:model-value="aoAlterarHoraInicio"
+                />
+              </div>
+              <div class="col-6 col-sm-4">
+                <q-input
+                  v-model="form.horaFim"
+                  type="time"
+                  label="Fim *"
+                  outlined
+                  :disable="salvando"
+                  :rules="[(v) => Boolean(v) || 'Obrigatório']"
+                />
+              </div>
             </div>
-          </div>
 
-          <q-select
-            v-model="form.funcionarioId"
-            :options="opcoesFuncionariosFiltradas"
-            label="Profissional *"
-            outlined
-            emit-value
-            map-options
-            use-input
-            input-debounce="200"
-            :loading="carregandoDados"
-            :disable="salvando || !form.unidadeId"
-            :rules="[(v) => Boolean(v) || 'Obrigatório']"
-            @filter="filtrarFuncionarios"
-          >
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Nenhum profissional encontrado</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+            <q-input
+              v-model="form.observacao"
+              label="Observação"
+              type="textarea"
+              outlined
+              autogrow
+              :disable="salvando"
+            />
 
-          <q-select
-            v-model="form.tipo"
-            :options="opcoesTipos"
-            label="Tipo *"
-            outlined
-            emit-value
-            map-options
+            <div class="form-field-stack">
+              <q-select
+                ref="selectTags"
+                v-model="form.tagIds"
+                :options="opcoesTagsFiltradas"
+                label="Tags"
+                outlined
+                multiple
+                use-chips
+                use-input
+                input-debounce="200"
+                emit-value
+                map-options
+                :disable="salvando"
+                @filter="filtrarTags"
+              >
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section side>
+                      <span
+                        class="agendamento-form-dialog__tag-swatch"
+                        :style="{ backgroundColor: scope.opt.cor }"
+                      />
+                    </q-item-section>
+                    <q-item-section>{{ scope.opt.label }}</q-item-section>
+                    <q-item-section v-if="podeEditarTag" side>
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        icon="edit"
+                        size="sm"
+                        aria-label="Editar tag"
+                        :disable="salvando"
+                        @click.stop.prevent="abrirEdicaoTag(scope.opt.value)"
+                      />
+                    </q-item-section>
+                  </q-item>
+                </template>
+                <template #no-option>
+                  <q-item>
+                    <q-item-section class="text-grey">Nenhuma tag encontrada</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+              <div v-if="mostrarBoxNovaTag" class="agendamento-form-dialog__box-tag">
+                <p class="agendamento-form-dialog__box-tag-texto">
+                  {{
+                    tagsDisponiveis.length === 0
+                      ? 'Nenhuma tag cadastrada. Cadastre tags para colorir os agendamentos na agenda.'
+                      : 'Deseja cadastrar uma nova tag?'
+                  }}
+                </p>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  :label="tagsDisponiveis.length === 0 ? 'Cadastrar tag' : 'Nova tag'"
+                  icon="label"
+                  :disable="salvando"
+                  @click="abrirCadastroTag"
+                />
+              </div>
+            </div>
+          </q-form>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancelar" color="primary" no-caps :disable="salvando" @click="fechar" />
+          <q-btn
+            unelevated
+            :label="salvando ? 'Salvando' : 'Salvar'"
+            color="primary"
+            no-caps
             :disable="salvando"
+            @click="salvar"
           />
+        </q-card-actions>
+      </template>
 
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-sm-4">
-              <app-date-input
-                v-model="form.data"
-                label="Data *"
-                outlined
-                :disable="salvando"
-                :rules="[(v) => Boolean(v) || 'Obrigatório']"
-              />
-            </div>
-            <div class="col-6 col-sm-4">
-              <q-input
-                v-model="form.horaInicio"
-                type="time"
-                label="Início *"
-                outlined
-                :disable="salvando"
-                :rules="[(v) => Boolean(v) || 'Obrigatório']"
-                @update:model-value="aoAlterarHoraInicio"
-              />
-            </div>
-            <div class="col-6 col-sm-4">
-              <q-input
-                v-model="form.horaFim"
-                type="time"
-                label="Fim *"
-                outlined
-                :disable="salvando"
-                :rules="[(v) => Boolean(v) || 'Obrigatório']"
-              />
-            </div>
-          </div>
+      <tag-agendamento-form-dialog
+        v-else-if="painel === 'tag'"
+        :tag="tagEmEdicao"
+        @salvo="aoTagSalva"
+        @cancelar="voltarPainelAgendamento"
+      />
 
-          <q-input
-            v-model="form.observacao"
-            label="Observação"
-            type="textarea"
-            outlined
-            autogrow
-            :disable="salvando"
-          />
-        </q-form>
-      </q-card-section>
-
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="Cancelar" color="primary" no-caps :disable="salvando" @click="fechar" />
-        <q-btn
-          unelevated
-          label="Salvar"
-          color="primary"
-          no-caps
-          :loading="salvando"
-          @click="salvar"
-        />
-      </q-card-actions>
+      <paciente-form-dialog
+        v-else
+        :unidade-id="form.unidadeId"
+        @criado="aoPacienteCriado"
+        @cancelar="voltarPainelAgendamento"
+      />
     </q-card>
   </q-dialog>
-
-  <paciente-form-dialog
-    v-model="dialogPaciente"
-    :unidade-id="form.unidadeId"
-    @criado="aoPacienteCriado"
-  />
 </template>
 
 <style scoped lang="scss">
@@ -567,7 +786,8 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
   max-height: 90vh;
   overflow-y: auto;
 
-  &__box-paciente {
+  &__box-paciente,
+  &__box-tag {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -580,11 +800,20 @@ watch(unidadeIdSelecionada, async (novaUnidade, unidadeAnterior) => {
     background: var(--ds-bg-subtle);
   }
 
-  &__box-paciente-texto {
+  &__box-paciente-texto,
+  &__box-tag-texto {
     margin: 0;
     color: var(--ds-text-secondary);
     font-size: var(--ds-font-size-sm);
     line-height: var(--ds-line-height-normal);
+  }
+
+  &__tag-swatch {
+    border: 1px solid var(--ds-border-default);
+    border-radius: var(--ds-radius-md);
+    display: inline-block;
+    height: 16px;
+    width: 16px;
   }
 }
 </style>

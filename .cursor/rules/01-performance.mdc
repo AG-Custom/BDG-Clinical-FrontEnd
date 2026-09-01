@@ -464,7 +464,7 @@ Quando a lista **já tem linhas**, usar apenas `:loading="carregando"` no `q-tab
 ### Evitar
 
 - `QInnerLoading` em excesso
-- `QDialog` aninhado
+- `QDialog` aninhado — ver regra `23-modais.mdc` (trocar conteúdo no mesmo card)
 - `QTable` sem paginação
 - `QVirtualScroll` mal configurado
 - Múltiplos drawers simultâneos
@@ -556,6 +556,13 @@ Aparecimento: instantâneo
 - [ ] Período deduplicado antes de buscar na API?
 - [ ] Sem `height: 'auto'` + `expandRows` juntos?
 - [ ] Opções estáticas em `shallowRef`?
+
+### Modais
+
+- [ ] `transition-show="none"` e `transition-hide="none"`?
+- [ ] Sem `q-dialog` aninhado (form auxiliar no mesmo card)?
+- [ ] Sem `:loading` nos selects do dialog?
+- [ ] Listas em cache após a primeira abertura?
 
 ### Dados
 

@@ -186,6 +186,7 @@ Deve:
 | Página | Dependências |
 |--------|----------------|
 | `AplicacaoPacienteFormPage` | unidade, paciente, produto, aplicador, sintomas |
+| `AgendamentoFormDialog` | tags de agendamento |
 | `PacienteFormPage` | unidade |
 | `FuncionarioFormPage` | unidade, cargo |
 | `ProdutoFormPage` | tipo de produto, unidade de medida |

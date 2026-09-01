@@ -52,6 +52,12 @@ export const permissoes = {
     editar: 'sintoma.editar',
     desativar: 'sintoma.excluir',
   },
+  tagsAgendamento: {
+    visualizar: 'tag_agendamento.visualizar',
+    criar: 'tag_agendamento.criar',
+    editar: 'tag_agendamento.editar',
+    desativar: 'tag_agendamento.excluir',
+  },
   funcionarios: {
     visualizar: 'funcionario.visualizar',
     criar: 'funcionario.criar',

@@ -16,9 +16,8 @@ import { computed, ref, shallowRef, watch } from 'vue';
 
 import type { Agendamento } from '@/types/entidades/agendamento';
 import {
-  obterCorEventoAgendamento,
+  obterEstiloEventoAgendamento,
   obterLabelTipoAgendamento,
-  formatarNomesProcedimentos,
 } from '@/types/entidades/agendamento';
 import type { ConfigCalendarioHorario } from '@/types/entidades/horario-funcionamento-unidade';
 import { parsearDataBackend } from '@/utils/data-hora';
@@ -51,26 +50,20 @@ let ultimoPeriodoEmitido: string | null = null;
 
 const horarioAtivo = computed(() => props.configHorario?.possuiHorario === true);
 
-const COR_EVENTO_AGUARDANDO_CONFIRMACAO =
-  'color-mix(in srgb, var(--ds-brand-primary) 14%, var(--ds-bg-surface))';
-
 const eventos = computed<EventInput[]>(() =>
   props.agendamentos.map((agendamento) => {
     const aguardandoConfirmacao = agendamento.status === 'Agendado';
     const inativo = agendamento.status === 'Cancelado' || agendamento.status === 'Faltou';
+    const estilo = obterEstiloEventoAgendamento(agendamento);
 
     return {
       id: agendamento.id,
       title: agendamento.pacienteNome,
       start: parsearDataBackend(agendamento.dataInicio),
       end: parsearDataBackend(agendamento.dataFim),
-      backgroundColor: aguardandoConfirmacao
-        ? COR_EVENTO_AGUARDANDO_CONFIRMACAO
-        : obterCorEventoAgendamento(agendamento.status),
-      borderColor: aguardandoConfirmacao
-        ? 'var(--ds-brand-primary)'
-        : obterCorEventoAgendamento(agendamento.status),
-      textColor: aguardandoConfirmacao ? 'var(--ds-brand-primary)' : '#fff',
+      backgroundColor: estilo.backgroundColor,
+      borderColor: estilo.borderColor,
+      textColor: estilo.textColor,
       extendedProps: { agendamento },
       classNames: [
         ...(aguardandoConfirmacao ? ['agenda-calendar__evento--aguardando-confirmacao'] : []),
@@ -96,20 +89,29 @@ function renderizarConteudoEvento(arg: EventContentArg) {
   }
 
   const ehMes = arg.view.type === 'dayGridMonth';
-  const hora = arg.timeText
-    ? `<div class="agenda-evento-card__hora">${escaparHtml(arg.timeText)}</div>`
-    : '';
   const nomePaciente = escaparHtml(agendamento.pacienteNome);
+  const hora = arg.timeText ? escaparHtml(arg.timeText) : '';
   const tipo = escaparHtml(obterLabelTipoAgendamento(agendamento.tipo));
   const funcionario = escaparHtml(agendamento.funcionarioNome);
-  const procedimentos = formatarNomesProcedimentos(agendamento);
-  const procedimentosHtml = procedimentos
-    ? `<span class="agenda-evento-card__separador" aria-hidden="true">·</span><span class="agenda-evento-card__procedimentos">${escaparHtml(procedimentos)}</span>`
-    : '';
-  const classeMes = ehMes ? ' agenda-evento-card--mes' : '';
+
+  if (ehMes) {
+    const horaHtml = hora
+      ? `<span class="agenda-evento-card__hora">${hora}</span>`
+      : '';
+
+    return {
+      html: `<div class="agenda-evento-card agenda-evento-card--mes">${horaHtml}<div class="agenda-evento-card__titulo">${nomePaciente}</div></div>`,
+    };
+  }
+
+  const horaHtml = hora ? `<div class="agenda-evento-card__hora">${hora}</div>` : '';
+  const metaHtml =
+    tipo || funcionario
+      ? `<div class="agenda-evento-card__meta">${tipo}${tipo && funcionario ? `<span class="agenda-evento-card__separador" aria-hidden="true">·</span>` : ''}${funcionario}</div>`
+      : '';
 
   return {
-    html: `<div class="agenda-evento-card${classeMes}">${hora}<div class="agenda-evento-card__titulo">${nomePaciente}</div><div class="agenda-evento-card__meta"><span class="agenda-evento-card__tipo">${tipo}</span><span class="agenda-evento-card__separador" aria-hidden="true">·</span><span class="agenda-evento-card__funcionario">${funcionario}</span>${procedimentosHtml}</div></div>`,
+    html: `<div class="agenda-evento-card"><div class="agenda-evento-card__titulo">${nomePaciente}</div>${horaHtml}${metaHtml}</div>`,
   };
 }
 
@@ -118,8 +120,9 @@ const opcoesCalendario = shallowRef({
   locale: ptBrLocale,
   initialView: 'timeGridWeek' as const,
   headerToolbar: false as const,
-  height: 680,
-  expandRows: true,
+  height: 920,
+  expandRows: false,
+  eventMinHeight: 72,
   slotMinTime: '08:00:00',
   slotMaxTime: '18:00:00',
   slotDuration: '00:30:00',
@@ -311,7 +314,7 @@ watch(
   --fc-non-business-color: var(--ds-bg-page);
 
   contain: layout style;
-  min-height: 480px;
+  min-height: 920px;
 
   :deep(.fc) {
     font-family: inherit;
@@ -327,7 +330,11 @@ watch(
   }
 
   :deep(.fc-timegrid-slot) {
-    height: 2.5rem;
+    height: 4.5rem;
+  }
+
+  :deep(.fc-timegrid-event) {
+    min-height: 4.5rem;
   }
 
   :deep(.fc-non-business) {
@@ -335,7 +342,7 @@ watch(
   }
 
   :deep(.fc-event) {
-    border-radius: var(--ds-radius-sm, 4px);
+    border-radius: var(--ds-radius-md);
     border-width: 0;
     cursor: pointer;
     overflow: hidden;
@@ -344,7 +351,8 @@ watch(
   }
 
   :deep(.fc-event-main) {
-    padding: 2px 4px;
+    height: 100%;
+    padding: var(--ds-space-1) var(--ds-space-2);
   }
 
   :deep(.fc-daygrid-event) {
@@ -353,7 +361,7 @@ watch(
 
   :deep(.agenda-calendar__evento--aguardando-confirmacao) {
     border-width: 1px;
-    box-shadow: inset 3px 0 0 var(--ds-brand-primary);
+    box-shadow: inset 3px 0 0 var(--fc-event-border-color, var(--ds-brand-primary));
 
     .agenda-evento-card__hora,
     .agenda-evento-card__meta {
@@ -364,8 +372,7 @@ watch(
   :deep(.agenda-calendar__evento--inativo) {
     opacity: 0.65;
 
-    .agenda-evento-card__titulo,
-    .agenda-evento-card__funcionario {
+    .agenda-evento-card__titulo {
       text-decoration: line-through;
     }
   }
@@ -388,38 +395,40 @@ watch(
 :deep(.agenda-evento-card) {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  line-height: 1.25;
+  gap: 2px;
+  height: 100%;
+  line-height: var(--ds-line-height-tight);
   min-width: 0;
   overflow: hidden;
   width: 100%;
 
-  .agenda-evento-card__hora {
-    font-size: 0.65rem;
-    font-weight: var(--ds-font-weight-semibold);
-    opacity: 0.9;
-  }
-
   .agenda-evento-card__titulo {
-    font-size: 0.7rem;
+    display: -webkit-box;
+    flex-shrink: 0;
+    font-size: var(--ds-font-size-base);
     font-weight: var(--ds-font-weight-semibold);
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .agenda-evento-card__hora {
+    flex-shrink: 0;
+    font-size: var(--ds-font-size-xs);
+    font-weight: var(--ds-font-weight-medium);
+    opacity: 0.9;
   }
 
   .agenda-evento-card__meta {
     align-items: center;
     display: flex;
-    font-size: 0.625rem;
-    gap: 3px;
+    flex: 1;
+    font-size: var(--ds-font-size-xs);
+    gap: var(--ds-space-1);
+    min-height: 0;
     min-width: 0;
-    opacity: 0.92;
-  }
-
-  .agenda-evento-card__tipo {
-    flex-shrink: 0;
-    font-weight: var(--ds-font-weight-medium);
+    opacity: 0.88;
+    overflow: hidden;
   }
 
   .agenda-evento-card__separador {
@@ -427,25 +436,25 @@ watch(
     opacity: 0.7;
   }
 
-  .agenda-evento-card__funcionario {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .agenda-evento-card__procedimentos {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   &.agenda-evento-card--mes {
-    .agenda-evento-card__titulo {
-      font-size: 0.65rem;
+    align-items: baseline;
+    flex-direction: row;
+    gap: var(--ds-space-1);
+    height: auto;
+
+    .agenda-evento-card__hora {
+      flex-shrink: 0;
     }
 
-    .agenda-evento-card__meta {
-      font-size: 0.58rem;
+    .agenda-evento-card__titulo {
+      display: block;
+      flex: 1;
+      font-size: var(--ds-font-size-sm);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      -webkit-line-clamp: unset;
     }
   }
 }

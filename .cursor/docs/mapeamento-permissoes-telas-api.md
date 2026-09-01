@@ -187,9 +187,9 @@ Documento gerado a partir da análise do código em `src/router`, páginas, serv
 
 **Permissão mínima:** herda `agenda.visualizar` (não exige `agendamento.criar` para abrir modal).
 
-**Montagem ao abrir dialog:** `GET /api/units`, `GET /api/procedures`; se unidade selecionada: `GET /api/patients`, `GET /api/employees`; garantias: `GET /api/patients/{id}`, `GET /api/employees/{id}`.
+**Montagem ao abrir dialog:** `GET /api/units`, `GET /api/appointment-tags`; se unidade selecionada: `GET /api/patients`, `GET /api/employees`; garantias: `GET /api/patients/{id}`, `GET /api/employees/{id}`.
 
-**Submit:** `POST` ou `PUT /api/appointments`.
+**Submit:** `POST` ou `PUT /api/appointments` (inclui `tagIds`).
 
 Ver seção Dashboard para dependências cruzadas e problemas.
 
@@ -305,6 +305,16 @@ Ver seção Dashboard para dependências cruzadas e problemas.
 **Permissão ideal:** `sintoma.*` por operação.
 
 **Problemas atuais:** nenhum.
+
+---
+
+## Tags de agendamento — modal no formulário de agendamento
+
+**Objetivo:** criar e editar tags (nome + cor) pelo modal em `AgendamentoFormDialog` (`TagAgendamentoFormDialog`). Sem rota/menu próprio.
+
+**Permissão:** `tag_agendamento.criar` | `tag_agendamento.editar` (listagem no select: `GET /api/appointment-tags` com auxiliar `agenda.visualizar`, `agendamento.criar`, `agendamento.editar`).
+
+**Ações:** `GET` / `POST` / `PUT` em `/api/appointment-tags`.
 
 ---
 
@@ -686,6 +696,7 @@ Constante `financeiro.visualizar` em `src/constants/permissoes.ts` — **sem rot
 | Dashboard | `/api/appointments/{id}/cancel` | PATCH | `agendamento.cancelar` | não | — | P1 |
 | Dashboard | `/api/appointments/{id}/no-show` | PATCH | `agendamento.registrar_falta` | não | — | P2 |
 | Dashboard (modal) | `/api/patients` | GET | `paciente.visualizar` | sim | `agendamento.criar` | P0 |
+| Dashboard (modal) | `/api/appointment-tags` | GET | `tag_agendamento.visualizar` | sim | `agenda.visualizar*` / `agendamento.criar` / `agendamento.editar` | P1 |
 | Dashboard (modal) | `/api/procedures` | GET | `procedimento.visualizar` | sim | `agendamento.criar` | P1 |
 | Pacientes lista | `/api/patients` | GET | `paciente.visualizar` | não | — | P0 |
 | Pacientes lista | `/api/units` | GET | `unidade.visualizar` | sim | `paciente.visualizar` | P1 |

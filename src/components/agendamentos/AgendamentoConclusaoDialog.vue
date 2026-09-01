@@ -80,6 +80,8 @@ async function concluirSemAplicacao(): Promise<void> {
   <q-dialog
     :model-value="modelValue && Boolean(agendamento)"
     persistent
+    transition-show="none"
+    transition-hide="none"
     @update:model-value="!$event && fechar()"
   >
     <q-card class="decisao-aplicacao">
