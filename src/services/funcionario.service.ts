@@ -60,6 +60,14 @@ export const funcionarioService = {
     return data.data;
   },
 
+  async reenviarPrimeiroAcesso(id: string): Promise<Funcionario> {
+    const { data } = await api.post<ApiResponse<Funcionario>>(
+      `/api/employees/${id}/resend-first-access`,
+    );
+
+    return data.data;
+  },
+
   async obterPermissoes(id: string): Promise<PermissoesFuncionario> {
     const { data } = await api.get<ApiResponse<PermissoesFuncionario>>(
       `/api/employees/${id}/permissions`,

@@ -31,9 +31,11 @@ const incluirInativos = ref(false);
 const dialogVisualizar = ref(false);
 const dialogDesativar = ref(false);
 const dialogReativar = ref(false);
+const dialogReenviarConvite = ref(false);
 const funcionarioSelecionado = ref<Funcionario | null>(null);
 const desativando = ref(false);
 const reativando = ref(false);
+const reenviandoConvite = ref(false);
 
 const colunas = [
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' as const, sortable: true },
@@ -114,6 +116,34 @@ function abrirDialogDesativar(funcionario: Funcionario): void {
 function abrirDialogReativar(funcionario: Funcionario): void {
   funcionarioSelecionado.value = funcionario;
   dialogReativar.value = true;
+}
+
+function podeReenviarConvite(funcionario: Funcionario): boolean {
+  return Boolean(funcionario.ativo && funcionario.pendentePrimeiroAcesso && podeEditar.value);
+}
+
+function abrirDialogReenviarConvite(funcionario: Funcionario): void {
+  funcionarioSelecionado.value = funcionario;
+  dialogReenviarConvite.value = true;
+}
+
+async function confirmarReenviarConvite(): Promise<void> {
+  if (!funcionarioSelecionado.value || reenviandoConvite.value) {
+    return;
+  }
+
+  reenviandoConvite.value = true;
+
+  try {
+    await funcionarioService.reenviarPrimeiroAcesso(funcionarioSelecionado.value.id);
+    notificacao.sucesso('E-mail de primeiro acesso reenviado.');
+    dialogReenviarConvite.value = false;
+    funcionarioSelecionado.value = null;
+  } catch (error) {
+    notificacao.erro(obterMensagem(error));
+  } finally {
+    reenviandoConvite.value = false;
+  }
 }
 
 async function confirmarDesativar(): Promise<void> {
@@ -263,7 +293,21 @@ onMounted(async () => {
               @editar="editarFuncionario(cell.row.id)"
               @desabilitar="abrirDialogDesativar(cell.row)"
               @ativar="abrirDialogReativar(cell.row)"
-            />
+            >
+              <q-item
+                v-if="podeReenviarConvite(cell.row)"
+                clickable
+                v-close-popup
+                @click="abrirDialogReenviarConvite(cell.row)"
+              >
+                <q-item-section avatar>
+                  <span class="table-actions-menu__icon table-actions-menu__icon--view">
+                    <q-icon name="forward_to_inbox" size="18px" />
+                  </span>
+                </q-item-section>
+                <q-item-section>Reenviar e-mail</q-item-section>
+              </q-item>
+            </app-table-actions-menu>
           </app-table-actions-cell>
         </template>
       </q-table>
@@ -346,6 +390,44 @@ onMounted(async () => {
             no-caps
             :loading="reativando"
             @click="confirmarReativar"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog
+      v-model="dialogReenviarConvite"
+      persistent
+      transition-show="none"
+      transition-hide="none"
+    >
+      <q-card style="min-width: 320px">
+        <q-card-section>
+          <div class="text-h6">Reenviar e-mail</div>
+        </q-card-section>
+
+        <q-card-section>
+          Um novo link de primeiro acesso será enviado para
+          <strong>{{ funcionarioSelecionado?.emailLogin }}</strong>.
+          O convite anterior deixa de valer.
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn
+            flat
+            label="Voltar"
+            color="primary"
+            no-caps
+            :disable="reenviandoConvite"
+            v-close-popup
+          />
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            :disable="reenviandoConvite"
+            :label="reenviandoConvite ? 'Enviando' : 'Reenviar'"
+            @click="confirmarReenviarConvite"
           />
         </q-card-actions>
       </q-card>
